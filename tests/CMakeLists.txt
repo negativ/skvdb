@@ -1,0 +1,24 @@
+cmake_minimum_required(VERSION 2.8)
+
+project(skvdb-tests CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(VERSION "0.0.1")
+
+
+set (CMAKE_CXX_STANDARD 17)
+
+enable_testing()
+
+find_package(GTest REQUIRED)
+
+include(GoogleTest)
+
+include_directories(${GTEST_INCLUDE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/../lib/")
+
+add_executable(skv-device-test skv-device-test.cpp)
+
+target_link_libraries(skv-device-test ${GTEST_LIBRARY} ${GTEST_MAIN_LIBRARY} skv)
+
+add_test(skv-device-test skv-device-test)
+

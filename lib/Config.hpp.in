@@ -1,0 +1,2 @@
+#cmakedefine SKVDB_VERSION "@SKVDB_VERSION@"
+#cmakedefine SKVDB_REVISION "@SKVDB_REVISION@"
