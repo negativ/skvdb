@@ -16,9 +16,15 @@ include(GoogleTest)
 
 include_directories(${GTEST_INCLUDE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/../lib/")
 
+if (UNIX)
+    list(APPEND LIBS ${GTEST_LIBRARY} ${GTEST_MAIN_LIBRARY} -pthread)
+endif ()
+
+add_executable(skv-spinlock-test skv-spinlock-test.cpp)
+target_link_libraries(skv-spinlock-test ${LIBS} skv)
+add_test(skv-spinlock-test skv-spinlock-test)
+
 add_executable(skv-device-test skv-device-test.cpp)
-
-target_link_libraries(skv-device-test ${GTEST_LIBRARY} ${GTEST_MAIN_LIBRARY} skv)
-
+target_link_libraries(skv-device-test ${LIBS} skv)
 add_test(skv-device-test skv-device-test)
 

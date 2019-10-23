@@ -31,8 +31,14 @@ set(SKVDB_REVISION ${SKVDB_GIT_REVISION})
 
 configure_file(Config.hpp.in Config.hpp @ONLY)
 
-aux_source_directory(${PROJECT_SOURCE_DIR} SRCS)
-file(GLOB HDRS ${PROJECT_SOURCE_DIR}/*.hpp)
+file(GLOB_RECURSE SRCS *.cpp)
+file(GLOB_RECURSE HDRS *.hpp)
+
+add_definitions (-D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D_REENTRANT)
+
+if (UNIX)
+    list(APPEND LIBS -pthread)
+endif ()
 
 add_library(${PROJECT_NAME} SHARED
             ${SRCS}
