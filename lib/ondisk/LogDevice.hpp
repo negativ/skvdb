@@ -19,10 +19,10 @@ class LogDevice final
 {
     struct Impl;
 public:
-    using Buffer        = std::vector<char>;    /* maybe std::uint8_t is better choice */
-    using BlockIndex    = std::uint32_t;        /* so we can address up to 16 TB */
-    using BlockCount    = std::uint32_t;
-    using BytesCount    = Buffer::size_type;
+    using buffer_type           = std::vector<char>;    /* maybe std::uint8_t is better choice */
+    using block_index_type      = std::uint32_t;        /* so we can address up to 16 TB */
+    using block_count_type      = std::uint32_t;
+    using bytes_count_type      = buffer_type::size_type;
 
     struct OpenOption {
         std::uint32_t   BlockSize{4096};
@@ -57,14 +57,14 @@ public:
      * @param cnt - bytes count
      * @return Status of operation and buffer
      */
-    [[nodiscard]] std::tuple<Status, Buffer> read(BlockIndex n, BytesCount cnt);
+    [[nodiscard]] std::tuple<Status, buffer_type> read(block_index_type n, bytes_count_type cnt);
 
     /**
      * @brief append
      * @param buffer
      * @return
      */
-    [[nodiscard]] std::tuple<Status, BlockIndex, BlockCount> append(const Buffer& buffer);
+    [[nodiscard]] std::tuple<Status, block_index_type, block_count_type> append(const buffer_type& buffer);
 
     /**
      * @brief sizeInBytes
@@ -76,7 +76,7 @@ public:
      * @brief sizeInBlocks
      * @return
      */
-    BlockCount sizeInBlocks() const noexcept;
+    block_count_type sizeInBlocks() const noexcept;
 
     /**
      * @brief Block size in bytes

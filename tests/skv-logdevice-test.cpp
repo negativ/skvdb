@@ -36,19 +36,19 @@ protected:
     }
 
     struct IndexRecord {
-        IndexRecord(size_t k, size_t bl, LogDevice::BlockIndex bi):
+        IndexRecord(size_t k, size_t bl, LogDevice::block_index_type bi):
             key{k}, bytesLength{bl}, blockIndex{bi}
         {}
 
         size_t key;
         size_t bytesLength;
-        ondisk::LogDevice::BlockIndex blockIndex;
+        ondisk::LogDevice::block_index_type blockIndex;
     };
 
     void fill() {
         for (size_t i = 0; i < N_RECORDS; ++i) {
             const auto bufferSize = (i + 1) * RECORD_GROW_FACTOR;
-            const auto& ret = device_.append(ondisk::LogDevice::Buffer(bufferSize, (i + 1) % 64));
+            const auto& ret = device_.append(ondisk::LogDevice::buffer_type(bufferSize, (i + 1) % 64));
 
             auto status = std::get<0>(ret);
             auto blockIdx = std::get<1>(ret);
@@ -79,7 +79,7 @@ TEST_F(LogDeviceTest, ReadWriteTest) {
         const auto bufferSize = value.bytesLength;
         auto blockIdx = value.blockIndex;
 
-        LogDevice::Buffer compareBuffer(bufferSize, (key + 1) % 64);
+        LogDevice::buffer_type compareBuffer(bufferSize, (key + 1) % 64);
 
         const auto& ret = device_.read(blockIdx, bufferSize);
 
@@ -104,7 +104,7 @@ TEST_F(LogDeviceTest, ReadWriteTestMT) {
                                 const auto bufferSize = value.bytesLength;
                                 auto blockIdx = value.blockIndex;
 
-                                LogDevice::Buffer compareBuffer(bufferSize, (key + 1) % 64);
+                                LogDevice::buffer_type compareBuffer(bufferSize, (key + 1) % 64);
 
                                 const auto& ret = device_.read(blockIdx, bufferSize);
 
@@ -135,7 +135,7 @@ TEST_F(LogDeviceTest, ReadWriteTestMTOversubscribtion) {
                                 const auto bufferSize = value.bytesLength;
                                 auto blockIdx = value.blockIndex;
 
-                                LogDevice::Buffer compareBuffer(bufferSize, (key + 1) % 64);
+                                LogDevice::buffer_type compareBuffer(bufferSize, (key + 1) % 64);
 
                                 const auto& ret = device_.read(blockIdx, bufferSize);
 

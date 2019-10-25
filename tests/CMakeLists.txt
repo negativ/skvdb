@@ -33,3 +33,7 @@ add_test(skv-logdevice-test skv-logdevice-test)
 add_executable(skv-indexrecord-test skv-indexrecord-test.cpp)
 target_link_libraries(skv-indexrecord-test ${LIBS} skv)
 add_test(skv-indexrecord-test skv-indexrecord-test)
+
+add_executable(skv-indextable-test skv-indextable-test.cpp)
+target_link_libraries(skv-indextable-test ${LIBS} skv)
+add_test(skv-indextable-test skv-indextable-test)

@@ -21,10 +21,10 @@ using namespace skv::util;
 struct LogDevice::Impl {
     std::string path_;
     OpenOption openOption_;
-    std::atomic<BlockCount> blocks_;
+    std::atomic<block_count_type> blocks_;
     bool opened_;
     os::File::Handle writeHandle_;
-    Buffer fillbuffer;
+    buffer_type fillbuffer;
     std::array<os::File::Handle, N_READERS> readHandles_;
     std::array<std::mutex, N_READERS> readMutexes_;
     std::shared_mutex lock_;
@@ -71,7 +71,7 @@ Status LogDevice::open(std::string_view path, LogDevice::OpenOption options) {
     impl_->opened_ = true;
     os::File::seek(impl_->writeHandle_, 0, os::File::Seek::End);
 
-    impl_->blocks_.store(BlockCount(os::File::tell(impl_->writeHandle_) / blockSize()));
+    impl_->blocks_.store(block_count_type(os::File::tell(impl_->writeHandle_) / blockSize()));
 
     if (!initReaders()) {
         close();
@@ -100,13 +100,13 @@ Status LogDevice::close() {
     impl_->path_.clear();
     impl_->blocks_.store(0);
 
-    Buffer tmp;
+    buffer_type tmp;
     impl_->fillbuffer.swap(tmp);
 
     return Status::Ok();
 }
 
-std::tuple<Status, LogDevice::Buffer> LogDevice::read(BlockIndex n, BytesCount cnt) {
+std::tuple<Status, LogDevice::buffer_type> LogDevice::read(block_index_type n, bytes_count_type cnt) {
     static constexpr std::hash<std::thread::id> hasher;
 
     auto totalBlocks = impl_->blocks_.load();
@@ -126,15 +126,15 @@ std::tuple<Status, LogDevice::Buffer> LogDevice::read(BlockIndex n, BytesCount c
     if (!fhandle)
         return {Status::IOError("Device not opened"), {}};
 
-    Buffer data(cnt);
+    buffer_type data(cnt);
 
     os::File::seek(fhandle, n * blockSize(), os::File::Seek::Set);
-    os::File::read(data.data(), sizeof(Buffer::value_type), cnt, fhandle);
+    os::File::read(data.data(), sizeof(buffer_type::value_type), cnt, fhandle);
 
     return {Status::Ok(), data};
 }
 
-std::tuple<Status, LogDevice::BlockIndex, LogDevice::BlockCount> LogDevice::append(const Buffer &buffer) {
+std::tuple<Status, LogDevice::block_index_type, LogDevice::block_count_type> LogDevice::append(const buffer_type &buffer) {
     if (buffer.empty())
         return {Status::InvalidArgument("Unable to write empty buffer"), 0, 0};
     else if (!opened())
@@ -147,19 +147,19 @@ std::tuple<Status, LogDevice::BlockIndex, LogDevice::BlockCount> LogDevice::appe
     const auto bufferSize = buffer.size();
 
     // TODO: check that write was successful and make rollback if neccessary
-    assert(os::File::write(buffer.data(), sizeof(Buffer::value_type), bufferSize, fhandle) == bufferSize);
+    assert(os::File::write(buffer.data(), sizeof(buffer_type::value_type), bufferSize, fhandle) == bufferSize);
 
     if ((bufferSize % blockSize()) != 0) {
         auto n = blockSize() - (bufferSize % blockSize());
 
         // TODO: check that write was successful and make rollback if neccessary
-        assert(os::File::write(impl_->fillbuffer.data(), sizeof(Buffer::value_type), n, fhandle) == n);
+        assert(os::File::write(impl_->fillbuffer.data(), sizeof(buffer_type::value_type), n, fhandle) == n);
     }
 
     os::File::flush(impl_->writeHandle_);
 
     const auto spos = os::File::tell(fhandle);
-    const auto blocksAdded = BlockCount(spos - cpos) / blockSize();
+    const auto blocksAdded = block_count_type(spos - cpos) / blockSize();
 
     impl_->blocks_.fetch_add(blocksAdded);
 
@@ -170,7 +170,7 @@ uint64_t LogDevice::sizeInBytes() const noexcept {
     return uint64_t(impl_->openOption_.BlockSize) * sizeInBlocks();
 }
 
-LogDevice::BlockCount LogDevice::sizeInBlocks() const noexcept {
+LogDevice::block_count_type LogDevice::sizeInBlocks() const noexcept {
     return impl_->blocks_.load();
 }
 
