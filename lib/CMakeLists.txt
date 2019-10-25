@@ -38,6 +38,9 @@ add_definitions (-D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D_REENTRANT)
 
 if (UNIX)
     list(APPEND LIBS -pthread)
+    add_definitions(-DBUILDING_UNIX)
+elseif(WIN32)
+    add_definitions(-DBUILDING_WINDOWS)
 endif ()
 
 add_library(${PROJECT_NAME} SHARED
