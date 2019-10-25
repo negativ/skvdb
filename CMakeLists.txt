@@ -20,6 +20,11 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL GNU OR CMAKE_CXX_COMPILER_ID STREQUAL Clang)
     set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} -Wl,--gc-sections")
 endif ()
 
+find_package(Boost 1.60 REQUIRED)
+
+include_directories(${Boost_INCLUDE_DIRS})
+add_definitions(${Boost_LIB_DIAGNOSTIC_DEFINITIONS})
+
 if (UNIX)
     add_definitions(-DBUILDING_UNIX)
 elseif(WIN32)

@@ -20,6 +20,8 @@ if (UNIX)
     list(APPEND LIBS ${GTEST_LIBRARY} ${GTEST_MAIN_LIBRARY} -pthread)
 endif ()
 
+list(APPEND LIBS ${Boost_LIBRARIES})
+
 add_executable(skv-spinlock-test skv-spinlock-test.cpp)
 target_link_libraries(skv-spinlock-test ${LIBS} skv)
 add_test(skv-spinlock-test skv-spinlock-test)
@@ -28,3 +30,6 @@ add_executable(skv-logdevice-test skv-logdevice-test.cpp)
 target_link_libraries(skv-logdevice-test ${LIBS} skv)
 add_test(skv-logdevice-test skv-logdevice-test)
 
+add_executable(skv-indexrecord-test skv-indexrecord-test.cpp)
+target_link_libraries(skv-indexrecord-test ${LIBS} skv)
+add_test(skv-indexrecord-test skv-indexrecord-test)
