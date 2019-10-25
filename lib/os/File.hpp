@@ -30,6 +30,8 @@ struct File {
     static std::int64_t tell(Handle fhandle) noexcept;
 
     static void flush(Handle handle) noexcept;
+
+    static bool unlink(std::string_view filePath) noexcept;
 };
 
 

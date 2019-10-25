@@ -84,6 +84,12 @@ public:
      */
     std::uint32_t blockSize() const noexcept;
 
+    /**
+     * @brief Device is opened
+     * @return
+     */
+    bool opened() const noexcept;
+
 private:
     bool createNew();
     bool initReaders();

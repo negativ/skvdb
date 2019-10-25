@@ -24,7 +24,7 @@ add_executable(skv-spinlock-test skv-spinlock-test.cpp)
 target_link_libraries(skv-spinlock-test ${LIBS} skv)
 add_test(skv-spinlock-test skv-spinlock-test)
 
-add_executable(skv-device-test skv-device-test.cpp)
-target_link_libraries(skv-device-test ${LIBS} skv)
-add_test(skv-device-test skv-device-test)
+add_executable(skv-logdevice-test skv-logdevice-test.cpp)
+target_link_libraries(skv-logdevice-test ${LIBS} skv)
+add_test(skv-logdevice-test skv-logdevice-test)
 

@@ -1,8 +1,11 @@
 #include "LogDevice.hpp"
 
 #include <atomic>
+#include <iostream>
 #include <shared_mutex>
 #include <thread>
+
+#include <cassert>
 
 #include "os/File.hpp"
 
@@ -38,6 +41,8 @@ LogDevice::~LogDevice() noexcept {
 }
 
 Status LogDevice::open(std::string_view path, LogDevice::OpenOption options) {
+    assert(options.BlockSize % 512 == 0);
+
     std::unique_lock lock(impl_->lock_);
 
     const auto exists = [path]() {
@@ -57,13 +62,16 @@ Status LogDevice::open(std::string_view path, LogDevice::OpenOption options) {
     if (!exists && !createNew())
         return Status::IOError(std::string{"Unable to create block device at: "} + std::string{path});
 
-    auto file = os::File::open(impl_->path_, "wb+");
+    auto file = os::File::open(impl_->path_, "r+");
     impl_->writeHandle_.swap(file);
 
     if (!impl_->writeHandle_)
         return Status::IOError("Unable top open device for writing");
 
     impl_->opened_ = true;
+    os::File::seek(impl_->writeHandle_, 0, os::File::Seek::End);
+
+    impl_->blocks_.store(BlockCount(os::File::tell(impl_->writeHandle_) / blockSize()));
 
     if (!initReaders()) {
         close();
@@ -77,7 +85,7 @@ Status LogDevice::open(std::string_view path, LogDevice::OpenOption options) {
 Status LogDevice::close() {
     std::unique_lock lock(impl_->lock_);
 
-    if (!impl_->opened_)
+    if (!opened())
         return Status::Ok();
 
     impl_->opened_ = false;
@@ -104,7 +112,7 @@ std::tuple<Status, LogDevice::Buffer> LogDevice::read(BlockIndex n, BytesCount c
     auto totalBlocks = impl_->blocks_.load();
     auto readBlocks = (cnt / blockSize()) + (cnt % blockSize()? 1 : 0);
 
-    if (!impl_->opened_)
+    if (!opened())
         return {Status::IOError("Device not opened"), {}};
     if ((n + readBlocks) > totalBlocks)
         return {Status::InvalidArgument(""), {}};
@@ -126,11 +134,10 @@ std::tuple<Status, LogDevice::Buffer> LogDevice::read(BlockIndex n, BytesCount c
     return {Status::Ok(), data};
 }
 
-std::tuple<Status, LogDevice::BlockIndex, LogDevice::BlockCount> LogDevice::append(const Buffer &buffer)
-{
+std::tuple<Status, LogDevice::BlockIndex, LogDevice::BlockCount> LogDevice::append(const Buffer &buffer) {
     if (buffer.empty())
         return {Status::InvalidArgument("Unable to write empty buffer"), 0, 0};
-    else if (!impl_->opened_)
+    else if (!opened())
         return {Status::IOError("Device not opened"), 0, 0};
 
     std::unique_lock lock(impl_->lock_);
@@ -139,12 +146,14 @@ std::tuple<Status, LogDevice::BlockIndex, LogDevice::BlockCount> LogDevice::appe
     const auto cpos = os::File::tell(fhandle);
     const auto bufferSize = buffer.size();
 
-    os::File::write(buffer.data(), sizeof(Buffer::value_type), bufferSize, fhandle);
+    // TODO: check that write was successful and make rollback if neccessary
+    assert(os::File::write(buffer.data(), sizeof(Buffer::value_type), bufferSize, fhandle) == bufferSize);
 
     if ((bufferSize % blockSize()) != 0) {
         auto n = blockSize() - (bufferSize % blockSize());
 
-        os::File::write(impl_->fillbuffer.data(), sizeof(Buffer::value_type), n, fhandle);
+        // TODO: check that write was successful and make rollback if neccessary
+        assert(os::File::write(impl_->fillbuffer.data(), sizeof(Buffer::value_type), n, fhandle) == n);
     }
 
     os::File::flush(impl_->writeHandle_);
@@ -167,6 +176,10 @@ LogDevice::BlockCount LogDevice::sizeInBlocks() const noexcept {
 
 uint32_t LogDevice::blockSize() const noexcept {
     return impl_->openOption_.BlockSize;
+}
+
+bool LogDevice::opened() const noexcept {
+    return impl_->opened_;
 }
 
 bool LogDevice::createNew() {

@@ -2,10 +2,17 @@
 
 #ifdef BUILDING_UNIX
 
+#include <unistd.h>
+
 namespace skv::os {
 
 File::Handle File::open(std::string_view path, std::string_view mode) noexcept {
-    return File::Handle{::fopen(path.data(), mode.data()), &(::fclose)};
+    return File::Handle{::fopen(path.data(), mode.data()),
+                        [](FILE* f) -> int {
+                            if (f)
+                                return ::fclose(f);
+                            return -1;
+                        }};
 }
 
 std::int64_t File::tell(Handle fhandle) noexcept {
@@ -38,6 +45,10 @@ bool File::seek(Handle handle, std::int64_t offset, Seek s) noexcept {
 
 void File::flush(Handle handle) noexcept {
     ::fflush(handle.get());
+}
+
+bool File::unlink(std::string_view filePath) noexcept {
+    return ::unlink(filePath.data()) == 0;
 }
 
 }

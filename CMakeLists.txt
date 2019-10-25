@@ -20,5 +20,11 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL GNU OR CMAKE_CXX_COMPILER_ID STREQUAL Clang)
     set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} -Wl,--gc-sections")
 endif ()
 
+if (UNIX)
+    add_definitions(-DBUILDING_UNIX)
+elseif(WIN32)
+    add_definitions(-DBUILDING_WINDOWS)
+endif ()
+
 add_subdirectory(lib)
 add_subdirectory(tests)
