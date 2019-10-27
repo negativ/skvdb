@@ -19,7 +19,7 @@ constexpr std::size_t getIndex() {
 std::ostream& operator<<(std::ostream& os, const Property& p) {
     namespace be = boost::endian;
 
-    std::uint64_t idx = p.index();
+    std::uint16_t idx = p.index() & 0xFFFF;
     be::native_to_little_inplace(idx);
 
     os.write(reinterpret_cast<const char*>(&idx), sizeof(idx));
@@ -43,7 +43,7 @@ std::ostream& operator<<(std::ostream& os, const Property& p) {
 }
 
 template <typename T>
-void readProperty(std::istream& is, uint64_t idx, Property& p) {
+void readProperty(std::istream& is, uint16_t idx, Property& p) {
     namespace be = boost::endian;
 
     if (getIndex<Property, T>() == idx) {
@@ -71,14 +71,14 @@ void readProperty(std::istream& is, uint64_t idx, Property& p) {
 }
 
 template <typename ... Ts>
-void readProperty(std::istream& is, uint64_t idx, std::variant<Ts...> &p) {
+void readProperty(std::istream& is, uint16_t idx, std::variant<Ts...> &p) {
     (readProperty<Ts>(is, idx, p), ...);
 }
 
 std::istream& operator>>(std::istream& is, Property& p) {
     namespace be = boost::endian;
 
-    std::uint64_t idx;
+    std::uint16_t idx;
 
     is.read(reinterpret_cast<char*>(&idx), sizeof(idx));
 
