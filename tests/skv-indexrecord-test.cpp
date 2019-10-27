@@ -7,7 +7,7 @@
 using namespace skv::ondisk;
 
 TEST(IndexRecordTest, ReadWrite) {
-    IndexRecord<> idx1{1, 2, 3, 4};
+    IndexRecord<> idx1{1, 2, 3};
     std::stringstream stream;
 
     stream << idx1;

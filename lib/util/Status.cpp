@@ -18,6 +18,10 @@ Status Status::NotFound(std::string message) noexcept(noexcept_copy_constructibl
     return Status{Status::Code::NotFound, std::move(message)};
 }
 
+Status Status::Fatal(std::string message) noexcept(noexcept_copy_constructible) {
+    return Status{Status::Code::Fatal, std::move(message)};
+}
+
 
 Status::Status(Status::Code code, std::string message) noexcept(noexcept_move_constructible):
     code_{code},
@@ -48,6 +52,10 @@ bool Status::isInvalidArgument() const noexcept {
 
 bool Status::isNotFound() const noexcept {
     return code_ == Code::NotFound;
+}
+
+bool Status::isFatal() const noexcept {
+    return code_ == Code::Fatal;
 }
 
 }
