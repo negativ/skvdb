@@ -32,6 +32,10 @@ struct File {
     static void flush(Handle handle) noexcept;
 
     static bool unlink(std::string_view filePath) noexcept;
+
+    static bool exists(std::string_view filePath) noexcept;
+
+    static char sep() noexcept;  // path separator
 };
 
 

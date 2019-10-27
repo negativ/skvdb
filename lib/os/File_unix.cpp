@@ -51,6 +51,14 @@ bool File::unlink(std::string_view filePath) noexcept {
     return ::unlink(filePath.data()) == 0;
 }
 
+bool File::exists(std::string_view filePath) noexcept {
+    return ::access(filePath.data(), F_OK) != -1;
+}
+
+char File::sep() noexcept {
+    return '/';
+}
+
 }
 
 #endif
