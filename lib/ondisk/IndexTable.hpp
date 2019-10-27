@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <iostream>
 #include <type_traits>
@@ -110,7 +111,9 @@ inline std::ostream& operator<<(std::ostream& os, const IndexTable<K, BI, BC>& p
 {
     namespace be = boost::endian;
 
-    auto d = std::distance(std::cbegin(p), std::cend(p));
+    std::int64_t d = std::distance(std::cbegin(p), std::cend(p));
+    assert(d >= 0);
+
     be::native_to_little_inplace(d);
 
     os.write(reinterpret_cast<const char*>(&d), sizeof(d));
@@ -128,7 +131,7 @@ inline std::istream& operator>>(std::istream& is, IndexTable<K, BI, BC>& p)
 
     using index_type = typename IndexTable<K, BI, BC>::index_record_type;
 
-    decltype (std::distance(std::cbegin(p), std::cend(p))) d{0};
+    std::int64_t d{0};
     is.read(reinterpret_cast<char*>(&d), sizeof(d));
 
     be::little_to_native_inplace(d);
