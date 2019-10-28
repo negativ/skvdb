@@ -103,10 +103,10 @@ public:
 
         auto [status, blockIndex, blockCount] = logDevice_.append(buffer);
 
-        std::unique_lock locker(xLock_);
-
         if (!status.isOk())
             return status;
+
+        std::unique_lock locker(xLock_);
 
         index_record_type index(e.key(), blockIndex, bytes_count_type(buffer.size()));
         indexTable_[e.key()] = index;
