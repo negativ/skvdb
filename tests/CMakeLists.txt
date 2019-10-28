@@ -45,3 +45,7 @@ add_test(skv-storage-test skv-storage-test)
 add_executable(skv-property-test skv-property-test.cpp)
 target_link_libraries(skv-property-test ${LIBS} skv)
 add_test(skv-property-test skv-storage-test)
+
+add_executable(skv-entry-test skv-entry-test.cpp)
+target_link_libraries(skv-entry-test ${LIBS} skv)
+add_test(skv-entry-test skv-entry-test)

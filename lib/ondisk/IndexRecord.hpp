@@ -13,9 +13,9 @@ template <typename Key          = std::uint64_t,
           typename BytesCount   = std::uint32_t>
 class IndexRecord final {
 public:
-    using key_type = Key;
-    using block_index_type = BlockIndex;
-    using bytes_count_type = BytesCount;
+    using key_type          = std::decay_t<Key>;
+    using block_index_type  = std::decay_t<BlockIndex>;
+    using bytes_count_type  = std::decay_t<BytesCount>;
 
     static_assert (std::is_integral_v<key_type> && sizeof(key_type) >= sizeof(std::uint16_t), "Key type should be integral type (16 bit width minimum)");
     static_assert (std::is_integral_v<block_index_type > && sizeof(block_index_type) >= sizeof(std::uint16_t), "BlockIndex type should be integral type (16 bit width minimum)");

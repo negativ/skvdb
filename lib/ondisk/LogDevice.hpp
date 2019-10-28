@@ -27,10 +27,10 @@ class LogDevice final
 {
     static constexpr std::size_t MAX_READ_THREADS = 17;
 public:
-    using buffer_type           = Buffer;                           /* maybe std::uint8_t is better choice */
+    using buffer_type           = std::decay_t<Buffer>;                           /* maybe std::uint8_t is better choice */
     using buffer_value_type     = typename buffer_type::value_type; /* maybe std::uint8_t is better choice */
-    using block_index_type      = BlockIndex;                       /* so we can address up to 16 TB */
-    using block_count_type      = BlockCount;
+    using block_index_type      = std::decay_t<BlockIndex>;                       /* so we can address up to 16 TB */
+    using block_count_type      = std::decay_t<BlockCount>;
     using bytes_count_type      = typename buffer_type::size_type;
 
     struct OpenOption {

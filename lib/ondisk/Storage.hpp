@@ -7,6 +7,7 @@
 #include <fstream>
 #include <vector>
 
+#include "Entry.hpp"
 #include "IndexTable.hpp"
 #include "LogDevice.hpp"
 #include "os/File.hpp"
@@ -19,12 +20,17 @@ template <typename Key          = std::uint64_t,
           typename BytesCount   = std::uint32_t>
 class Storage final {
 public:
-    using key_type          = Key;
-    using block_index_type  = BlockIndex;
-    using bytes_count_type  = BytesCount;
+    using key_type          = std::decay_t<Key>;
+
+    static constexpr key_type InvalidEntryId = 0;
+    static constexpr key_type RootEntryId = 1;
+
+    using block_index_type  = std::decay_t<BlockIndex>;
+    using bytes_count_type  = std::decay_t<BytesCount>;
     using index_table_type  = IndexTable<key_type, block_index_type, bytes_count_type>;
     using index_record_type = typename index_table_type::index_record_type;
     using log_device_type   = LogDevice<block_index_type, block_index_type, std::vector<char>>;
+    using entry_type        = Entry<key_type, InvalidEntryId>;
 
     struct OpenOptions {
         std::uint32_t   LogDeviceBlockSize{4096};
@@ -36,6 +42,22 @@ public:
     }
 
     ~Storage() noexcept {
+        static_cast<void>(close());
+    }
+
+    [[nodiscard]] std::tuple<Status, entry_type> load(const key_type& key) {
+
+    }
+
+    [[nodiscard]] Status save(const entry_type& e) {
+
+    }
+
+    [[nodiscard]] Status remove(const entry_type& e) {
+
+    }
+
+    [[nodiscard]] Status remove(const key_type& key) {
 
     }
 

@@ -17,11 +17,11 @@ template <typename Key          = std::uint64_t,
           typename BytesCount   = std::uint32_t> // in one record(!!!)
 class IndexTable final {
 public:
-    using key_type          = Key;
-    using block_index_type  = BlockIndex;
-    using bytes_count_type  = BytesCount;
-    using index_record_type = IndexRecord<key_type, block_index_type, bytes_count_type>;
-    using table_type        = btree::btree_map<key_type, index_record_type>;
+    using key_type          = std::decay_t<Key>;
+    using block_index_type  = std::decay_t<BlockIndex>;
+    using bytes_count_type  = std::decay_t<BytesCount>;
+    using index_record_type = std::decay_t<IndexRecord<key_type, block_index_type, bytes_count_type>>;
+    using table_type        = std::decay_t<btree::btree_map<key_type, index_record_type>>;
 
     using iterator          = typename table_type::iterator;
     using const_iterator    = typename table_type::const_iterator;
