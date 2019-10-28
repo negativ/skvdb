@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <mutex>
+#include <shared_mutex>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -29,7 +31,7 @@ public:
     using bytes_count_type  = std::decay_t<BytesCount>;
     using index_table_type  = IndexTable<key_type, block_index_type, bytes_count_type>;
     using index_record_type = typename index_table_type::index_record_type;
-    using log_device_type   = LogDevice<block_index_type, block_index_type, std::vector<char>>;
+    using log_device_type   = LogDevice<block_index_type, block_index_type, std::string>;
     using entry_type        = Entry<key_type, InvalidEntryId>;
 
     struct OpenOptions {
@@ -45,20 +47,91 @@ public:
         static_cast<void>(close());
     }
 
-    [[nodiscard]] std::tuple<Status, entry_type> load(const key_type& key) {
+    [[nodiscard]] std::tuple<Status, entry_type> load(const entry_type& e) {
+        return load(e.key());
+    }
 
+    [[nodiscard]] std::tuple<Status, entry_type> load(const key_type& key) {
+        if (key == InvalidEntryId)
+            return {Status::InvalidArgument("Invalid entry id"), {}};
+
+        if (!logDevice_.opened())
+            return {Status::IOError("Device not opened!"), {}};
+
+        index_record_type index;
+
+        {
+            std::shared_lock locker(xLock_);
+
+            auto it = indexTable_.find(key);
+
+            if (it == std::cend(indexTable_))
+                return {Status::InvalidArgument("Key doesnt exist"), {}};
+
+            index = it->second;
+        }
+
+        const auto& [status, buffer] = logDevice_.read(index.blockIndex(), index.bytesCount());
+
+        if (!status.isOk())
+            return {status, {}};
+
+        // TODO: implement EntryReader
+        std::stringstream stream{buffer, std::ios_base::in};
+        entry_type e;
+
+        stream >> e;
+
+        return {Status::Ok(), e};
     }
 
     [[nodiscard]] Status save(const entry_type& e) {
+        if (e.key() == InvalidEntryId)
+            return Status::InvalidArgument("Invalid entry id");
 
+        if (!logDevice_.opened())
+            return Status::IOError("Device not opened!");
+
+        // TODO: implement EntryReader
+        std::stringstream stream{std::ios_base::out};
+        stream << e;
+
+        const auto& buffer = stream.str();
+
+        if (buffer.empty())
+            return Status::Fatal("Unable to serialize entry!");
+
+        auto [status, blockIndex, blockCount] = logDevice_.append(buffer);
+
+        std::unique_lock locker(xLock_);
+
+        if (!status.isOk())
+            return status;
+
+        index_record_type index(e.key(), blockIndex, bytes_count_type(buffer.size()));
+        indexTable_[e.key()] = index;
+
+        return Status::Ok();
     }
 
     [[nodiscard]] Status remove(const entry_type& e) {
-
+        return remove(e.key());
     }
 
     [[nodiscard]] Status remove(const key_type& key) {
+        if (!logDevice_.open())
+            return Status::IOError("Device not opened");
 
+        std::unique_lock locker(xLock_);
+
+        auto it = indexTable_.find(key);
+
+        if (it == std::end(indexTable_))
+            return Status::InvalidArgument("Key doesnt exist");
+
+        indexTable_.erase(it);
+
+        return Status::Ok();
     }
 
     [[nodiscard]] Status open(std::string_view directory, std::string_view storageName, OpenOptions opts = {}) {
@@ -75,10 +148,15 @@ public:
         directory_ = directory;
         storageName_ = storageName;
 
+        if (indexTable_.find(RootEntryId) == std::cend(indexTable_)) // creating root index if needed
+            return createRootIndex();
+
         return Status::Ok();
     }
 
     [[nodiscard]] Status close() {
+        std::unique_lock locker(xLock_);
+
         auto status1 = closeDevice();
         auto status2 = closeIndexTable();
 
@@ -131,6 +209,12 @@ private:
         return Status::IOError("Unable to save index table");
     }
 
+    [[nodiscard]] Status createRootIndex() {
+        entry_type root{RootEntryId, ""};
+
+        return save(root);
+    }
+
     std::string createPath(std::string_view directory, std::string_view storageName, std::string_view suffix) {
         std::stringstream stream;
         stream << directory << os::File::sep() << storageName << suffix;
@@ -143,6 +227,7 @@ private:
     OpenOptions openOptions_;
     std::string directory_;
     std::string storageName_;
+    std::shared_mutex xLock_;
 };
 
 }

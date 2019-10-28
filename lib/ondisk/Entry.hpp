@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <iostream>
 #include <map>
@@ -8,6 +9,7 @@
 #include <string>
 #include <type_traits>
 
+#include <boost/endian/conversion.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/indexed_by.hpp>
@@ -83,7 +85,7 @@ public:
 
         swap(impl_, other.impl_);
 
-        return this;
+        return *this;
     }
 
     [[nodiscard]] key_type key() const noexcept {
@@ -121,7 +123,7 @@ public:
         return (impl_->properties_.erase(prop) > 0);
     }
 
-    [[nodiscard]] std::set<prop_name_type> propertiesSet() {
+    [[nodiscard]] std::set<prop_name_type> propertiesSet() const {
         std::set<prop_name_type> ret;
 
         std::transform(std::cbegin(impl_->properties_), std::cend(impl_->properties_),
@@ -200,6 +202,9 @@ public:
     }
 
 private:
+    template <typename K, K IK, typename PN, typename PV, typename PC>
+    friend std::istream& operator>>(std::istream& is, Entry<K, IK, PN, PV, PC> & p) ;
+
     void setParent(key_type p) noexcept {
         impl_->parent_ = p;
     }
@@ -248,5 +253,148 @@ private:
 
     ImplPtr impl_;
 };
+
+template <typename Key,
+          Key TInvalidKey,
+          typename PropertyName,
+          typename PropertyValue,
+          typename PropertyContainer>
+inline std::istream& operator>>(std::istream& is, Entry<Key, TInvalidKey, PropertyName, PropertyValue, PropertyContainer> & p) {
+    namespace be = boost::endian;
+
+    using E = Entry<Key, TInvalidKey, PropertyName, PropertyValue, PropertyContainer>;
+
+    decltype (p.key()) key;
+    decltype (p.parent()) parent;
+    std::uint64_t nameLength;
+
+    is.read(reinterpret_cast<char*>(&key), sizeof(key));
+    is.read(reinterpret_cast<char*>(&parent), sizeof(parent));
+    is.read(reinterpret_cast<char*>(&nameLength), sizeof (nameLength));
+
+    be::little_to_native_inplace(key);
+    be::little_to_native_inplace(parent);
+    be::little_to_native_inplace(nameLength);
+
+    decltype (p.name()) name(nameLength, '\0');
+
+    is.read(name.data(), nameLength);
+
+    E ret = E{key, name};
+    ret.setParent(parent);
+
+    std::uint64_t propertiesCount;
+    is.read(reinterpret_cast<char*>(&propertiesCount), sizeof (propertiesCount));
+
+    be::little_to_native_inplace(propertiesCount);
+
+    for (decltype (propertiesCount) i = 0; i < propertiesCount; ++i) {
+        decltype(nameLength) pLen;
+
+        is.read(reinterpret_cast<char*>(&pLen), sizeof(pLen));
+        be::little_to_native_inplace(pLen);
+
+        typename E::prop_name_type pname(pLen, '\0');
+
+        is.read(pname.data(), std::streamsize(pLen));
+
+        typename E::prop_value_type pval;
+
+        is >> pval;
+
+        assert(ret.setProperty(pname, pval));
+    }
+
+    std::uint64_t childrenCount;
+    is.read(reinterpret_cast<char*>(&childrenCount), sizeof (childrenCount));
+    be::little_to_native_inplace(childrenCount);
+
+    for (decltype (childrenCount) i = 0; i < childrenCount; ++i) {
+        decltype(nameLength) pLen;
+
+        is.read(reinterpret_cast<char*>(&pLen), sizeof(pLen));
+        be::little_to_native_inplace(pLen);
+
+        typename E::child_type::first_type cname(pLen, '\0');
+
+        is.read(cname.data(), std::streamsize(pLen));
+
+        typename E::child_type::second_type ckey;
+
+        is.read(reinterpret_cast<char*>(&ckey), sizeof (ckey));
+        be::little_to_native_inplace(ckey);
+
+        E child(ckey, cname);
+
+        auto status = ret.addChild(child);
+
+        assert(status.isOk());
+    }
+
+    p = std::move(ret);
+
+    return is;
+}
+
+template <typename Key,
+          Key TInvalidKey,
+          typename PropertyName,
+          typename PropertyValue,
+          typename PropertyContainer>
+inline std::ostream& operator<<(std::ostream& os, const Entry<Key, TInvalidKey, PropertyName, PropertyValue, PropertyContainer> & p) {
+    namespace be = boost::endian;
+
+    auto key = p.key();
+    auto parent = p.parent();
+    auto name = p.name();
+    std::uint64_t nameLength = name.size();
+    auto properties = p.propertiesSet();
+    std::uint64_t propertiesCount = properties.size();
+    auto children = p.children();
+    std::uint64_t childrenCount = children.size();
+
+    be::native_to_little_inplace(key);
+    be::native_to_little_inplace(parent);
+    be::native_to_little_inplace(nameLength);
+    be::native_to_little_inplace(propertiesCount);
+    be::native_to_little_inplace(childrenCount);
+
+    os.write(reinterpret_cast<const char*>(&key), sizeof(key));
+    os.write(reinterpret_cast<const char*>(&parent), sizeof(parent));
+    os.write(reinterpret_cast<const char*>(&nameLength), sizeof (nameLength));
+    os.write(name.data(), name.size());
+
+    os.write(reinterpret_cast<const char*>(&propertiesCount), sizeof (propertiesCount));
+
+    for (const auto& prop : properties) {
+        const auto& [status, value] = p.property(prop);
+
+        assert(status.isOk());
+
+        decltype(nameLength) pLen = prop.size();
+
+        be::native_to_little_inplace(pLen);
+
+        os.write(reinterpret_cast<const char*>(&pLen), sizeof(pLen));
+        os.write(prop.data(), std::streamsize(prop.size()));
+        os << value;
+    }
+
+    os.write(reinterpret_cast<const char*>(&childrenCount), sizeof (childrenCount));
+
+    for (const auto& c : children) {
+        const auto& [name, key] = c;
+        decltype(nameLength) pLen = name.size();
+
+        be::native_to_little_inplace(pLen);
+        os.write(reinterpret_cast<const char*>(&pLen), sizeof(pLen));
+        os.write(name.data(), name.size());
+
+        be::native_to_little_inplace(key);
+        os.write(reinterpret_cast<const char*>(&key), sizeof(key));
+    }
+
+    return os;
+}
 
 }

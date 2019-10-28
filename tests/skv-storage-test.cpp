@@ -23,6 +23,13 @@ TEST(StorageTest, OpenClose) {
 
     ASSERT_TRUE(status.isOk());
 
+    {
+        auto [status, entry] = storage.load(Storage<>::RootEntryId);
+
+        ASSERT_TRUE(status.isOk());
+        ASSERT_EQ(entry.key(), Storage<>::RootEntryId);
+    }
+
     ASSERT_TRUE(storage.close().isOk());
 }
 

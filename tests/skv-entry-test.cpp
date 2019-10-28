@@ -69,6 +69,33 @@ TEST(EntryTest, ChildrenTest) {
     ASSERT_TRUE(rootChildren.empty());
 }
 
+TEST(EntryTest, ReadWriteTest) {
+    E root{1, ""};
+    E dev{root.key() + 1, "dev"};
+    E proc{dev.key() + 1, "proc"};
+
+    ASSERT_TRUE(root.addChild(dev).isOk());
+    ASSERT_TRUE(root.addChild(proc).isOk());
+
+    root.setProperty("test_str_prop", Property{"some text"});
+    root.setProperty("test_int_prop", Property{123});
+    root.setProperty("test_double_prop", Property{8090.0});
+
+    std::stringstream stream;
+
+    stream << root;
+
+    auto buffer = stream.str();
+
+    ASSERT_FALSE(buffer.empty());
+
+    E anotherRoot;
+    stream >> anotherRoot;
+
+    ASSERT_EQ(root, anotherRoot);
+}
+
+
 TEST(EntryTest, PropertyTest) {
     E root{0, ""};
 

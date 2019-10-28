@@ -152,7 +152,7 @@ public:
         if (!fhandle)
             return {Status::IOError("Device not opened"), {}};
 
-        buffer_type data(cnt);
+        buffer_type data(cnt, '\0');
 
         os::File::seek(fhandle, n * blockSize(), os::File::Seek::Set);
         os::File::read(data.data(), sizeof(buffer_value_type), cnt, fhandle);
