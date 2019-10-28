@@ -92,7 +92,7 @@ public:
         if (!logDevice_.opened())
             return Status::IOError("Device not opened!");
 
-        // TODO: implement EntryReader
+        // TODO: implement EntryWriter
         std::stringstream stream{std::ios_base::out};
         stream << e;
 
