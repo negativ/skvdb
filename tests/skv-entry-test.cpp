@@ -1,4 +1,6 @@
+#include <chrono>
 #include <sstream>
+#include <thread>
 
 #include <gtest/gtest.h>
 
@@ -70,6 +72,9 @@ TEST(EntryTest, ChildrenTest) {
 }
 
 TEST(EntryTest, ReadWriteTest) {
+    using namespace std::literals;
+    using namespace std::chrono;
+
     E root{1, ""};
     E dev{root.key() + 1, "dev"};
     E proc{dev.key() + 1, "proc"};
@@ -81,6 +86,11 @@ TEST(EntryTest, ReadWriteTest) {
     root.setProperty("test_int_prop", Property{123});
     root.setProperty("test_double_prop", Property{8090.0});
 
+    ASSERT_TRUE((system_clock::now() + 100ms) < (system_clock::now() + 500ms));
+
+    ASSERT_TRUE(root.expireProperty("test_str_prop", system_clock::now() + 100ms).isOk());
+    ASSERT_TRUE(root.expireProperty("test_int_prop", system_clock::now() + 500ms).isOk());
+
     std::stringstream stream;
 
     stream << root;
@@ -89,12 +99,68 @@ TEST(EntryTest, ReadWriteTest) {
 
     ASSERT_FALSE(buffer.empty());
 
+    std::this_thread::sleep_for(200ms);
+
     E anotherRoot;
     stream >> anotherRoot;
 
     ASSERT_EQ(root, anotherRoot);
+
+    ASSERT_FALSE(root.hasProperty("test_str_prop"));
+    ASSERT_FALSE(anotherRoot.hasProperty("test_str_prop"));
+
+    std::this_thread::sleep_for(500ms);
+
+    ASSERT_FALSE(root.hasProperty("test_int_prop"));
+    ASSERT_FALSE(anotherRoot.hasProperty("test_int_prop"));
 }
 
+TEST(EntryTest, PropertyExpireTest) {
+    using namespace std::literals;
+    using namespace std::chrono;
+
+    E root{0, ""};
+
+    root.setProperty("test_str_prop", Property{"some text"});
+    root.setProperty("test_int_prop", Property{123});
+    root.setProperty("test_double_prop", Property{8090.0});
+
+    ASSERT_TRUE(root.expireProperty("test_str_prop", system_clock::now() + 100ms).isOk());
+    ASSERT_TRUE(root.expireProperty("test_int_prop", system_clock::now() + 200ms).isOk());
+    ASSERT_TRUE(root.expireProperty("test_double_prop", system_clock::now() + 300ms).isOk());
+
+    ASSERT_TRUE(root.hasProperty("test_str_prop"));
+    ASSERT_TRUE(root.hasProperty("test_int_prop"));
+    ASSERT_TRUE(root.hasProperty("test_double_prop"));
+
+    std::this_thread::sleep_for(150ms);
+
+    ASSERT_FALSE(root.hasProperty("test_str_prop"));
+    ASSERT_TRUE(root.hasProperty("test_int_prop"));
+    ASSERT_TRUE(root.hasProperty("test_double_prop"));
+
+    std::this_thread::sleep_for(100ms);
+
+    ASSERT_FALSE(root.hasProperty("test_str_prop"));
+    ASSERT_FALSE(root.hasProperty("test_int_prop"));
+    ASSERT_TRUE(root.hasProperty("test_double_prop"));
+
+    std::this_thread::sleep_for(100ms);
+
+    ASSERT_FALSE(root.hasProperty("test_str_prop"));
+    ASSERT_FALSE(root.hasProperty("test_int_prop"));
+    ASSERT_FALSE(root.hasProperty("test_double_prop"));
+
+    root.setProperty("test_str_prop", Property{"some text"});
+    root.setProperty("test_int_prop", Property{123});
+    root.setProperty("test_double_prop", Property{8090.0});
+
+    std::this_thread::sleep_for(500ms);
+
+    ASSERT_TRUE(root.hasProperty("test_str_prop"));
+    ASSERT_TRUE(root.hasProperty("test_int_prop"));
+    ASSERT_TRUE(root.hasProperty("test_double_prop"));
+}
 
 TEST(EntryTest, PropertyTest) {
     E root{0, ""};
@@ -138,9 +204,9 @@ TEST(EntryTest, PropertyTest) {
         ASSERT_FALSE(status.isOk());
     }
 
-    ASSERT_TRUE(root.removeProperty("test_str_prop"));
-    ASSERT_TRUE(root.removeProperty("test_int_prop"));
-    ASSERT_TRUE(root.removeProperty("test_double_prop"));
+    ASSERT_TRUE(root.removeProperty("test_str_prop").isOk());
+    ASSERT_TRUE(root.removeProperty("test_int_prop").isOk());
+    ASSERT_TRUE(root.removeProperty("test_double_prop").isOk());
 
     props = root.propertiesSet();
 
