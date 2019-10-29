@@ -11,7 +11,8 @@ class Status final {
         IOError,
         InvalidArgument,
         NotFound,
-        Fatal
+        Fatal,
+        InvalidOp
     };
 
     Code code_;
@@ -28,6 +29,7 @@ public:
     static Status InvalidArgument(std::string message) noexcept(noexcept_copy_constructible);
     static Status NotFound(std::string message) noexcept(noexcept_copy_constructible);
     static Status Fatal(std::string message) noexcept(noexcept_copy_constructible);
+    static Status InvalidOperation(std::string message) noexcept(noexcept_copy_constructible);
 
     ~Status() = default;
 
@@ -46,6 +48,7 @@ public:
     bool isInvalidArgument() const noexcept;
     bool isNotFound() const noexcept;
     bool isFatal() const noexcept;
+    bool isInvalidOperation() const noexcept;
 private:
     Status(Code code, std::string message) noexcept(noexcept_move_constructible);
 };
