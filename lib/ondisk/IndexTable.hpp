@@ -5,10 +5,9 @@
 #include <iostream>
 #include <type_traits>
 
-#include <boost/endian/conversion.hpp>
-
 #include "IndexRecord.hpp"
 #include "btree/btree_map.hpp"
+#include "util/Serialization.hpp"
 
 namespace skv::ondisk {
 
@@ -107,44 +106,40 @@ private:
 };
 
 template <typename K, typename BI, typename BC>
-inline std::ostream& operator<<(std::ostream& os, const IndexTable<K, BI, BC>& p)
+inline std::ostream& operator<<(std::ostream& _os, const IndexTable<K, BI, BC>& p)
 {
-    namespace be = boost::endian;
+    util::Serializer s{_os};
 
     std::int64_t d = std::distance(std::cbegin(p), std::cend(p));
     assert(d >= 0);
 
-    be::native_to_little_inplace(d);
-
-    os.write(reinterpret_cast<const char*>(&d), sizeof(d));
+    s << d;
 
     std::for_each(std::cbegin(p), std::cend(p),
-                  [&os](auto&& p) { os << p.second; });
+                  [&s](auto&& p) { s << p.second; });
 
-    return os;
+    return _os;
 }
 
 template <typename K, typename BI, typename BC>
-inline std::istream& operator>>(std::istream& is, IndexTable<K, BI, BC>& p)
+inline std::istream& operator>>(std::istream& _is, IndexTable<K, BI, BC>& p)
 {
-    namespace be = boost::endian;
+    util::Deserializer ds{_is};
 
     using index_type = typename IndexTable<K, BI, BC>::index_record_type;
 
-    std::int64_t d{0};
-    is.read(reinterpret_cast<char*>(&d), sizeof(d));
-
-    be::little_to_native_inplace(d);
+    std::int64_t d;
+    ds >> d;
 
     for (decltype(d) i = 0; i < d; ++i) {
         index_type idx;
-        is >> idx;
+        ds >> idx;
 
         p[idx.key()] = idx;
         p.diskFootprint_ += idx.bytesCount();
     }
 
-    return is;
+    return _is;
 }
 
 }

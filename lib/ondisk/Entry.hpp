@@ -20,6 +20,7 @@
 
 #include "Property.hpp"
 #include "util/Status.hpp"
+#include "util/Serialization.hpp"
 
 namespace skv::ondisk {
 
@@ -335,70 +336,46 @@ template <typename Key,
           typename PropertyName,
           typename PropertyValue,
           typename PropertyContainer>
-inline std::istream& operator>>(std::istream& is, Entry<Key, TInvalidKey, PropertyName, PropertyValue, PropertyContainer> & p) {
+inline std::istream& operator>>(std::istream& _is, Entry<Key, TInvalidKey, PropertyName, PropertyValue, PropertyContainer> & p) {
     namespace be = boost::endian;
 
     using E = Entry<Key, TInvalidKey, PropertyName, PropertyValue, PropertyContainer>;
 
+    Deserializer ds{_is};
+
     decltype (p.key()) key;
     decltype (p.parent()) parent;
-    std::uint64_t nameLength;
+    decltype (p.name()) name;
 
-    is.read(reinterpret_cast<char*>(&key), sizeof(key));
-    is.read(reinterpret_cast<char*>(&parent), sizeof(parent));
-    is.read(reinterpret_cast<char*>(&nameLength), sizeof (nameLength));
-
-    be::little_to_native_inplace(key);
-    be::little_to_native_inplace(parent);
-    be::little_to_native_inplace(nameLength);
-
-    decltype (p.name()) name(nameLength, '\0');
-
-    is.read(name.data(), nameLength);
+    ds >> key
+       >> parent
+       >> name;
 
     E ret = E{key, name};
     ret.setParent(parent);
 
     std::uint64_t propertiesCount;
-    is.read(reinterpret_cast<char*>(&propertiesCount), sizeof (propertiesCount));
-
-    be::little_to_native_inplace(propertiesCount);
+    ds >> propertiesCount;
 
     for (decltype (propertiesCount) i = 0; i < propertiesCount; ++i) {
-        decltype(nameLength) pLen;
+        typename E::prop_name_type prop;
+        typename E::prop_value_type value;
 
-        is.read(reinterpret_cast<char*>(&pLen), sizeof(pLen));
-        be::little_to_native_inplace(pLen);
+        ds >> prop
+           >> value;
 
-        typename E::prop_name_type pname(pLen, '\0');
-
-        is.read(pname.data(), std::streamsize(pLen));
-
-        typename E::prop_value_type pval;
-
-        is >> pval;
-
-        assert(ret.setProperty(pname, pval).isOk());
+        assert(ret.setProperty(prop, value).isOk());
     }
 
     std::uint64_t childrenCount;
-    is.read(reinterpret_cast<char*>(&childrenCount), sizeof (childrenCount));
-    be::little_to_native_inplace(childrenCount);
+    ds >> childrenCount;
 
     for (decltype (childrenCount) i = 0; i < childrenCount; ++i) {
-        decltype(nameLength) pLen;
-
-        is.read(reinterpret_cast<char*>(&pLen), sizeof(pLen));
-        be::little_to_native_inplace(pLen);
-
-        typename E::child_type::first_type cname(pLen, '\0');
-
-        is.read(cname.data(), std::streamsize(pLen));
-
+        typename E::child_type::first_type cname;
         typename E::child_type::second_type ckey;
 
-        is.read(reinterpret_cast<char*>(&ckey), sizeof (ckey));
-        be::little_to_native_inplace(ckey);
+        ds >> cname
+           >> ckey;
 
         E child(ckey, cname);
 
@@ -408,25 +385,16 @@ inline std::istream& operator>>(std::istream& is, Entry<Key, TInvalidKey, Proper
     }
 
     std::uint64_t expirePropertyCount;
-    is.read(reinterpret_cast<char*>(&expirePropertyCount), sizeof (expirePropertyCount));
-    be::little_to_native_inplace(expirePropertyCount);
+    ds >> expirePropertyCount;
 
     auto& propertyExpire = ret.impl_->propertyExpireMap_;
 
     for (decltype (expirePropertyCount) i = 0; i < expirePropertyCount; ++i) {
-        decltype(nameLength) pLen;
-
-        is.read(reinterpret_cast<char*>(&pLen), sizeof(pLen));
-        be::little_to_native_inplace(pLen);
-
-        typename E::prop_name_type pname(pLen, '\0');
-
-        is.read(pname.data(), std::streamsize(pLen));
-
+        typename E::prop_name_type pname;
         std::int64_t ts;
 
-        is.read(reinterpret_cast<char*>(&ts), sizeof (ts));
-        be::little_to_native_inplace(ts);
+        ds >> pname
+           >> ts;
 
         propertyExpire[pname] = ts;
     }
@@ -435,7 +403,7 @@ inline std::istream& operator>>(std::istream& is, Entry<Key, TInvalidKey, Proper
 
     p = std::move(ret);
 
-    return is;
+    return _is;
 }
 
 template <typename Key,
@@ -443,81 +411,57 @@ template <typename Key,
           typename PropertyName,
           typename PropertyValue,
           typename PropertyContainer>
-inline std::ostream& operator<<(std::ostream& os, const Entry<Key, TInvalidKey, PropertyName, PropertyValue, PropertyContainer> & p) {
+inline std::ostream& operator<<(std::ostream& _os, const Entry<Key, TInvalidKey, PropertyName, PropertyValue, PropertyContainer> & p) {
     namespace be = boost::endian;
     using E = Entry<Key, TInvalidKey, PropertyName, PropertyValue, PropertyContainer>;
 
     const_cast<E&>(p).doPropertyCleanup();
 
-    auto key = p.key();
-    auto parent = p.parent();
-    auto name = p.name();
-    std::uint64_t nameLength = name.size();
+    Serializer s{_os};
+
+    s << p.key()
+      << p.parent()
+      << p.name();
+
     auto properties = p.propertiesSet();
     std::uint64_t propertiesCount = properties.size();
-    auto children = p.children();
-    std::uint64_t childrenCount = children.size();
 
-    be::native_to_little_inplace(key);
-    be::native_to_little_inplace(parent);
-    be::native_to_little_inplace(nameLength);
-    be::native_to_little_inplace(propertiesCount);
-    be::native_to_little_inplace(childrenCount);
-
-    os.write(reinterpret_cast<const char*>(&key), sizeof(key));
-    os.write(reinterpret_cast<const char*>(&parent), sizeof(parent));
-    os.write(reinterpret_cast<const char*>(&nameLength), sizeof (nameLength));
-    os.write(name.data(), name.size());
-
-    os.write(reinterpret_cast<const char*>(&propertiesCount), sizeof (propertiesCount));
+    s << propertiesCount;
 
     for (const auto& prop : properties) {
         const auto& [status, value] = p.property(prop);
 
         assert(status.isOk());
 
-        decltype(nameLength) pLen = prop.size();
-
-        be::native_to_little_inplace(pLen);
-
-        os.write(reinterpret_cast<const char*>(&pLen), sizeof(pLen));
-        os.write(prop.data(), std::streamsize(prop.size()));
-        os << value;
+        s << prop
+          << value;
     }
 
-    os.write(reinterpret_cast<const char*>(&childrenCount), sizeof (childrenCount));
+    auto children = p.children();
+    std::uint64_t childrenCount = children.size();
+
+    s << childrenCount;
 
     for (const auto& c : children) {
         const auto& [name, key] = c;
-        decltype(nameLength) pLen = name.size();
 
-        be::native_to_little_inplace(pLen);
-        os.write(reinterpret_cast<const char*>(&pLen), sizeof(pLen));
-        os.write(name.data(), name.size());
-
-        be::native_to_little_inplace(key);
-        os.write(reinterpret_cast<const char*>(&key), sizeof(key));
+        s << name
+          << key;
     }
 
     auto propertyExpire = p.impl_->propertyExpireMap_;
     std::uint64_t expirePropertyCount = propertyExpire.size();
 
-    be::native_to_little_inplace(expirePropertyCount);
-    os.write(reinterpret_cast<const char*>(&expirePropertyCount), sizeof (expirePropertyCount));
+    s << expirePropertyCount;
 
     for (const auto& c : propertyExpire) {
         const auto& [name, key] = c;
-        decltype(nameLength) pLen = name.size();
 
-        be::native_to_little_inplace(pLen);
-        os.write(reinterpret_cast<const char*>(&pLen), sizeof(pLen));
-        os.write(name.data(), name.size());
-
-        be::native_to_little_inplace(key);
-        os.write(reinterpret_cast<const char*>(&key), sizeof(key));
+        s << name
+          << key;
     }
 
-    return os;
+    return _os;
 }
 
 }

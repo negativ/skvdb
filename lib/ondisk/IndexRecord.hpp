@@ -4,7 +4,7 @@
 #include <iostream>
 #include <type_traits>
 
-#include <boost/endian/conversion.hpp>
+#include "util/Serialization.hpp"
 
 namespace skv::ondisk {
 
@@ -50,41 +50,33 @@ private:
 };
 
 template <typename K, typename BI, typename BC>
-inline std::ostream& operator<<(std::ostream& os, const IndexRecord<K, BI, BC>& p)
+inline std::ostream& operator<<(std::ostream& _os, const IndexRecord<K, BI, BC>& p)
 {
-    namespace be = boost::endian;
+    util::Serializer s{_os};
 
-    auto k  = be::native_to_little(p.key());
-    auto bi = be::native_to_little(p.blockIndex());
-    auto bc = be::native_to_little(p.bytesCount());
+    s << p.key()
+      << p.blockIndex()
+      << p.bytesCount();
 
-    os.write(reinterpret_cast<const char*>(&k),  sizeof(k));
-    os.write(reinterpret_cast<const char*>(&bi), sizeof(bi));
-    os.write(reinterpret_cast<const char*>(&bc), sizeof(bc));
-
-    return os;
+    return _os;
 }
 
 template <typename K, typename BI, typename BC>
-inline std::istream& operator>>(std::istream& is, IndexRecord<K, BI, BC>& p)
+inline std::istream& operator>>(std::istream& _is, IndexRecord<K, BI, BC>& p)
 {
-    namespace be = boost::endian;
+    util::Deserializer ds{_is};
 
     decltype(p.key()) k;
     decltype(p.blockIndex()) bi;
     decltype(p.bytesCount()) bc;
 
-    is.read(reinterpret_cast<char*>(&k),  sizeof(k));
-    is.read(reinterpret_cast<char*>(&bi), sizeof(bi));
-    is.read(reinterpret_cast<char*>(&bc), sizeof(bc));
-
-    be::little_to_native_inplace(k);
-    be::little_to_native_inplace(bi);
-    be::little_to_native_inplace(bc);
+    ds >> k
+       >> bi
+       >> bc;
 
     p = IndexRecord<K, BI, BC>{k, bi, bc};
 
-    return is;
+    return _is;
 }
 
 }

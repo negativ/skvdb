@@ -1,7 +1,7 @@
 #include "Property.hpp"
 
 #include <type_traits>
-#include <boost/endian/conversion.hpp>
+#include "util/Serialization.hpp"
 
 namespace skv::ondisk {
 
@@ -16,57 +16,29 @@ constexpr std::size_t getIndex() {
     }
 }
 
-std::ostream& operator<<(std::ostream& os, const Property& p) {
-    namespace be = boost::endian;
+std::ostream& operator<<(std::ostream& _os, const Property& p) {
+    util::Serializer s{_os};
+
+    assert(p.index() <= 0xFFFF);
 
     std::uint16_t idx = p.index() & 0xFFFF;
-    be::native_to_little_inplace(idx);
+    s << idx;
 
-    os.write(reinterpret_cast<const char*>(&idx), sizeof(idx));
+    std::visit([&s](auto&& v) { s << v; }, p);
 
-    std::visit([&os](auto&& v) {
-        using type = std::decay_t<decltype(v)>;
-
-        if constexpr (std::is_same_v<type, std::string>) {
-            std::uint64_t size = v.size();
-            be::native_to_little_inplace(size);
-
-            os.write(reinterpret_cast<const char*>(&size), sizeof(size));
-            os.write(v.data(), std::streamsize(v.size()));
-        }
-        else {
-            be::native_to_little_inplace(v);
-            os.write(reinterpret_cast<const char*>(&v), sizeof(v));
-        }
-    }, p);
-    return os;
+    return _os;
 }
 
 template <typename T>
-void readProperty(std::istream& is, uint16_t idx, Property& p) {
-    namespace be = boost::endian;
+void readProperty(std::istream& _is, uint16_t idx, Property& p) {
+    util::Deserializer ds{_is};
 
     if (getIndex<Property, T>() == idx) {
-        if constexpr (std::is_same_v<T, std::string>) {
-            std::uint64_t size;
+        T ret;
 
-            is.read(reinterpret_cast<char*>(&size), sizeof(size));
+        ds >> ret;
 
-            be::little_to_native_inplace(size);
-            std::string ret(std::size_t(size), '\0');
-
-            is.read(ret.data(), std::streamsize(size));
-
-            p = Property{ret};
-        }
-        else {
-            T v;
-
-            is.read(reinterpret_cast<char*>(&v), sizeof(v));
-            be::little_to_native_inplace(v);
-
-            p = Property{v};
-        }
+        p = Property{ret};
     }
 }
 
@@ -75,18 +47,15 @@ void readProperty(std::istream& is, uint16_t idx, std::variant<Ts...> &p) {
     (readProperty<Ts>(is, idx, p), ...);
 }
 
-std::istream& operator>>(std::istream& is, Property& p) {
-    namespace be = boost::endian;
+std::istream& operator>>(std::istream& _is, Property& p) {
+    util::Deserializer ds{_is};
 
     std::uint16_t idx;
+    ds >> idx;
 
-    is.read(reinterpret_cast<char*>(&idx), sizeof(idx));
+    readProperty(_is, idx, p);
 
-    be::native_to_little_inplace(idx);
-
-    readProperty(is, idx, p);
-
-    return is;
+    return _is;
 }
 
 }
