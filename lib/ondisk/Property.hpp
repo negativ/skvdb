@@ -15,8 +15,9 @@ using Property = std::variant<std::uint8_t, std::int8_t,
                               std::string>;
 
 static_assert (std::variant_size_v<Property> <= 0xFFFF, "Property type list too big");
+}
 
-std::ostream& operator<<(std::ostream& os, const Property& p);
-std::istream& operator>>(std::istream& is, Property& p);
-
+namespace std {
+    std::ostream& operator<<(std::ostream& os, const skv::ondisk::Property& p);
+    std::istream& operator>>(std::istream& is, skv::ondisk::Property& p);
 }

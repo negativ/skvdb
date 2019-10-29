@@ -3,7 +3,10 @@
 #include <type_traits>
 #include "util/Serialization.hpp"
 
-namespace skv::ondisk {
+namespace std {
+
+using namespace skv;
+using namespace skv::ondisk;
 
 template<typename VariantType, typename T, const std::size_t index = 0>
 constexpr std::size_t getIndex() {
