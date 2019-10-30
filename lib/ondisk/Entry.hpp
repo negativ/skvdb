@@ -54,6 +54,8 @@ public:
 
     }
 
+    ~Entry() noexcept = default;
+
     Entry(key_type key, prop_name_type name):
         Entry()
     {
@@ -249,10 +251,10 @@ public:
 
 private:
     template <typename K, K IK, typename PN, typename PV, typename PC>
-    friend std::istream& operator>>(std::istream& is, Entry<K, IK, PN, PV, PC> & p) ;
+    friend std::istream& operator>>(std::istream& _is, Entry<K, IK, PN, PV, PC> & p) ;
 
     template <typename K, K IK, typename PN, typename PV, typename PC>
-    friend std::ostream& operator<<(std::ostream& is, const Entry<K, IK, PN, PV, PC> & p) ;
+    friend std::ostream& operator<<(std::ostream& _os, const Entry<K, IK, PN, PV, PC> & p) ;
 
     void setParent(key_type p) noexcept {
         impl_->parent_ = p;
@@ -301,7 +303,7 @@ private:
         child_container children_;
         std::map<prop_name_type, std::int64_t> propertyExpireMap_;
 
-        bool dirtyFlag_;
+        bool dirtyFlag_{false};
 
         bool operator==(const Impl& other) const noexcept {
             return key_ == other.key_ &&

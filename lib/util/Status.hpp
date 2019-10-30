@@ -39,16 +39,16 @@ public:
     Status(Status&&) noexcept(noexcept_move_constructible) = default;
     Status& operator=(Status&&) noexcept(noexcept_move_assignable) = default;
 
-    std::string message() const noexcept(std::is_nothrow_copy_constructible_v<decltype(message_)>);
+    [[nodiscard]] std::string message() const noexcept(std::is_nothrow_copy_constructible_v<decltype(message_)>);
 
-    Code code() const noexcept;
+    [[nodiscard]] Code code() const noexcept;
 
-    bool isOk() const noexcept;
-    bool isIOError() const noexcept;
-    bool isInvalidArgument() const noexcept;
-    bool isNotFound() const noexcept;
-    bool isFatal() const noexcept;
-    bool isInvalidOperation() const noexcept;
+    [[nodiscard]] bool isOk() const noexcept;
+    [[nodiscard]] bool isIOError() const noexcept;
+    [[nodiscard]] bool isInvalidArgument() const noexcept;
+    [[nodiscard]] bool isNotFound() const noexcept;
+    [[nodiscard]] bool isFatal() const noexcept;
+    [[nodiscard]] bool isInvalidOperation() const noexcept;
 private:
     Status(Code code, std::string message) noexcept(noexcept_move_constructible);
 };

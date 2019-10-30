@@ -9,6 +9,8 @@ namespace skv::util {
 struct Log final {
     Log() = delete;
     ~Log() = delete;
+    Log(const Log&) = delete;
+    Log& operator=(const Log&) = delete;
 
 #ifndef NDEBUG
     template <typename ... Ts>

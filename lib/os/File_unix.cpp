@@ -15,7 +15,7 @@ File::Handle File::open(std::string_view path, std::string_view mode) noexcept {
                         }};
 }
 
-std::int64_t File::tell(Handle fhandle) noexcept {
+std::int64_t File::tell(const Handle& fhandle) noexcept {
     if (!fhandle)
         return -1;
 
@@ -36,14 +36,14 @@ std::uint64_t File::read(void* __restrict ptr, std::uint64_t size, std::uint64_t
     return ::fread(ptr, size, n, handle.get());
 }
 
-bool File::seek(Handle handle, std::int64_t offset, Seek s) noexcept {
+bool File::seek(const Handle &handle, std::int64_t offset, Seek s) noexcept {
     if (!handle)
         return -1;
 
     return (::fseeko(handle.get(), offset, static_cast<int>(s)) == 0);
 }
 
-void File::flush(Handle handle) noexcept {
+void File::flush(const Handle &handle) noexcept {
     ::fflush(handle.get());
 }
 

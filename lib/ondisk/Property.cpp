@@ -12,9 +12,11 @@ template<typename VariantType, typename T, const std::size_t index = 0>
 constexpr std::size_t getIndex() {
     if constexpr (index == std::variant_size_v<VariantType>) {
         return index;
-    } else if constexpr (std::is_same_v<std::variant_alternative_t<index, VariantType>, T>) {
+    }
+    else if constexpr (std::is_same_v<std::variant_alternative_t<index, VariantType>, T>) {
         return index;
-    } else {
+    }
+    else {
         return getIndex<VariantType, T, index + 1>();
     }
 }
@@ -22,9 +24,7 @@ constexpr std::size_t getIndex() {
 std::ostream& operator<<(std::ostream& _os, const Property& p) {
     util::Serializer s{_os};
 
-    assert(p.index() <= 0xFFFF);
-
-    std::uint16_t idx = p.index() & 0xFFFF;
+    std::uint16_t idx = p.index() & PropertyIndexMask;
     s << idx;
 
     std::visit([&s](auto&& v) { s << v; }, p);

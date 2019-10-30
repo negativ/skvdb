@@ -39,47 +39,47 @@ public:
     IndexTable(IndexTable&&) noexcept(std::is_nothrow_move_constructible_v<table_type>) = default;
     IndexTable& operator=(IndexTable&&) noexcept(std::is_nothrow_move_assignable_v<table_type>) = default;
 
-    iterator begin() noexcept(std::is_nothrow_copy_constructible_v<iterator>) {
+    [[nodiscard]] iterator begin() noexcept(std::is_nothrow_copy_constructible_v<iterator>) {
         return table_.begin();
     }
 
-    const_iterator begin() const noexcept(std::is_nothrow_copy_constructible_v<const_iterator>) {
+    [[nodiscard]] const_iterator begin() const noexcept(std::is_nothrow_copy_constructible_v<const_iterator>) {
         return table_.begin();
     }
 
-    iterator end() noexcept(std::is_nothrow_copy_constructible_v<iterator>) {
+    [[nodiscard]] iterator end() noexcept(std::is_nothrow_copy_constructible_v<iterator>) {
         return table_.end();
     }
 
-    const_iterator end() const noexcept(std::is_nothrow_copy_constructible_v<const_iterator>) {
+    [[nodiscard]] const_iterator end() const noexcept(std::is_nothrow_copy_constructible_v<const_iterator>) {
         return table_.end();
     }
 
-    iterator find(const key_type& k) noexcept(std::is_nothrow_copy_constructible_v<iterator>) {
+    [[nodiscard]] iterator find(const key_type& k) noexcept(std::is_nothrow_copy_constructible_v<iterator>) {
         return table_.find(k);
     }
 
-    const_iterator find(const key_type& k) const noexcept(std::is_nothrow_copy_constructible_v<const_iterator>) {
+    [[nodiscard]] const_iterator find(const key_type& k) const noexcept(std::is_nothrow_copy_constructible_v<const_iterator>) {
         return table_.find(k);
     }
 
-    bool empty() const {
+    [[nodiscard]] bool empty() const {
         return begin() == end();
     }
 
-    index_record_type& operator[](const key_type& k) {
+    [[nodiscard]] index_record_type& operator[](const key_type& k) {
         return table_[k];
     }
 
-    const index_record_type& operator[](const key_type& k) const {
+    [[nodiscard]] const index_record_type& operator[](const key_type& k) const {
         return table_[k];
     }
 
-    iterator erase(iterator it) {
+    [[nodiscard]] iterator erase(iterator it) {
         return table_.erase(it);
     }
 
-    iterator erase(const key_type& k) {
+    [[nodiscard]] iterator erase(const key_type& k) {
         if (find(k) != end())
             return table_.erase(k);
 
@@ -90,7 +90,7 @@ public:
      * @brief Size of all records on disk (in bytes). Updates only on loading index table from disk. Used for calulation of compaction rate.
      * @return
      */
-    std::uint64_t diskFootprint() const noexcept {
+    [[nodiscard]] std::uint64_t diskFootprint() const noexcept {
         return diskFootprint_;
     }
 

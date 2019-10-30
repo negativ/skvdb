@@ -54,6 +54,12 @@ public:
         static_cast<void>(close());
     }
 
+    Storage(const Storage&) = delete;
+    Storage& operator=(const Storage&) = delete;
+
+    Storage(Storage&&) = delete;
+    Storage& operator=(Storage&&) = delete;
+
     [[nodiscard]] std::tuple<Status, entry_type> load(const entry_type& e) {
         return load(e.key());
     }
@@ -194,7 +200,7 @@ public:
         return status2;
     }
 
-    bool opened() const noexcept {
+    [[nodiscard]] bool opened() const noexcept {
         return opened_;
     }
 
@@ -211,9 +217,7 @@ private:
     }
 
     Status closeDevice() {
-        logDevice_.close();
-
-        return Status::Ok();
+        return logDevice_.close();
     }
 
     Status openIndexTable(std::string_view path) {

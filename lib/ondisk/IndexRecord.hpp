@@ -27,11 +27,11 @@ public:
         key_{k}, blockIndex_{bi}, bytesCount_{bc}
     {}
 
-    constexpr key_type key() const noexcept { return key_; }
+    [[nodiscard]] constexpr key_type key() const noexcept { return key_; }
 
-    constexpr block_index_type  blockIndex() const noexcept { return blockIndex_; }
+    [[nodiscard]] constexpr block_index_type  blockIndex() const noexcept { return blockIndex_; }
 
-    constexpr bytes_count_type bytesCount() const noexcept { return bytesCount_; }
+    [[nodiscard]] constexpr bytes_count_type bytesCount() const noexcept { return bytesCount_; }
 
     bool operator==(const IndexRecord& other) const noexcept {
         return key_ == other.key_ &&

@@ -26,6 +26,9 @@ template <typename BlockIndex = std::uint32_t,
 class LogDevice final
 {
     static constexpr std::size_t MAX_READ_THREADS = 17;
+    static constexpr std::uint32_t DEFAULT_BLOCK_SIZE = 4096;
+    static constexpr std::uint32_t MIN_BLOCK_SIZE = 512;
+
 public:
     using buffer_type           = std::decay_t<Buffer>;                           /* maybe std::uint8_t is better choice */
     using buffer_value_type     = typename buffer_type::value_type; /* maybe std::uint8_t is better choice */
@@ -34,14 +37,14 @@ public:
     using bytes_count_type      = typename buffer_type::size_type;
 
     struct OpenOption {
-        std::uint32_t   BlockSize{4096};
+        std::uint32_t   BlockSize{DEFAULT_BLOCK_SIZE};
         bool            CreateNewIfNotExist{true};
     };
 
     LogDevice() = default;
 
     ~LogDevice() noexcept {
-        close();
+        static_cast<void>(close());
     }
 
     LogDevice(const LogDevice&) = delete;
@@ -57,7 +60,7 @@ public:
      * @return
      */
     [[nodiscard]] Status open(std::string_view path, OpenOption options) {
-        if (options.BlockSize % 512 != 0)
+        if (options.BlockSize % MIN_BLOCK_SIZE != 0)
             return Status::InvalidArgument("Block size should be a multiple of 512 (e.g. 4096)");
 
         std::unique_lock lock(lock_);
@@ -91,7 +94,7 @@ public:
         if (!initReaders()) {
             lock_.unlock();
 
-            close();
+            static_cast<void>(close().isOk());
 
             return Status::IOError("Unable top open device for reading");
         }
@@ -102,7 +105,7 @@ public:
     /**
      * @brief Closes block device file
      */
-    Status close() {
+    [[nodiscard]] Status close() {
         std::unique_lock lock(lock_);
 
         if (!opened())
@@ -168,7 +171,8 @@ public:
     [[nodiscard]] std::tuple<Status, block_index_type, block_count_type> append(const buffer_type& buffer) {
         if (buffer.empty())
             return {Status::InvalidArgument("Unable to write empty buffer"), 0, 0};
-        else if (!opened())
+
+        if (!opened())
             return {Status::IOError("Device not opened"), 0, 0};
 
         std::unique_lock lock(lock_);
@@ -201,7 +205,7 @@ public:
      * @brief sizeInBytes
      * @return
      */
-    std::uint64_t sizeInBytes() const noexcept {
+    [[nodiscard]] std::uint64_t sizeInBytes() const noexcept {
         return uint64_t(openOption_.BlockSize) * sizeInBlocks();
     }
 
@@ -209,7 +213,7 @@ public:
      * @brief sizeInBlocks
      * @return
      */
-    block_count_type sizeInBlocks() const noexcept {
+    [[nodiscard]] block_count_type sizeInBlocks() const noexcept {
         return blocks_.load();
     }
 
@@ -217,7 +221,7 @@ public:
      * @brief Block size in bytes
      * @return
      */
-    std::uint32_t blockSize() const noexcept {
+    [[nodiscard]] std::uint32_t blockSize() const noexcept {
         return openOption_.BlockSize;
     }
 
@@ -225,7 +229,7 @@ public:
      * @brief Device is opened
      * @return
      */
-    bool opened() const noexcept {
+    [[nodiscard]] bool opened() const noexcept {
         return opened_;
     }
 
@@ -249,7 +253,7 @@ private:
     std::string path_;
     OpenOption openOption_;
     std::atomic<block_count_type> blocks_;
-    bool opened_;
+    bool opened_{false};
     os::File::Handle writeHandle_;
     buffer_type fillbuffer;
     std::array<os::File::Handle, MAX_READ_THREADS> readHandles_;

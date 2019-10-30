@@ -14,7 +14,10 @@ using Property = std::variant<std::uint8_t, std::int8_t,
                               float, double,
                               std::string>;
 
-static_assert (std::variant_size_v<Property> <= 0xFFFF, "Property type list too big");
+inline static constexpr std::uint16_t PropertyIndexMask = 0xFFFF;
+
+static_assert (std::variant_size_v<Property> <= PropertyIndexMask, "Property type list too big");
+
 }
 
 namespace std {
