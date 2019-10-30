@@ -9,7 +9,7 @@
 
 namespace skv::util {
 
-static inline std::string simplifyPath(std::string_view path) {
+std::string simplifyPath(std::string_view path) {
     auto pathStack = skv::util::split(path, '/', true);  // split path by '/' symbol skypping empty parts
     std::deque<std::string> result;
 

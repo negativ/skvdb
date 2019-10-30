@@ -1,11 +1,13 @@
 #include "Volume.hpp"
 
 #include <shared_mutex>
+#include <string>
 #include <thread>
 #include <unordered_map>
 
 #include "Property.hpp"
 #include "Storage.hpp"
+#include "util/MRUCache.hpp"
 #include "util/String.hpp"
 #include "util/StringPath.hpp"
 #include "util/StringPathIterator.hpp"
@@ -27,10 +29,21 @@ struct Volume::Impl {
 
     }
 
-    std::tuple<Status, Volume::Handle> open(std::string_view path) {
+    std::tuple<Status, Volume::Handle> open(std::string_view p) {
+        auto path = simplifyPath(p);
+
+        auto [status, handle, foundPath] = searchCachedPathEntry(path);
+
+        if (status.isOk() && foundPath == path)
+            return {status, handle};
+
+        if (status.isNotFound())
+            handle = storage_type::RootEntryId;
+
+        path.erase(0, foundPath.size());
+
         auto tokens = split(path, '/');
-        auto handle = storage_type::RootEntryId;
-        std::string reconstructedPath = "";
+        std::string reconstructedPath = foundPath;
 
         reconstructedPath.reserve(path.size());
 
@@ -59,7 +72,7 @@ struct Volume::Impl {
 
             reconstructedPath += ("/" + t);
 
-            updatePathCache(reconstructedPath, handle);
+            updatePathCacheEntry(reconstructedPath, handle);
         }
 
         return {Status::Ok(), handle};
@@ -114,7 +127,7 @@ struct Volume::Impl {
         if (!status.isOk())
             return {status, {}};
 
-        return entry.property(std::string{std::cbegin(name), std::cend(name)});
+        return entry.property(util::to_string(name));
     }
 
     Status setProperty(Volume::Handle handle, std::string_view name, const Property &value) {
@@ -125,7 +138,7 @@ struct Volume::Impl {
         if (!status.isOk())
             return status;
 
-        status = entry.setProperty(std::string{std::cbegin(name), std::cend(name)}, value);
+        status = entry.setProperty(util::to_string(name), value);
 
         if (!status.isOk())
             return status;
@@ -142,7 +155,7 @@ struct Volume::Impl {
         if (!status.isOk())
             return status;
 
-        status = entry.removeProperty(std::string{std::cbegin(name), std::cend(name)});
+        status = entry.removeProperty(util::to_string(name));
 
         if (!status.isOk())
             return status;
@@ -159,7 +172,7 @@ struct Volume::Impl {
         if (!status.isOk())
             return {status, false};
 
-        return {Status::Ok(), entry.hasProperty(std::string{std::cbegin(name), std::cend(name)})};
+        return {Status::Ok(), entry.hasProperty(util::to_string(name))};
     }
 
     Status expireProperty(Volume::Handle handle, std::string_view name, chrono::system_clock::time_point tp) {
@@ -170,7 +183,7 @@ struct Volume::Impl {
         if (!status.isOk())
             return status;
 
-        status = entry.expireProperty(std::string{std::cbegin(name), std::cend(name)}, tp);
+        status = entry.expireProperty(util::to_string(name), tp);
 
         if (!status.isOk())
             return status;
@@ -187,7 +200,7 @@ struct Volume::Impl {
         if (!status.isOk())
             return status;
 
-        status = entry.cancelPropertyExpiration(std::string{std::cbegin(name), std::cend(name)});
+        status = entry.cancelPropertyExpiration(util::to_string(name));
 
         if (!status.isOk())
             return status;
@@ -206,7 +219,7 @@ struct Volume::Impl {
         if (!status.isOk())
             return {status, storage_type::InvalidEntryId};
 
-        storage_type::entry_type child{storage_->newKey(), std::string{std::cbegin(name), std::cend(name)}};
+        storage_type::entry_type child{storage_->newKey(), util::to_string(name)};
 
         status = entry.addChild(child);
 
@@ -234,8 +247,35 @@ struct Volume::Impl {
         return {Status::Ok(), child.key()};
     }
 
-    void updatePathCache(const std::string& path, Volume::Handle h) {
-        pathCache_[path] = h;
+    Status unlink(std::string_view path) {
+        invalidatePathCacheEntry(util::to_string(path));
+
+        // TODO: implement
+
+        return Status::Ok();
+    }
+
+    std::tuple<Status, Volume::Handle, std::string> searchCachedPathEntry(const std::string& path) {
+        ReverseStringPathIterator start{path}, stop{};
+
+        Volume::Handle handle;
+
+        while (start != stop) {
+            if (pathCache_.lookup(*start, handle)) // cache hit
+                return {Status::Ok(), handle, *start};
+
+            ++start;
+        }
+
+        return {Status::NotFound("Cache miss"), {}, {}};
+    }
+
+    void updatePathCacheEntry(const std::string& path, Volume::Handle h) {
+        pathCache_.insert(path, h);
+    }
+
+    bool invalidatePathCacheEntry(const std::string& path) {
+        return pathCache_.remove(path);
     }
 
     std::shared_mutex& mutexForHandle(Volume::Handle h) noexcept {
@@ -247,7 +287,7 @@ struct Volume::Impl {
     }
 
     std::unique_ptr<storage_type> storage_;
-    std::unordered_map<std::string, Volume::Handle> pathCache_;
+    MRUCache<std::string,Volume::Handle, 1024> pathCache_;
     std::array<std::shared_mutex, MAX_THREADS> xLocks_;
 };
 
@@ -360,10 +400,7 @@ Status Volume::unlink(std::string_view path) {
     if (!initialized())
         return Status::InvalidOperation("Volume not opened");
 
-    //TODO: Implement deletion!!!
-    static_cast<void>(path);
-
-    return Status::Ok();
+    return impl_->unlink(path);
 }
 
 
