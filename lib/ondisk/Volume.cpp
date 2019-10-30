@@ -49,26 +49,21 @@ struct Volume::Impl {
 
         for (const auto& t : tokens) {
             auto [status, entry] = storage_->load(handle);
-                if (!status.isOk())
-                    return {status, storage_type::InvalidEntryId};
+
+            if (!status.isOk())
+                return {status, Volume::InvalidHandle};
 
             auto children = entry.children();
-            bool found{false};
+            auto it =std::find_if(std::cbegin(children), std::cend(children),
+                                  [&](auto&& p) {
+                                      auto&& [name, id] = p;
+                                      return (name == t);
+                                  });
 
-            for (auto child : children) {
-                auto [name, id] = child;
+            if (it == std::cend(children))
+                return {Status::InvalidArgument("No such entry"), Volume::InvalidHandle};
 
-                if (name == t) {
-                    handle = id;
-
-                    found = true;
-
-                    break;
-                }
-            }
-
-            if (!found)
-                return {Status::InvalidArgument("No such entry"), storage_type::InvalidEntryId};
+            handle = it->second;
 
             reconstructedPath += ("/" + t);
 
@@ -217,7 +212,7 @@ struct Volume::Impl {
         auto [status, entry] = storage_->load(handle);
 
         if (!status.isOk())
-            return {status, storage_type::InvalidEntryId};
+            return {status, Volume::InvalidHandle};
 
         storage_type::entry_type child{storage_->newKey(), util::to_string(name)};
 
@@ -226,14 +221,14 @@ struct Volume::Impl {
         if (!status.isOk()) {
             storage_->reuseKey(child.key());
 
-            return {status, storage_type::InvalidEntryId};
+            return {status, Volume::InvalidHandle};
         }
 
         // TODO: DO NOT SAVE ON EACH ENTRY UPDATE!!!!
         status = storage_->save(child);
 
         if (!status.isOk())
-            return {status, storage_type::InvalidEntryId};
+            return {status, Volume::InvalidHandle};
 
         // TODO: DO NOT SAVE ON EACH ENTRY UPDATE!!!!
         status = storage_->save(entry);
@@ -241,7 +236,7 @@ struct Volume::Impl {
         if (!status.isOk()) {
             assert(storage_->remove(child).isOk());
 
-            return {status, storage_type::InvalidEntryId};
+            return {status, Volume::InvalidHandle};
         }
 
         return {Status::Ok(), child.key()};
@@ -321,7 +316,7 @@ bool Volume::initialized() const noexcept {
 
 std::tuple<Status, Volume::Handle> Volume::open(std::string_view path) {
     if (!initialized())
-        return {Status::InvalidOperation("Volume not opened"), Impl::storage_type::InvalidEntryId};
+        return {Status::InvalidOperation("Volume not opened"), Volume::InvalidHandle};
 
     return impl_->open(path);
 }
@@ -391,7 +386,7 @@ Status Volume::cancelPropertyExpiration(Volume::Handle h, std::string_view name)
 
 std::tuple<Status, Volume::Handle> Volume::link(Volume::Handle h, std::string_view name) {
     if (!initialized())
-        return {Status::InvalidOperation("Volume not opened"), Impl::storage_type::InvalidEntryId};
+        return {Status::InvalidOperation("Volume not opened"), Volume::InvalidHandle};
 
     return impl_->createChild(h, name);
 }

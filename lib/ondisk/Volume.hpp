@@ -21,7 +21,7 @@ class Volume final {
 public:
     using Handle = std::uint64_t;
 
-    static constexpr Handle InvalidDescriptor = 0;
+    static constexpr Handle InvalidHandle = 0;
 
     Volume();
     ~Volume() noexcept;
