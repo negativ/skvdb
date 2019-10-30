@@ -7,6 +7,7 @@
 #include "Property.hpp"
 #include "Storage.hpp"
 #include "util/String.hpp"
+#include "util/StringPath.hpp"
 #include "util/StringPathIterator.hpp"
 
 namespace skv::ondisk {
