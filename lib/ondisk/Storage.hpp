@@ -14,6 +14,8 @@
 #include "IndexTable.hpp"
 #include "LogDevice.hpp"
 #include "os/File.hpp"
+#include "util/Serialization.hpp"
+#include "util/SpinLock.hpp"
 #include "util/Status.hpp"
 
 namespace skv::ondisk {
@@ -168,6 +170,8 @@ public:
         if (indexTable_.empty() && logDevice_.sizeInBlocks() > 0)
             return Status::Fatal("Broken storage");
 
+        opened_ = true;
+
         directory_ = directory;
         storageName_ = storageName;
 
@@ -180,8 +184,6 @@ public:
 
             return status;
         }
-
-        opened_ = true;
 
         return Status::Ok();
     }
@@ -204,6 +206,18 @@ public:
         return opened_;
     }
 
+    [[nodiscard]] key_type newKey() noexcept {
+        std::lock_guard locker(spLock_);
+
+        return (keyCounter_++);
+    }
+
+    void reuseKey(key_type key) {
+        // TODO: implement key reusage
+
+        static_cast<void>(key);
+    }
+
 private:
     static constexpr const char * const INDEX_TABLE_SUFFIX  = ".index";
     static constexpr const char * const LOG_DEVICE_SUFFIX   = ".logd";
@@ -224,7 +238,10 @@ private:
         std::fstream stream{path.data(), std::ios_base::in};
 
         if (stream.is_open()) {
-            stream >> indexTable_;
+            Deserializer d{stream};
+
+            d >> keyCounter_
+              >> indexTable_;
 
             stream.close();
         }
@@ -236,7 +253,11 @@ private:
         std::fstream stream{createPath(directory_, storageName_, INDEX_TABLE_SUFFIX), std::ios_base::out};
 
         if (stream.is_open()) {
-            stream << indexTable_;
+            Serializer s{stream};
+
+            s << keyCounter_
+              << indexTable_;
+
             stream.close();
 
             return Status::Ok();
@@ -246,9 +267,17 @@ private:
     }
 
     [[nodiscard]] Status createRootIndex() {
-        entry_type root{RootEntryId, ""};
+        resetKeyCounter();
+
+        entry_type root{newKey(), ""};
 
         return save(root);
+    }
+
+    void resetKeyCounter() noexcept {
+        std::lock_guard locker(spLock_);
+
+        keyCounter_ = RootEntryId;
     }
 
     std::string createPath(std::string_view directory, std::string_view storageName, std::string_view suffix) {
@@ -264,6 +293,8 @@ private:
     std::string directory_;
     std::string storageName_;
     std::shared_mutex xLock_;
+    SpinLock spLock_;
+    key_type keyCounter_{0};
     bool opened_{false};
 };
 
