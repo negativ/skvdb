@@ -21,13 +21,15 @@ namespace {
     const char * const STORAGE_DIR  = ".";
     const char * const STORAGE_NAME = "test_storage";
 #endif
-    std::atomic<bool> go{false};
+    std::atomic<bool> go1{false}, go2{false};
+
+    constexpr size_t NRUNS = 10000;
 }
 
-void mtTestRoutine(std::reference_wrapper<Volume> v) {
+void mtTestRoutineN1(std::reference_wrapper<Volume> v) {
     static constexpr std::hash<std::thread::id> hasher;
 
-    while (!go.load(std::memory_order_acquire))
+    while (!go1.load(std::memory_order_acquire))
         std::this_thread::yield();
 
     Volume &volume = v;
@@ -49,7 +51,7 @@ void mtTestRoutine(std::reference_wrapper<Volume> v) {
             return;
         }
 
-        for (size_t i = 0; i < 10000; ++i) {
+        for (size_t i = 0; i < NRUNS; ++i) {
             if (i % 7 == 0)
                 volume.setProperty(self, std::to_string(i), Property{double(i)});
             else if (i % 5 == 0) {
@@ -67,7 +69,7 @@ void mtTestRoutine(std::reference_wrapper<Volume> v) {
     }
 }
 
-TEST(VolumeTest, MTTest) {
+TEST(VolumeTest, MTTestN1) {
     using namespace std::chrono;
     using namespace std::literals;
 
@@ -84,13 +86,13 @@ TEST(VolumeTest, MTTest) {
     std::vector<std::thread> threads;
     std::generate_n(std::back_inserter(threads),
                     2 * std::thread::hardware_concurrency(),
-                    [&] { return std::thread{&mtTestRoutine, std::ref(volume)}; });
+                    [&] { return std::thread{&mtTestRoutineN1, std::ref(volume)}; });
 
     std::this_thread::sleep_for(100ms); // ensure all other threads is started
 
     auto startTime = system_clock::now();
 
-    go.store(true, std::memory_order_release);
+    go1.store(true, std::memory_order_release);
 
     std::for_each(std::begin(threads), std::end(threads),
                   [](auto&& t) {
@@ -100,7 +102,111 @@ TEST(VolumeTest, MTTest) {
 
     auto endTime = system_clock::now();
 
-    Log::i("MTTest", "Test took ", duration_cast<milliseconds>(endTime - startTime).count(), " ms");
+    Log::i("MTTest", "Test #1 has took ", duration_cast<milliseconds>(endTime - startTime).count(), " ms");
+
+    ASSERT_TRUE(volume.deinitialize().isOk());
+    ASSERT_FALSE(volume.initialized());
+
+    std::this_thread::sleep_for(20ms);
+
+    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".logd");
+    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".index");
+}
+
+void mtTestRoutineN2(std::reference_wrapper<Volume> v) {
+    static constexpr std::hash<std::thread::id> hasher;
+
+    while (!go2.load(std::memory_order_acquire))
+        std::this_thread::yield();
+
+    Volume &volume = v;
+
+    auto [status, rootHandle] = volume.open("/");
+
+    if (!status.isOk())
+        return;
+
+    {
+        auto id = std::to_string(hasher(std::this_thread::get_id()));
+        auto path = "/test";
+
+        auto [status, self] = volume.open(path);
+
+        if (!status.isOk()) {
+            return;
+        }
+
+        for (size_t i = 0; i < NRUNS; ++i) {
+            if (i % 7 == 0)
+                volume.setProperty(self, id + std::to_string(i), Property{double(i)});
+            else if (i % 5 == 0) {
+                volume.setProperty(self, id + std::to_string(i), Property{std::to_string(i)});
+            }
+            else if (i % 3 == 0) {
+                volume.setProperty(self, id + std::to_string(i), Property{float(i)});
+            }
+            else
+                volume.setProperty(self, id + std::to_string(i), Property{"fizz buzz"});
+        }
+
+        volume.close(self);
+        volume.close(rootHandle);
+    }
+}
+
+TEST(VolumeTest, MTTestN2) {
+    using namespace std::chrono;
+    using namespace std::literals;
+
+    Volume volume;
+
+    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".logd");
+    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".index");
+
+    auto opened = volume.initialize(STORAGE_DIR, STORAGE_NAME);
+
+    ASSERT_TRUE(opened.isOk());
+    ASSERT_TRUE(volume.initialized());
+
+    auto [status, rootHandle] = volume.open("/");
+
+    ASSERT_TRUE(status.isOk());
+
+    ASSERT_TRUE(volume.link(rootHandle, "test").isOk());
+
+    std::vector<std::thread> threads;
+    std::generate_n(std::back_inserter(threads),
+                    2 * std::thread::hardware_concurrency(),
+                    [&] { return std::thread{&mtTestRoutineN2, std::ref(volume)}; });
+
+    std::this_thread::sleep_for(100ms); // ensure all other threads is started
+
+    auto startTime = system_clock::now();
+
+    go2.store(true, std::memory_order_release);
+
+    std::for_each(std::begin(threads), std::end(threads),
+                  [](auto&& t) {
+                      if (t.joinable())
+                          t.join();
+                      });
+
+    auto endTime = system_clock::now();
+
+    Log::i("MTTest", "Test #2 has took ", duration_cast<milliseconds>(endTime - startTime).count(), " ms");
+
+    {
+        auto [status, self] = volume.open("/test");
+        ASSERT_TRUE(status.isOk());
+
+        {
+            const auto& [status, properties] = volume.properties(self);
+
+            ASSERT_EQ(properties.size(), NRUNS * threads.size());
+        }
+
+        ASSERT_TRUE(volume.close(self).isOk());
+    }
 
     ASSERT_TRUE(volume.deinitialize().isOk());
     ASSERT_FALSE(volume.initialized());

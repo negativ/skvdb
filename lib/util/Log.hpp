@@ -19,7 +19,7 @@ struct Log final {
 
         ((stream << to_string(args)), ...);
 
-        Log::d(tag, stream.str());
+        Log::d_(tag, stream.str());
     }
 #else
     template <typename ... Ts>

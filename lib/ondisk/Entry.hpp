@@ -4,7 +4,6 @@
 #include <chrono>
 #include <cstdint>
 #include <iostream>
-#include <unordered_map>
 #include <map>
 #include <memory>
 #include <numeric>
@@ -34,7 +33,7 @@ template <typename Key,
           std::decay_t<Key> TInvalidKey = 0,
           typename PropertyName = std::string,
           typename PropertyValue = Property,
-          typename PropertyContainer = std::unordered_map<std::decay_t<PropertyName>, std::decay_t<PropertyValue>>, // maybe btree_map is better choice
+          typename PropertyContainer = std::map<std::decay_t<PropertyName>, std::decay_t<PropertyValue>>, // maybe btree_map is better choice
           typename ClockType = chrono::system_clock>
 class Entry final {
 public:
@@ -244,14 +243,6 @@ public:
         return (*impl_ > *other.impl_);
     }
 
-    void setUserData(void* udata) noexcept {
-        impl_->userData_ = udata;
-    }
-
-    [[nodiscard]] void* userData() const noexcept {
-        return impl_->userData_;
-    }
-
 private:
     template <typename K, K IK, typename PN, typename PV, typename PC>
     friend std::istream& operator>>(std::istream& _is, Entry<K, IK, PN, PV, PC> & p) ;
@@ -305,7 +296,6 @@ private:
         prop_name_type name_;
         child_container children_;
         std::map<prop_name_type, std::int64_t> propertyExpireMap_;
-        void* userData_{nullptr};
 
         bool operator==(const Impl& other) const noexcept {
             return key_ == other.key_ &&
@@ -313,8 +303,7 @@ private:
                    properties_ == other.properties_ &&
                    name_ == other.name_ &&
                    children_ == other.children_ &&
-                   propertyExpireMap_ == other.propertyExpireMap_ &&
-                   userData_ == other.userData_;
+                   propertyExpireMap_ == other.propertyExpireMap_;
         }
 
         bool operator!=(const Impl& other) const noexcept {
