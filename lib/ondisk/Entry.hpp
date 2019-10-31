@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cstdint>
 #include <iostream>
+#include <unordered_map>
 #include <map>
 #include <memory>
 #include <numeric>
@@ -33,7 +34,7 @@ template <typename Key,
           std::decay_t<Key> TInvalidKey = 0,
           typename PropertyName = std::string,
           typename PropertyValue = Property,
-          typename PropertyContainer = std::map<std::decay_t<PropertyName>, std::decay_t<PropertyValue>>, // maybe btree_map is better choice
+          typename PropertyContainer = std::unordered_map<std::decay_t<PropertyName>, std::decay_t<PropertyValue>>, // maybe btree_map is better choice
           typename ClockType = chrono::system_clock>
 class Entry final {
 public:
@@ -169,13 +170,14 @@ public:
     }
 
     [[nodiscard]] std::set<prop_name_type> propertiesSet() const {
-        return std::accumulate(std::cbegin(impl_->properties_), std::cend(impl_->properties_),
-                               std::set<prop_name_type>{},
-                               [this](auto&& acc, auto&& p) {
-                                    if (!propertyExpired(p.first))
-                                        acc.insert(p.first);
-                                    return acc;
-                               });
+        std::set<prop_name_type> ret;
+
+        for (const auto& [prop, value] : impl_->properties_) { // rewritten to cycle after profiling
+            if (propertyExpired(prop))
+                ret.insert(prop);
+        }
+
+        return ret;
     }
 
     [[nodiscard]] Status addChild(Entry& e) {
@@ -426,16 +428,12 @@ inline std::ostream& operator<<(std::ostream& _os, const Entry<Key, TInvalidKey,
       << p.parent()
       << p.name();
 
-    auto properties = p.propertiesSet();
+    const auto& properties = p.impl_->properties_;
     std::uint64_t propertiesCount = properties.size();
 
     s << propertiesCount;
 
-    for (const auto& prop : properties) {
-        const auto& [status, value] = p.property(prop);
-
-        assert(status.isOk());
-
+    for (const auto& [prop, value] : properties) {
         s << prop
           << value;
     }

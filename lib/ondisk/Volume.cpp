@@ -493,7 +493,7 @@ Status Volume::close(Volume::Handle d) {
     return impl_->close(d);
 }
 
-std::tuple<Status, std::set<std::string> > Volume::children(Volume::Handle h) {
+std::tuple<Status, std::set<std::string> > Volume::links(Volume::Handle h) {
     if (!initialized())
         return {Status::InvalidOperation("Volume not opened"), {}};
 

@@ -40,8 +40,6 @@ public:
     std::tuple<Status, Handle> open(std::string_view path);
     Status close(Handle h);
 
-    std::tuple<Status, std::set<std::string>> children(Handle h);
-
     std::tuple<Status, std::set<std::string>> properties(Handle h);
     std::tuple<Status, Property> property(Handle h, std::string_view name);
     Status setProperty(Handle h, std::string_view name, const Property& value);
@@ -50,6 +48,7 @@ public:
     Status expireProperty(Handle h, std::string_view name, chrono::system_clock::time_point tp);
     Status cancelPropertyExpiration(Handle h, std::string_view name);
 
+    std::tuple<Status, std::set<std::string>> links(Handle h);
     Status link(Handle h, std::string_view name);
     Status unlink(Handle h, std::string_view path);
 private:
