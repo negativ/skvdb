@@ -6,7 +6,7 @@
 namespace std {
 
 using namespace skv;
-using namespace skv::ondisk;
+using namespace skv::vfs;
 
 template<typename VariantType, typename T, const std::size_t index = 0>
 constexpr std::size_t getIndex() {
