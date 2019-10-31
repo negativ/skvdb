@@ -1,7 +1,6 @@
 #pragma once
 
 #include <atomic>
-#include <cassert>
 #include <cstdint>
 #include <memory>
 #include <shared_mutex>
@@ -26,7 +25,7 @@ template <typename BlockIndex = std::uint32_t,
 class LogDevice final
 {
     static constexpr std::size_t MAX_READ_THREADS = 17;
-    static constexpr std::uint32_t DEFAULT_BLOCK_SIZE = 4096;
+    static constexpr std::uint32_t DEFAULT_BLOCK_SIZE = 2048;
     static constexpr std::uint32_t MIN_BLOCK_SIZE = 512;
 
 public:

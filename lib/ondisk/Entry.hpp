@@ -42,6 +42,7 @@ public:
     using prop_name_type        = std::decay_t<typename prop_container_type::key_type>;
     using prop_value_type       = std::decay_t<PropertyValue>;
     using child_type            = std::pair<prop_name_type, key_type>;
+    using children_type         = std::set<child_type>;
     using clock_type            = std::decay_t<ClockType>;
 
     static_assert (std::is_integral_v<key_type>, "Entry key should be an integral type");
@@ -208,9 +209,9 @@ public:
         return Status::Ok();
     }
 
-    [[nodiscard]] std::set<child_type> children() const {
+    [[nodiscard]] children_type children() const {
         auto& index = impl_->children_.template get<typename Impl::ChildByKey>();
-        std::set<child_type> ret;
+        children_type ret;
 
         std::transform(std::cbegin(index), std::cend(index),
                        std::inserter(ret, std::begin(ret)),
@@ -241,12 +242,12 @@ public:
         return (*impl_ > *other.impl_);
     }
 
-    void markAsDirty() noexcept {
-        impl_->dirtyFlag_ = true;
+    void setUserData(void* udata) noexcept {
+        impl_->userData_ = udata;
     }
 
-    void clearDirty() {
-        impl_->dirtyFlag_ = false;
+    [[nodiscard]] void* userData() const noexcept {
+        return impl_->userData_;
     }
 
 private:
@@ -302,8 +303,7 @@ private:
         prop_name_type name_;
         child_container children_;
         std::map<prop_name_type, std::int64_t> propertyExpireMap_;
-
-        bool dirtyFlag_{false};
+        void* userData_{nullptr};
 
         bool operator==(const Impl& other) const noexcept {
             return key_ == other.key_ &&
@@ -312,7 +312,7 @@ private:
                    name_ == other.name_ &&
                    children_ == other.children_ &&
                    propertyExpireMap_ == other.propertyExpireMap_ &&
-                   dirtyFlag_ == other.dirtyFlag_;
+                   userData_ == other.userData_;
         }
 
         bool operator!=(const Impl& other) const noexcept {
@@ -366,7 +366,8 @@ inline std::istream& operator>>(std::istream& _is, Entry<Key, TInvalidKey, Prope
         ds >> prop
            >> value;
 
-        assert(ret.setProperty(prop, value).isOk());
+        [[maybe_unused]] auto r = ret.setProperty(prop, value);
+        assert(r.isOk());
     }
 
     std::uint64_t childrenCount;
@@ -381,7 +382,7 @@ inline std::istream& operator>>(std::istream& _is, Entry<Key, TInvalidKey, Prope
 
         E child(ckey, cname);
 
-        auto status = ret.addChild(child);
+        [[maybe_unused]] auto status = ret.addChild(child);
 
         assert(status.isOk());
     }

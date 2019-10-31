@@ -22,6 +22,7 @@ public:
     using Handle = std::uint64_t;
 
     static constexpr Handle InvalidHandle = 0;
+    static constexpr Handle RootHandle = 1;
 
     Volume();
     ~Volume() noexcept;
@@ -49,8 +50,8 @@ public:
     Status expireProperty(Handle h, std::string_view name, chrono::system_clock::time_point tp);
     Status cancelPropertyExpiration(Handle h, std::string_view name);
 
-    std::tuple<Status, Handle> link(Handle h, std::string_view name);
-    Status unlink(std::string_view path);
+    Status link(Handle h, std::string_view name);
+    Status unlink(Handle h, std::string_view path);
 private:
     std::unique_ptr<Impl> impl_;
 };

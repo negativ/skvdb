@@ -44,7 +44,7 @@ public:
     static_assert (sizeof (bytes_count_type) >= sizeof(std::uint32_t), "Bytes count type should be at least 32 bits long");
 
     struct OpenOptions {
-        std::uint32_t   LogDeviceBlockSize{4096};
+        std::uint32_t   LogDeviceBlockSize{2048};
         bool            LogDeviceCreateNewIfNotExist{true};
     };
 
@@ -152,7 +152,7 @@ public:
         if (it == std::end(indexTable_))
             return Status::InvalidArgument("Key doesnt exist");
 
-        indexTable_.erase(it);
+        static_cast<void>(indexTable_.erase(it));
 
         return Status::Ok();
     }

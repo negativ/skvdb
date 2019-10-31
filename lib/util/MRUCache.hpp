@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cassert>
 #include <mutex>
 #include <type_traits>
 
@@ -56,8 +55,13 @@ public:
 
         auto it = index.find(key);
 
-        if (it == std::end(index))
+        if (it == std::end(index)) {
+            ++cacheMissCount_;
+
             return false;
+        }
+
+        ++cacheHitCount_;
 
         value = it->second;
 
@@ -92,9 +96,19 @@ public:
         return capacity_value;
     }
 
+    [[nodiscard]] std::uint64_t cacheHitCount() const noexcept {
+        return cacheHitCount_;
+    }
+
+    [[nodiscard]] std::uint64_t cacheMissCount() const noexcept {
+        return cacheHitCount_;
+    }
+
 private:
-    alignas (64) mutable SpinLock xLock_; // spinlock should be good because all operations on MRU are very fast
+    mutable SpinLock xLock_; // spinlock should be good because all operations on MRU are very fast
     cache_type cache_;
+    std::uint64_t cacheMissCount_{0};
+    std::uint64_t cacheHitCount_{0};
 };
 
 }

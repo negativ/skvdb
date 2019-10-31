@@ -2,10 +2,8 @@
 
 namespace skv::util {
 
-std::vector<std::string> split(std::string_view str, char delim, bool skipEmptyParts) {
-    std::vector<std::string> tokens;
-    tokens.reserve(2);
-
+std::deque<std::string> split(std::string_view str, char delim, bool skipEmptyParts) {
+    std::deque<std::string> tokens;
     auto l = 0u, r = 0u;
 
     for (auto c : str) {
