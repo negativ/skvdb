@@ -104,6 +104,11 @@ TEST(VolumeTest, MTTest) {
 
     ASSERT_TRUE(volume.deinitialize().isOk());
     ASSERT_FALSE(volume.initialized());
+
+    std::this_thread::sleep_for(20ms);
+
+    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".logd");
+    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".index");
 }
 
 TEST(VolumeTest, OpenCloseLink) {

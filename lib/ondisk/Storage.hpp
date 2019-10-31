@@ -191,6 +191,9 @@ public:
     [[nodiscard]] Status close() {
         std::unique_lock locker(xLock_);
 
+        if (!opened())
+            return Status::Ok();
+
         auto status1 = closeDevice();
         auto status2 = closeIndexTable();
 
@@ -243,6 +246,7 @@ private:
             d >> keyCounter_
               >> indexTable_;
 
+            stream.flush();
             stream.close();
         }
 
@@ -258,6 +262,7 @@ private:
             s << keyCounter_
               << indexTable_;
 
+            stream.flush();
             stream.close();
 
             return Status::Ok();
