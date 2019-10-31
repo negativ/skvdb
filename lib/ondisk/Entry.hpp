@@ -173,7 +173,7 @@ public:
         std::set<prop_name_type> ret;
 
         for (const auto& [prop, value] : impl_->properties_) { // rewritten to cycle after profiling
-            if (propertyExpired(prop))
+            if (!propertyExpired(prop))
                 ret.insert(prop);
         }
 
