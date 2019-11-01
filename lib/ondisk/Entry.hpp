@@ -11,7 +11,6 @@
 #include <string>
 #include <type_traits>
 
-#include <boost/endian/conversion.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/indexed_by.hpp>

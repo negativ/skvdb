@@ -125,6 +125,9 @@ struct Volume::Impl {
     }
 
     Status close(Volume::Handle d)  {
+        if (d == Volume::InvalidHandle)
+            return NoSuchEntryStatus;
+
         return releaseControlBlock(d);
     }
 

@@ -2,10 +2,11 @@
 
 #include <chrono>
 #include <cstdint>
-#include <unordered_map>
+#include <memory>
 #include <set>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 
 #include "Property.hpp"
 #include "util/Status.hpp"
@@ -168,5 +169,8 @@ public:
      */
     [[nodiscard]] virtual Status release(Token token) noexcept = 0;
 };
+
+using IVolumePtr    = std::shared_ptr<IVolume>;
+using IVolumeWPtr   = std::weak_ptr<IVolume>;
 
 }
