@@ -18,6 +18,12 @@
 #include "util/SpinLock.hpp"
 #include "util/Status.hpp"
 
+namespace {
+
+const skv::util::Status DeviceNotOpenedStatus   = skv::util::Status::IOError("Device not opened");
+
+}
+
 namespace skv::ondisk {
 
 template <typename KeyT          = std::uint64_t,
@@ -77,7 +83,7 @@ public:
         std::shared_lock locker(xLock_);
 
         if (!opened())
-            return {Status::IOError("Device not opened!"), {}};
+            return {DeviceNotOpenedStatus, {}};
 
         auto it = indexTable_.find(key);
 
@@ -107,7 +113,7 @@ public:
             return Status::InvalidArgument("Invalid entry id");
 
         if (!opened())
-            return Status::IOError("Device not opened!");
+            return DeviceNotOpenedStatus;
 
         // TODO: implement EntryWriter
         std::stringstream stream{std::ios_base::out};
@@ -128,7 +134,7 @@ public:
         std::unique_lock locker(xLock_);
 
         if (!opened())
-            return Status::IOError("Device not opened!");
+            return DeviceNotOpenedStatus;
 
         auto [status, blockIndex, blockCount] = logDevice_.append(buffer);
 
@@ -149,7 +155,7 @@ public:
         std::unique_lock locker(xLock_);
 
         if (!opened())
-            return Status::IOError("Device not opened");
+            return DeviceNotOpenedStatus;
 
         auto it = indexTable_.find(key);
 

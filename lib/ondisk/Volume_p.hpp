@@ -18,6 +18,13 @@
 #include "util/StringPath.hpp"
 #include "util/StringPathIterator.hpp"
 
+namespace {
+
+const skv::util::Status NoSuchEntryStatus   = skv::util::Status::InvalidArgument("No such entry");
+const skv::util::Status InvalidTokenStatus  = skv::util::Status::InvalidArgument("Invalid token");
+
+}
+
 namespace skv::ondisk {
 
 struct Volume::Impl {
@@ -105,7 +112,7 @@ struct Volume::Impl {
                                   });
 
             if (it == std::cend(children))
-                return {Status::InvalidArgument("No such entry"), Volume::InvalidHandle};
+                return {NoSuchEntryStatus, Volume::InvalidHandle};
 
             handle = it->second;
 
@@ -125,7 +132,7 @@ struct Volume::Impl {
         auto cb = getControlBlock(handle);
 
         if (!cb)
-            return {Status::InvalidArgument("No such entry"), {}};
+            return {NoSuchEntryStatus, {}};
 
         std::shared_lock locker(cb->xLock());
 
@@ -152,7 +159,7 @@ struct Volume::Impl {
         auto cb = getControlBlock(handle);
 
         if (!cb)
-            return {Status::InvalidArgument("No such entry"), {}};
+            return {NoSuchEntryStatus, {}};
 
         std::shared_lock locker(cb->xLock());
 
@@ -163,7 +170,7 @@ struct Volume::Impl {
         auto cb = getControlBlock(handle);
 
         if (!cb)
-            return {Status::InvalidArgument("No such entry"), {}};
+            return {NoSuchEntryStatus, {}};
 
         std::shared_lock locker(cb->xLock());
 
@@ -174,7 +181,7 @@ struct Volume::Impl {
         auto cb = getControlBlock(handle);
 
         if (!cb)
-            return Status::InvalidArgument("No such entry");
+            return NoSuchEntryStatus;
 
         std::unique_lock locker(cb->xLock());
 
@@ -190,7 +197,7 @@ struct Volume::Impl {
         auto cb = getControlBlock(handle);
 
         if (!cb)
-            return Status::InvalidArgument("No such entry");
+            return NoSuchEntryStatus;
 
         std::unique_lock locker(cb->xLock());
 
@@ -206,7 +213,7 @@ struct Volume::Impl {
         auto cb = getControlBlock(handle);
 
         if (!cb)
-            return {Status::InvalidArgument("No such entry"), false};
+            return {NoSuchEntryStatus, false};
 
         std::shared_lock locker(cb->xLock());
 
@@ -217,7 +224,7 @@ struct Volume::Impl {
         auto cb = getControlBlock(handle);
 
         if (!cb)
-            return Status::InvalidArgument("No such entry");
+            return NoSuchEntryStatus;
 
         std::unique_lock locker(cb->xLock());
 
@@ -233,7 +240,7 @@ struct Volume::Impl {
         auto cb = getControlBlock(handle);
 
         if (!cb)
-            return Status::InvalidArgument("No such entry");
+            return NoSuchEntryStatus;
 
         std::unique_lock locker(cb->xLock());
 
@@ -255,7 +262,7 @@ struct Volume::Impl {
         auto cb = getControlBlock(handle);
 
         if (!cb)
-            return Status::InvalidArgument("No such entry");
+            return NoSuchEntryStatus;
 
         std::unique_lock locker(cb->xLock());
 
@@ -302,7 +309,7 @@ struct Volume::Impl {
         auto cb = getControlBlock(handle);
 
         if (!cb)
-            return Status::InvalidArgument("No such entry");
+            return NoSuchEntryStatus;
 
         std::unique_lock locker(cb->xLock());
 
@@ -318,7 +325,7 @@ struct Volume::Impl {
                                });
 
         if (it == std::cend(children))
-            return Status::InvalidArgument("No such entry");
+            return NoSuchEntryStatus;
 
         auto cid = it->second;
 
@@ -432,7 +439,7 @@ struct Volume::Impl {
             return Status::Ok();
         }
 
-        return Status::InvalidArgument("No such entry");
+        return NoSuchEntryStatus;
     }
 
     cb_ptr_type getControlBlock(Volume::Handle handle) {
@@ -461,11 +468,11 @@ struct Volume::Impl {
         if (claimToken_ != Volume::Token{} &&
             claimToken_ != token)
         {
-            return Status::InvalidArgument("Invalid token");
+            return InvalidTokenStatus;
         }
 
         if (token == Volume::Token{})
-            return Status::InvalidArgument("Invalid token");
+            return InvalidTokenStatus;
 
         claimToken_ = token;
         ++claimCount_;
@@ -479,7 +486,7 @@ struct Volume::Impl {
         if (claimToken_ == Volume::Token{})
             return Status::InvalidOperation("Volume not claimed");
         else if (claimToken_ != token)
-            return Status::InvalidArgument("Invalid token");
+            return InvalidTokenStatus;
 
         --claimCount_;
 
