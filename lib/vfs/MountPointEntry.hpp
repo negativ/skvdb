@@ -5,14 +5,26 @@
 
 #include "IVolume.hpp"
 
-namespace skv::vfs {
+namespace skv::vfs::mount {
 
-class MountPointEntry final {
+class Entry final {
     struct Impl;
 
 public:
-    MountPointEntry(std::string_view entryPath, IVolumePtr volume);
-    ~MountPointEntry() noexcept;
+    Entry(std::string_view mountPath, std::string_view entryPath, IVolumePtr volume);
+    ~Entry() noexcept;
+
+    Entry(const Entry& other);
+    Entry& operator=(const Entry& other);
+
+    Entry(Entry&& other) noexcept;
+    Entry& operator=(Entry&& other) noexcept;
+
+    /**
+     * @brief Path of entry in volume
+     * @return
+     */
+    std::string mountPath() const;
 
     /**
      * @brief Path of entry in volume
