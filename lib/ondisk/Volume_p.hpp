@@ -13,6 +13,7 @@
 #include "Property.hpp"
 #include "Storage.hpp"
 #include "util/MRUCache.hpp"
+#include "util/SpinLock.hpp"
 #include "util/String.hpp"
 #include "util/StringPath.hpp"
 #include "util/StringPathIterator.hpp"
@@ -40,7 +41,23 @@ struct Volume::Impl {
     }
 
     ~Impl() {
+        if (initialized())
+            deinitialize();
+    }
 
+    Status initialize(std::string_view directory, std::string_view volumeName) {
+        return storage_->open(directory, volumeName);
+    }
+
+    Status deinitialize() {
+        if (claimed())
+            return Status::InvalidOperation("Storage claimed");
+
+        return storage_->close();
+    }
+
+    bool initialized() const noexcept {
+        return storage_->opened();
     }
 
     std::tuple<Status, Volume::Handle> open(std::string_view p) {
@@ -438,12 +455,55 @@ struct Volume::Impl {
         return storage_->save(cb->entry());
     }
 
+    Status claim(Volume::Token token) noexcept {
+        std::unique_lock locker(claimLock_);
+
+        if (claimToken_ != Volume::Token{} &&
+            claimToken_ != token)
+        {
+            return Status::InvalidArgument("Invalid token");
+        }
+
+        if (token == Volume::Token{})
+            return Status::InvalidArgument("Invalid token");
+
+        claimToken_ = token;
+        ++claimCount_;
+
+        return Status::Ok();
+    }
+
+    Status release(Volume::Token token) noexcept {
+        std::unique_lock locker(claimLock_);
+
+        if (claimToken_ == Volume::Token{})
+            return Status::InvalidOperation("Volume not claimed");
+        else if (claimToken_ != token)
+            return Status::InvalidArgument("Invalid token");
+
+        --claimCount_;
+
+        if (claimCount_ == 0)
+            claimToken_ = Volume::Token{};
+
+        return Status::Ok();
+    }
+
+    bool claimed() const noexcept {
+        std::unique_lock locker(claimLock_);
+
+        return claimCount_ != 0;
+    }
+
     std::unique_ptr<storage_type> storage_;
     std::shared_mutex controlBlocksLock_;
     std::unordered_map<Volume::Handle, cb_ptr_type> controlBlocks_;
     std::list<cb_ptr_type> syncQueue_;
     std::mutex syncQueueLock_;
     MRUCache<std::string,Volume::Handle, PATH_MRU_CACHE_SIZE> pathCache_;
+    mutable SpinLock claimLock_;
+    Volume::Token claimToken_{};
+    std::size_t claimCount_{0};
 };
 
 }

@@ -1,6 +1,12 @@
 #include "Volume.hpp"
 #include "Volume_p.hpp"
 
+namespace {
+
+const skv::util::Status VolumeNotOpenedStatus = skv::util::Status::InvalidOperation("Volume not opened");
+
+}
+
 namespace skv::ondisk {
 
 Volume::Volume():
@@ -17,123 +23,116 @@ Status Volume::initialize(std::string_view directory, std::string_view volumeNam
     if (initialized())
         return Status::InvalidOperation("Volume already opened");
 
-    auto status = impl_->storage_->open(directory, volumeName);
-
-    if (status.isOk()) {
-         auto [status, handle] = impl_->open("/"); // implicitly open root item
-
-         assert(handle == RootHandle);
-
-         return status;
-    }
-
-    return status;
+    return impl_->initialize(directory, volumeName);
 }
 
 Status Volume::deinitialize() {
     if (!initialized())
-        return Status::InvalidOperation("Volume not opened");
+        return VolumeNotOpenedStatus;
 
-    // TODO: sync storage
-    static_cast<void>(impl_->close(RootHandle));
-
-    return impl_->storage_->close();
+    return impl_->deinitialize();
 }
 
 bool Volume::initialized() const noexcept {
-    return impl_->storage_->opened();
+    return impl_->initialized();
 }
 
 std::tuple<Status, Volume::Handle> Volume::open(std::string_view path) {
     if (!initialized())
-        return {Status::InvalidOperation("Volume not opened"), Volume::InvalidHandle};
+        return {VolumeNotOpenedStatus, Volume::InvalidHandle};
 
     return impl_->open(path);
 }
 
 Status Volume::close(Volume::Handle d) {
     if (!initialized())
-        return Status::InvalidOperation("Volume not opened");
+        return VolumeNotOpenedStatus;
 
     return impl_->close(d);
 }
 
 std::tuple<Status, Volume::Links> Volume::links(Volume::Handle h) {
     if (!initialized())
-        return {Status::InvalidOperation("Volume not opened"), {}};
+        return {VolumeNotOpenedStatus, {}};
 
     return impl_->children(h);
 }
 
 std::tuple<Status, Volume::Properties > Volume::properties(Volume::Handle handle) {
     if (!initialized())
-        return {Status::InvalidOperation("Volume not opened"), {}};
+        return {VolumeNotOpenedStatus, {}};
 
     return impl_->properties(handle);
 }
 
 std::tuple<Status, Property> Volume::property(Volume::Handle h, std::string_view name) {
     if (!initialized())
-        return {Status::InvalidOperation("Volume not opened"), {}};
+        return {VolumeNotOpenedStatus, {}};
 
     return impl_->property(h, name);
 }
 
 Status Volume::setProperty(Volume::Handle h, std::string_view name, const Property &value) {
     if (!initialized())
-        return Status::InvalidOperation("Volume not opened");
+        return VolumeNotOpenedStatus;
 
     return impl_->setProperty(h, name, value);
 }
 
 Status Volume::removeProperty(Volume::Handle h, std::string_view name) {
     if (!initialized())
-        return Status::InvalidOperation("Volume not opened");
+        return VolumeNotOpenedStatus;
 
     return impl_->removeProperty(h, name);
 }
 
 std::tuple<Status, bool> Volume::hasProperty(Volume::Handle h, std::string_view name) {
     if (!initialized())
-        return {Status::InvalidOperation("Volume not opened"), false};
+        return {VolumeNotOpenedStatus, false};
 
     return impl_->hasProperty(h, name);
 }
 
 Status Volume::expireProperty(Volume::Handle h, std::string_view name, chrono::system_clock::time_point tp) {
     if (!initialized())
-        return Status::InvalidOperation("Volume not opened");
+        return VolumeNotOpenedStatus;
 
     return impl_->expireProperty(h, name, tp);
 }
 
 Status Volume::cancelPropertyExpiration(Volume::Handle h, std::string_view name) {
     if (!initialized())
-        return Status::InvalidOperation("Volume not opened");
+        return VolumeNotOpenedStatus;
 
     return impl_->cancelPropertyExpiration(h, name);
 }
 
 Status Volume::link(Volume::Handle h, std::string_view name) {
     if (!initialized())
-        return Status::InvalidOperation("Volume not opened");
+        return VolumeNotOpenedStatus;
 
     return impl_->createChild(h, name);
 }
 
 Status Volume::unlink(Handle h, std::string_view name) {
     if (!initialized())
-        return Status::InvalidOperation("Volume not opened");
+        return VolumeNotOpenedStatus;
 
     return impl_->removeChild(h, name);
 }
 
 Status Volume::claim(IVolume::Token token) noexcept {
+    if (!initialized())
+        return VolumeNotOpenedStatus;
 
+    return impl_->claim(token);
 }
 
 Status Volume::release(IVolume::Token token) noexcept {
+    if (!initialized())
+        return VolumeNotOpenedStatus;
 
+    return impl_->release(token);
 }
 
 

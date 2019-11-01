@@ -24,12 +24,12 @@ class Status final {
     static constexpr bool noexcept_move_assignable = std::is_nothrow_move_assignable_v<decltype(message_)>;
 
 public:
-    static Status Ok() noexcept(noexcept_copy_constructible);
-    static Status IOError(std::string message) noexcept(noexcept_copy_constructible);
-    static Status InvalidArgument(std::string message) noexcept(noexcept_copy_constructible);
-    static Status NotFound(std::string message) noexcept(noexcept_copy_constructible);
-    static Status Fatal(std::string message) noexcept(noexcept_copy_constructible);
-    static Status InvalidOperation(std::string message) noexcept(noexcept_copy_constructible);
+    [[nodiscard]] static Status Ok() noexcept(noexcept_copy_constructible);
+    [[nodiscard]] static Status IOError(std::string message) noexcept(noexcept_copy_constructible);
+    [[nodiscard]] static Status InvalidArgument(std::string message) noexcept(noexcept_copy_constructible);
+    [[nodiscard]] static Status NotFound(std::string message) noexcept(noexcept_copy_constructible);
+    [[nodiscard]] static Status Fatal(std::string message) noexcept(noexcept_copy_constructible);
+    [[nodiscard]] static Status InvalidOperation(std::string message) noexcept(noexcept_copy_constructible);
 
     ~Status() = default;
 

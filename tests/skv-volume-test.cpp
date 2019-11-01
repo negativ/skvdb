@@ -9,6 +9,7 @@
 #include <ondisk/Volume.hpp>
 #include <os/File.hpp>
 #include <util/Log.hpp>
+#include <util/Unused.hpp>
 
 using namespace skv;
 using namespace skv::ondisk;
@@ -41,7 +42,7 @@ void mtTestRoutineN1(std::reference_wrapper<Volume> v) {
 
     {
         auto id = std::to_string(hasher(std::this_thread::get_id()));
-        volume.link(rootHandle, id);
+        SKV_UNUSED(volume.link(rootHandle, id));
 
         auto path = "/" + id;
 
@@ -53,19 +54,19 @@ void mtTestRoutineN1(std::reference_wrapper<Volume> v) {
 
         for (size_t i = 0; i < NRUNS; ++i) {
             if (i % 7 == 0)
-                volume.setProperty(self, std::to_string(i), Property{double(i)});
+                SKV_UNUSED(volume.setProperty(self, std::to_string(i), Property{double(i)}));
             else if (i % 5 == 0) {
-                volume.setProperty(self, std::to_string(i), Property{std::to_string(i)});
+                SKV_UNUSED(volume.setProperty(self, std::to_string(i), Property{std::to_string(i)}));
             }
             else if (i % 3 == 0) {
-                volume.setProperty(self, std::to_string(i), Property{float(i)});
+                SKV_UNUSED(volume.setProperty(self, std::to_string(i), Property{float(i)}));
             }
             else
-                volume.setProperty(self, std::to_string(i), Property{"fizz buzz"});
+                SKV_UNUSED(volume.setProperty(self, std::to_string(i), Property{"fizz buzz"}));
         }
 
-        volume.close(self);
-        volume.close(rootHandle);
+        SKV_UNUSED(volume.close(self));
+        SKV_UNUSED(volume.close(rootHandle));
     }
 }
 
@@ -138,19 +139,19 @@ void mtTestRoutineN2(std::reference_wrapper<Volume> v) {
 
         for (size_t i = 0; i < NRUNS; ++i) {
             if (i % 7 == 0)
-                volume.setProperty(self, id + std::to_string(i), Property{double(i)});
+                SKV_UNUSED(volume.setProperty(self, id + std::to_string(i), Property{double(i)}));
             else if (i % 5 == 0) {
-                volume.setProperty(self, id + std::to_string(i), Property{std::to_string(i)});
+                SKV_UNUSED(volume.setProperty(self, id + std::to_string(i), Property{std::to_string(i)}));
             }
             else if (i % 3 == 0) {
-                volume.setProperty(self, id + std::to_string(i), Property{float(i)});
+                SKV_UNUSED(volume.setProperty(self, id + std::to_string(i), Property{float(i)}));
             }
             else
-                volume.setProperty(self, id + std::to_string(i), Property{"fizz buzz"});
+                SKV_UNUSED(volume.setProperty(self, id + std::to_string(i), Property{"fizz buzz"}));
         }
 
-        volume.close(self);
-        volume.close(rootHandle);
+        SKV_UNUSED(volume.close(self));
+        SKV_UNUSED(volume.close(rootHandle));
     }
 }
 
@@ -217,7 +218,7 @@ TEST(VolumeTest, MTTestN2) {
     os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".index");
 }
 
-TEST(VolumeTest, OpenCloseLink) {
+TEST(VolumeTest, OpenCloseLinkClaim) {
     Volume volume;
 
     os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".logd");
@@ -227,6 +228,16 @@ TEST(VolumeTest, OpenCloseLink) {
 
     ASSERT_TRUE(status.isOk());
     ASSERT_TRUE(volume.initialized());
+
+    ASSERT_FALSE(volume.release(nullptr).isOk());
+    Volume::Token token = &volume;
+
+    ASSERT_TRUE(volume.claim(token).isOk());
+    ASSERT_FALSE(volume.claim(Volume::Token{}).isOk());
+    ASSERT_TRUE(volume.release(token).isOk());
+    ASSERT_FALSE(volume.release(token).isOk());
+    ASSERT_FALSE(volume.claim(Volume::Token{}).isOk());
+    ASSERT_FALSE(volume.release(Volume::Token{}).isOk());
 
     {
         auto [status, rootHandle] = volume.open("/");
@@ -248,7 +259,7 @@ TEST(VolumeTest, OpenCloseLink) {
             ASSERT_EQ(children.size(), 3);
         }
 
-        volume.close(rootHandle);
+        SKV_UNUSED(volume.close(rootHandle));
     }
 
     {
@@ -268,7 +279,7 @@ TEST(VolumeTest, OpenCloseLink) {
             ASSERT_EQ(children.size(), 2);
         }
 
-        volume.close(procHandle);
+        SKV_UNUSED(volume.close(procHandle));
     }
 
     {

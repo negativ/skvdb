@@ -2,7 +2,7 @@
 
 #include <chrono>
 #include <cstdint>
-#include <map>
+#include <unordered_map>
 #include <set>
 #include <string>
 #include <tuple>
@@ -23,7 +23,7 @@ public:
     static constexpr Handle RootHandle = 1;
 
     using Token      = void*;
-    using Properties = std::map<std::string, vfs::Property>;
+    using Properties = std::unordered_map<std::string, vfs::Property>;
     using Links      = std::set<std::string>;
     using Clock      = chrono::system_clock;
 
