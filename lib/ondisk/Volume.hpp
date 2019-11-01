@@ -7,25 +7,22 @@
 #include <string>
 #include <tuple>
 
-#include "Property.hpp"
-#include "util/Status.hpp"
+#include "vfs/Property.hpp"
+#include "vfs/IVolume.hpp"
 
 namespace skv::ondisk {
 
 using namespace skv::util;
+using namespace skv::vfs;
+
 namespace chrono = std::chrono;
 
-class Volume final {
+class Volume final: public vfs::IVolume {
     struct Impl;
 
 public:
-    using Handle = std::uint64_t;
-
-    static constexpr Handle InvalidHandle = 0;
-    static constexpr Handle RootHandle = 1;
-
     Volume();
-    ~Volume() noexcept;
+    ~Volume() noexcept override;
 
     Volume(const Volume&) = delete;
     Volume& operator=(const Volume&) = delete;
@@ -33,24 +30,29 @@ public:
     Volume(Volume&&) = delete;
     Volume& operator=(Volume&&) = delete;
 
-    Status initialize(std::string_view directory, std::string_view volumeName);
-    Status deinitialize();
-    bool initialized() const noexcept;
+    // vfs::IVolume interface
+    Status initialize(std::string_view directory, std::string_view volumeName) override;
+    Status deinitialize() override;
+    bool initialized() const noexcept override;
 
-    std::tuple<Status, Handle> open(std::string_view path);
-    Status close(Handle h);
+    std::tuple<Status, Handle> open(std::string_view path) override;
+    Status close(Handle handle) override;
 
-    std::tuple<Status, std::set<std::string>> properties(Handle h);
-    std::tuple<Status, Property> property(Handle h, std::string_view name);
-    Status setProperty(Handle h, std::string_view name, const Property& value);
-    Status removeProperty(Handle h, std::string_view name);
-    std::tuple<Status, bool> hasProperty(Handle h, std::string_view name);
-    Status expireProperty(Handle h, std::string_view name, chrono::system_clock::time_point tp);
-    Status cancelPropertyExpiration(Handle h, std::string_view name);
+    std::tuple<Status, Properties> properties(Handle handle) override;
+    std::tuple<Status, Property> property(Handle h, std::string_view name) override;
+    Status setProperty(Handle h, std::string_view name, const Property& value) override;
+    Status removeProperty(Handle h, std::string_view name) override;
+    std::tuple<Status, bool> hasProperty(Handle h, std::string_view name) override;
+    Status expireProperty(Handle h, std::string_view name, chrono::system_clock::time_point tp) override;
+    Status cancelPropertyExpiration(Handle h, std::string_view name) override;
 
-    std::tuple<Status, std::set<std::string>> links(Handle h);
-    Status link(Handle h, std::string_view name);
-    Status unlink(Handle h, std::string_view path);
+    std::tuple<Status, Links> links(Handle handle) override;
+    Status link(Handle h, std::string_view name) override;
+    Status unlink(Handle h, std::string_view path) override;
+
+    Status claim(Token token) noexcept override;
+    Status release(Token token) noexcept override;
+
 private:
     std::unique_ptr<Impl> impl_;
 };

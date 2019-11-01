@@ -20,7 +20,13 @@ namespace skv::ondisk {
 struct Volume::Impl {
     static constexpr std::size_t PATH_MRU_CACHE_SIZE = 1024;
 
-    using storage_type       = Storage<Volume::Handle>;
+    using storage_type       = Storage<Volume::Handle,          // key type
+                                       std::uint32_t,           // block index type
+                                       std::uint32_t,           // bytes count in one record (4GB now)
+                                       Volume::Properties,      // type of properties container
+                                       Volume::Clock,           // type of used clock (system/steady,etc.)
+                                       Volume::InvalidHandle,   // key value of invalid entry
+                                       Volume::RootHandle>;     // key value of root entry
     using entry_type         = storage_type::entry_type;
     using cb_type            = ControlBlock<entry_type>;
     using cb_ptr_type        = cb_type::ptr;
@@ -123,7 +129,7 @@ struct Volume::Impl {
         return {Status::Ok(), ret};
     }
 
-    std::tuple<Status, std::set<std::string> > properties(Volume::Handle handle) {
+    std::tuple<Status, Volume::Properties> properties(Volume::Handle handle) {
         auto cb = getControlBlock(handle);
 
         if (!cb)
@@ -131,7 +137,7 @@ struct Volume::Impl {
 
         std::shared_lock locker(cb->xLock());
 
-        return {Status::Ok(), cb->entry().propertiesSet()};
+        return {Status::Ok(), cb->entry().properties()};
     }
 
     std::tuple<Status, Property> property(Volume::Handle handle, std::string_view name) {
@@ -493,18 +499,18 @@ Status Volume::close(Volume::Handle d) {
     return impl_->close(d);
 }
 
-std::tuple<Status, std::set<std::string> > Volume::links(Volume::Handle h) {
+std::tuple<Status, Volume::Links> Volume::links(Volume::Handle h) {
     if (!initialized())
         return {Status::InvalidOperation("Volume not opened"), {}};
 
     return impl_->children(h);
 }
 
-std::tuple<Status, std::set<std::string> > Volume::properties(Volume::Handle h) {
+std::tuple<Status, Volume::Properties > Volume::properties(Volume::Handle handle) {
     if (!initialized())
         return {Status::InvalidOperation("Volume not opened"), {}};
 
-    return impl_->properties(h);
+    return impl_->properties(handle);
 }
 
 std::tuple<Status, Property> Volume::property(Volume::Handle h, std::string_view name) {
@@ -561,6 +567,14 @@ Status Volume::unlink(Handle h, std::string_view name) {
         return Status::InvalidOperation("Volume not opened");
 
     return impl_->removeChild(h, name);
+}
+
+Status Volume::claim(IVolume::Token token) noexcept {
+
+}
+
+Status Volume::release(IVolume::Token token) noexcept {
+
 }
 
 

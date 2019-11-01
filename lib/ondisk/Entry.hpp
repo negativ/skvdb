@@ -30,17 +30,33 @@ namespace chrono = std::chrono;
 using namespace skv::util;
 
 template <typename Key,
-          std::decay_t<Key> TInvalidKey = 0,
-          typename PropertyName = std::string,
-          typename PropertyValue = Property,
-          typename PropertyContainer = std::map<std::decay_t<PropertyName>, std::decay_t<PropertyValue>>, // maybe btree_map is better choice
-          typename ClockType = chrono::system_clock>
+          typename PropertyContainer,
+          typename ClockType,
+          Key      TInvalidKey>
+class Entry;
+
+template <typename Key,
+          typename PropertyContainer,
+          typename ClockType,
+          Key      TInvalidKey>
+inline std::ostream& operator<<(std::ostream& _os, const Entry<Key, PropertyContainer, ClockType,TInvalidKey > & p);
+
+template <typename Key,
+          typename PropertyContainer,
+          typename ClockType,
+          Key      TInvalidKey>
+inline std::istream& operator>>(std::istream& _is, Entry<Key, PropertyContainer, ClockType,TInvalidKey > & p);
+
+template <typename Key,
+          typename PropertyContainer = std::map<std::string, Property>, // maybe btree_map is better choice
+          typename ClockType = chrono::system_clock,
+          Key      TInvalidKey = 0>
 class Entry final {
 public:
     using key_type              = std::decay_t<Key>;
     using prop_container_type   = std::decay_t<PropertyContainer>;
     using prop_name_type        = std::decay_t<typename prop_container_type::key_type>;
-    using prop_value_type       = std::decay_t<PropertyValue>;
+    using prop_value_type       = std::decay_t<typename prop_container_type::mapped_type>;
     using child_type            = std::pair<prop_name_type, key_type>;
     using children_type         = std::set<child_type>;
     using clock_type            = std::decay_t<ClockType>;
@@ -168,12 +184,12 @@ public:
         return  Status::Ok();
     }
 
-    [[nodiscard]] std::set<prop_name_type> propertiesSet() const {
-        std::set<prop_name_type> ret;
+    [[nodiscard]] prop_container_type properties() const {
+        prop_container_type ret;
 
         for (const auto& [prop, value] : impl_->properties_) { // rewritten to cycle after profiling
             if (!propertyExpired(prop))
-                ret.insert(prop);
+                ret[prop] = value;
         }
 
         return ret;
@@ -244,11 +260,9 @@ public:
     }
 
 private:
-    template <typename K, K IK, typename PN, typename PV, typename PC>
-    friend std::istream& operator>>(std::istream& _is, Entry<K, IK, PN, PV, PC> & p) ;
+    friend std::ostream& operator<< <Key, PropertyContainer, ClockType,TInvalidKey>(std::ostream& _os, const Entry& p);
+    friend std::istream& operator>> <Key, PropertyContainer, ClockType,TInvalidKey>(std::istream& _is, Entry& p);
 
-    template <typename K, K IK, typename PN, typename PV, typename PC>
-    friend std::ostream& operator<<(std::ostream& _os, const Entry<K, IK, PN, PV, PC> & p) ;
 
     void setParent(key_type p) noexcept {
         impl_->parent_ = p;
@@ -325,14 +339,13 @@ private:
 };
 
 template <typename Key,
-          Key TInvalidKey,
-          typename PropertyName,
-          typename PropertyValue,
-          typename PropertyContainer>
-inline std::istream& operator>>(std::istream& _is, Entry<Key, TInvalidKey, PropertyName, PropertyValue, PropertyContainer> & p) {
+          typename PropertyContainer,
+          typename ClockType,
+          Key      TInvalidKey>
+inline std::istream& operator>>(std::istream& _is, Entry<Key, PropertyContainer, ClockType, TInvalidKey> & p) {
     namespace be = boost::endian;
 
-    using E = Entry<Key, TInvalidKey, PropertyName, PropertyValue, PropertyContainer>;
+    using E = Entry<Key, PropertyContainer, ClockType, TInvalidKey>;
 
     Deserializer ds{_is};
 
@@ -401,13 +414,11 @@ inline std::istream& operator>>(std::istream& _is, Entry<Key, TInvalidKey, Prope
 }
 
 template <typename Key,
-          Key TInvalidKey,
-          typename PropertyName,
-          typename PropertyValue,
-          typename PropertyContainer>
-inline std::ostream& operator<<(std::ostream& _os, const Entry<Key, TInvalidKey, PropertyName, PropertyValue, PropertyContainer> & p) {
-    namespace be = boost::endian;
-    using E = Entry<Key, TInvalidKey, PropertyName, PropertyValue, PropertyContainer>;
+          typename PropertyContainer,
+          typename ClockType,
+          Key      TInvalidKey>
+inline std::ostream& operator<<(std::ostream& _os, const Entry<Key, PropertyContainer, ClockType,TInvalidKey> & p) {
+    using E = Entry<Key, PropertyContainer, ClockType, TInvalidKey>;
 
     const_cast<E&>(p).doPropertyCleanup();
 

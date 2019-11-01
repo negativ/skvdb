@@ -169,7 +169,7 @@ TEST(EntryTest, PropertyTest) {
     root.setProperty("test_int_prop", Property{123});
     root.setProperty("test_double_prop", Property{8090.0});
 
-    auto props = root.propertiesSet();
+    auto props = root.properties();
 
     ASSERT_EQ(props.size(), 3);
     ASSERT_TRUE(props.find("test_str_prop") != std::end(props));
@@ -208,7 +208,7 @@ TEST(EntryTest, PropertyTest) {
     ASSERT_TRUE(root.removeProperty("test_int_prop").isOk());
     ASSERT_TRUE(root.removeProperty("test_double_prop").isOk());
 
-    props = root.propertiesSet();
+    props = root.properties();
 
     ASSERT_TRUE(props.empty());
 

@@ -20,22 +20,26 @@
 
 namespace skv::ondisk {
 
-template <typename Key          = std::uint64_t,
-          typename BlockIndex   = std::uint32_t,
-          typename BytesCount   = std::uint32_t>
+template <typename KeyT          = std::uint64_t,
+          typename BlockIndexT   = std::uint32_t,
+          typename BytesCountT   = std::uint32_t,
+          typename PropContainerT= std::map<std::string, Property>,
+          typename ClockT        = std::chrono::system_clock,
+          KeyT _InvalidKey       = 0,
+          KeyT _RootKey          = 1>
 class Storage final {
 public:
-    using key_type          = std::decay_t<Key>;
+    using key_type          = std::decay_t<KeyT>;
 
-    static constexpr key_type InvalidEntryId = 0;
-    static constexpr key_type RootEntryId = 1;
+    static constexpr key_type InvalidEntryId = _InvalidKey;
+    static constexpr key_type RootEntryId = _RootKey;
 
-    using block_index_type  = std::decay_t<BlockIndex>;
-    using bytes_count_type  = std::decay_t<BytesCount>;
+    using block_index_type  = std::decay_t<BlockIndexT>;
+    using bytes_count_type  = std::decay_t<BytesCountT>;
     using index_table_type  = IndexTable<key_type, block_index_type, bytes_count_type>;
     using index_record_type = typename index_table_type::index_record_type;
     using log_device_type   = LogDevice<block_index_type, block_index_type, std::string>;
-    using entry_type        = Entry<key_type, InvalidEntryId>;
+    using entry_type        = Entry<key_type, PropContainerT, ClockT, InvalidEntryId>;
 
     static_assert (std::is_integral_v<key_type>, "Key type should be integral");
     static_assert (std::is_unsigned_v<block_index_type>, "Block index type should be unsigned");

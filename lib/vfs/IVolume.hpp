@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <map>
 #include <set>
 #include <string>
 #include <tuple>
@@ -21,8 +22,13 @@ public:
     static constexpr Handle InvalidHandle = 0;
     static constexpr Handle RootHandle = 1;
 
-    IVolume();
-    virtual ~IVolume() noexcept;
+    using Token      = void*;
+    using Properties = std::map<std::string, vfs::Property>;
+    using Links      = std::set<std::string>;
+    using Clock      = chrono::system_clock;
+
+    IVolume() noexcept = default;
+    virtual ~IVolume() noexcept = default;
 
     IVolume(const IVolume&) = delete;
     IVolume& operator=(const IVolume&) = delete;
@@ -31,121 +37,136 @@ public:
     IVolume& operator=(IVolume&&) = delete;
 
     /**
-     * @brief initialize
-     * @param directory
-     * @param volumeName
-     * @return
+     * @brief Initialize volume "volumeName" in directory "directory"
+     * @param directory - volume location (directory)
+     * @param volumeName - volume name
+     * @return Status::Ok() on success
      */
-    virtual Status initialize(std::string_view directory, std::string_view volumeName) = 0;
+    [[nodiscard]] virtual Status initialize(std::string_view directory, std::string_view volumeName) = 0;
 
     /**
-     * @brief deinitialize
+     * @brief Deinitialize volume
      * @return
      */
-    virtual Status deinitialize() = 0;
+    [[nodiscard]] virtual Status deinitialize() = 0;
 
     /**
-     * @brief initialized
+     * @brief Check volume is initialized
      * @return
      */
-    virtual bool initialized() const noexcept  = 0;
-
-
-    /**
-     * @brief open
-     * @param path
-     * @return
-     */
-    virtual std::tuple<Status, Handle> open(std::string_view path) = 0;
-
-    /**
-     * @brief close
-     * @param h
-     * @return
-     */
-    virtual Status close(Handle h) = 0;
+    [[nodiscard]] virtual bool initialized() const noexcept  = 0;
 
 
     /**
-     * @brief properties
-     * @param h
-     * @return
+     * @brief Open volume entry
+     * @param path - virtual path
+     * @return {Status::Ok(), handle} on success
      */
-    virtual std::tuple<Status, std::set<std::string>> properties(Handle h) = 0;
+    [[nodiscard]] virtual std::tuple<Status, Handle> open(std::string_view path) = 0;
 
     /**
-     * @brief property
-     * @param h
-     * @param name
-     * @return
+     * @brief Close opened volume entry
+     * @param handle - entry
+     * @return Status::Ok() on success
      */
-    virtual std::tuple<Status, Property> property(Handle h, std::string_view name) = 0;
-
-    /**
-     * @brief setProperty
-     * @param h
-     * @param name
-     * @param value
-     * @return
-     */
-    virtual Status setProperty(Handle h, std::string_view name, const Property& value) = 0;
-
-    /**
-     * @brief removeProperty
-     * @param h
-     * @param name
-     * @return
-     */
-    virtual Status removeProperty(Handle h, std::string_view name) = 0;
-
-    /**
-     * @brief hasProperty
-     * @param h
-     * @param name
-     * @return
-     */
-    virtual std::tuple<Status, bool> hasProperty(Handle h, std::string_view name) = 0;
-
-    /**
-     * @brief expireProperty
-     * @param h
-     * @param name
-     * @param tp
-     * @return
-     */
-    virtual Status expireProperty(Handle h, std::string_view name, chrono::system_clock::time_point tp) = 0;
-
-    /**
-     * @brief cancelPropertyExpiration
-     * @param h
-     * @param name
-     * @return
-     */
-    virtual Status cancelPropertyExpiration(Handle h, std::string_view name) = 0;
+    [[nodiscard]] virtual Status close(Handle handle) = 0;
 
 
     /**
-     * @brief links
-     * @param h
-     * @return
+     * @brief Get all entry properties
+     * @param handle - entry
+     * @return {Status::Ok(), Properties} on success
      */
-    virtual std::tuple<Status, std::set<std::string>> links(Handle h) = 0;
+    [[nodiscard]] virtual std::tuple<Status, Properties> properties(Handle handle) = 0;
 
     /**
-     * @brief link
-     * @param h
-     * @param name
-     * @return
+     * @brief Get specified property
+     * @param handle - entry
+     * @param propName - property name
+     * @return {Status::Ok(), property} on success
      */
-    virtual Status link(Handle h, std::string_view name) = 0;
+    [[nodiscard]] virtual std::tuple<Status, Property> property(Handle handle, std::string_view propName) = 0;
 
     /**
-     * @brief unlink
-     * @param h
-     * @param path
+     * @brief Set specified property
+     * @param handle - entry
+     * @param propName - property name
+     * @param value - property value
+     * @return Status::Ok() on success
+     */
+    [[nodiscard]] virtual Status setProperty(Handle handle, std::string_view propName, const Property& value) = 0;
+
+    /**
+     * @brief Remove specified property
+     * @param handle - entry
+     * @param propName - property name
+     * @return Status::Ok() on success
+     */
+    [[nodiscard]] virtual Status removeProperty(Handle handle, std::string_view propName) = 0;
+
+    /**
+     * @brief Remove specified property exists
+     * @param handle - entry
+     * @param propName - property name
+     * @return {Status::Ok(), exists flag} on success
+     */
+    [[nodiscard]] virtual std::tuple<Status, bool> hasProperty(Handle handle, std::string_view propName) = 0;
+
+    /**
+     * @brief Remove property at specified time point
+     * @param handle - entry
+     * @param propName - property name
+     * @param tp - time point
+     * @return Status::Ok() on success
+     */
+    [[nodiscard]] virtual Status expireProperty(Handle handle, std::string_view propName, Clock::time_point tp) = 0;
+
+    /**
+     * @brief Cancel property expiration
+     * @param handle - entry
+     * @param propName - property name
+     * @return Status::Ok() on success
+     */
+    [[nodiscard]] virtual Status cancelPropertyExpiration(Handle handle, std::string_view propName) = 0;
+
+
+    /**
+     * @brief Get linked entries names
+     * @param handle - entry
+     * @return {Status::Ok(), links} on success
+     */
+    [[nodiscard]] virtual std::tuple<Status, Links> links(Handle handle) = 0;
+
+    /**
+     * @brief Create new link
+     * @param handle - entry in which link will be created
+     * @param name - name of created link
+     * @return Status::Ok() on success
+     */
+    [[nodiscard]] virtual Status link(Handle h, std::string_view name) = 0;
+
+    /**
+     * @brief Remove specified link
+     * @param handle - entry
+     * @param name - name of link to remove
+     * @return Status::Ok() on success
+     */
+    [[nodiscard]] virtual Status unlink(Handle h, std::string_view name) = 0;
+
+
+    /**
+     * @brief Claiming by VFS. Can be called more than once
+     * @param token
+     * @return Status::Ok() on success
+     */
+    [[nodiscard]] virtual Status claim(Token token) noexcept = 0;
+
+    /**
+     * @brief Realising volume by VFS. If call count to release() eq. count of claim()'s then volume can be used by another VFS instance
+     * @param token
      * @return
      */
-    virtual Status unlink(Handle h, std::string_view path) = 0;
+    [[nodiscard]] virtual Status release(Token token) noexcept = 0;
 };
 
 }
