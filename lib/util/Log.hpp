@@ -60,8 +60,8 @@ private:
         if constexpr (std::is_same_v<std::string, std::decay_t<T>>) {
             return arg;
         }
-
-        return std::to_string(arg) + " ";
+        else
+            return std::to_string(arg) + " ";
     }
 
     static inline std::string to_string(const char *str) {

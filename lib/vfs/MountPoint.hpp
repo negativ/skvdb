@@ -18,20 +18,21 @@
 namespace skv::vfs::mount {
 
 namespace tags {
-    struct ByEntry{};
-    struct ByMountPoint{};
-    struct ByPathAndVolume{};
+    struct ByAllRA{};       // For random-access
+    struct ByMountPath{};   // For mount path search
+    struct ByAll{};         // For search by mount path & volume & entry path
 }
 
 using namespace boost::multi_index;
 
 using Points = multi_index_container<Entry,
-                                     indexed_by<random_access<tag<tags::ByEntry>>,
-                                                ordered_non_unique<tag<tags::ByMountPoint>,
+                                     indexed_by<random_access<tag<tags::ByAllRA>>,
+                                                ordered_non_unique<tag<tags::ByMountPath>,
                                                                    const_mem_fun<Entry, std::string, &Entry::mountPath>>,
-                                                hashed_unique<tag<tags::ByPathAndVolume>,
+                                                hashed_unique<tag<tags::ByAll>,
                                                               composite_key<Entry,
                                                                             const_mem_fun<Entry, std::string, &Entry::entryPath>,
-                                                                            const_mem_fun<Entry, IVolumePtr, &Entry::volume>>>>>;
+                                                                            const_mem_fun<Entry, IVolumePtr, &Entry::volume>,
+                                                                            const_mem_fun<Entry, std::string, &Entry::mountPath>>>>>;
 
 }

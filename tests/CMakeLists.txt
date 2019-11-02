@@ -57,3 +57,8 @@ add_test(skv-volume-test skv-volume-test)
 add_executable(skv-mru-test skv-mru-test.cpp)
 target_link_libraries(skv-mru-test ${LIBS} skv)
 add_test(skv-mru-test skv-mru-test)
+
+add_executable(skv-vfsstorage-test skv-vfsstorage-test.cpp)
+target_link_libraries(skv-vfsstorage-test ${LIBS} skv)
+add_test(skv-vfsstorage-test skv-vfsstorage-test)
+

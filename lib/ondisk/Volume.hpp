@@ -51,4 +51,6 @@ private:
     std::unique_ptr<Impl> impl_;
 };
 
+IVolumePtr make_ondisk_volume();
+
 }

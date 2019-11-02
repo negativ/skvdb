@@ -11,32 +11,26 @@ struct Entry::Impl {
     std::string entryPath_;
     IVolumePtr volume_;
     IVolume::Handle handle_;
+    Entry::Priority priority_;
 };
 
-Entry::Entry(std::string_view mountPath, std::string_view entryPath, IVolumePtr volume):
+Entry::Entry(std::string_view mountPath, std::string_view entryPath, IVolumePtr volume, Priority prio):
     impl_{new Impl{util::simplifyPath(mountPath),
                    util::simplifyPath(entryPath),
                    volume,
-                   IVolume::InvalidHandle}}
+                   IVolume::InvalidHandle,
+                   prio}}
 {
-    if (volume) {
-        auto [status, handle] = volume->open(impl_->entryPath_);
 
-        if (status.isOk())
-            impl_->handle_ = handle;
-    }
 }
 
 Entry::~Entry() noexcept {
-    if (valid())
-        SKV_UNUSED(impl_->volume_->close(impl_->handle_));
 }
 
 Entry::Entry(const Entry& other) {
     using std::swap;
 
-    auto copy = std::make_unique<Impl>();
-    *copy = *other.impl_;
+    auto copy = std::make_unique<Impl>(*other.impl_);
 
     swap(impl_, copy);
 }
@@ -44,8 +38,7 @@ Entry::Entry(const Entry& other) {
 Entry& Entry::operator=(const Entry& other) {
     using std::swap;
 
-    auto copy = std::make_unique<Impl>();
-    *copy = *other.impl_;
+    auto copy = std::make_unique<Impl>(*other.impl_);
 
     swap(impl_, copy);
 
@@ -83,7 +76,29 @@ IVolume::Handle Entry::handle() const noexcept {
     return impl_->handle_;
 }
 
-bool Entry::valid() const noexcept {
+Entry::Priority Entry::priority() const noexcept {
+    return impl_->priority_;
+}
+
+bool Entry::open() {
+    if (impl_->volume_) {
+        auto [status, handle] = impl_->volume_->open(impl_->entryPath_);
+
+        if (status.isOk())
+            impl_->handle_ = handle;
+
+        return status.isOk();
+    }
+
+    return false;
+}
+
+void Entry::close() {
+    if (opened())
+        SKV_UNUSED(impl_->volume_->close(impl_->handle_));
+}
+
+bool Entry::opened() const noexcept {
     return impl_->handle_ != IVolume::InvalidHandle;
 }
 

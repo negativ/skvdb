@@ -1,8 +1,10 @@
 #pragma once
 
+#include <limits>
 #include <memory>
 
 #include "IVolume.hpp"
+#include "MountPointEntry.hpp"
 
 namespace skv::vfs {
 
@@ -16,8 +18,12 @@ public:
     using Properties = IVolume::Properties;
     using Links      = IVolume::Links;
     using Clock      = IVolume::Clock;
+    using Priority   = mount::Entry::Priority;
 
-    static constexpr Handle InvalidHandle = IVolume::InvalidHandle;
+    static constexpr Handle   InvalidHandle     = IVolume::InvalidHandle;
+    static constexpr Priority MaxPriority       = mount::Entry::MaxPriority;
+    static constexpr Priority MinPriority       = mount::Entry::MinPriority;
+    static constexpr Priority DefaultPriority   = mount::Entry::DefaultPriority;
 
     Storage();
     ~Storage() noexcept;
@@ -120,6 +126,11 @@ public:
      * @return Status::Ok() on success
      */
     [[nodiscard]] Status unlink(Handle h, std::string_view name);
+
+
+    Status mount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath, Priority prio = DefaultPriority);
+
+    Status unmount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath);
 
 private:
     std::unique_ptr<Impl> impl_;

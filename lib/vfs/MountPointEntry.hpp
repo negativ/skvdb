@@ -1,5 +1,6 @@
 #pragma once
 
+#include <limits>
 #include <memory>
 #include <string>
 
@@ -11,7 +12,13 @@ class Entry final {
     struct Impl;
 
 public:
-    Entry(std::string_view mountPath, std::string_view entryPath, IVolumePtr volume);
+    using Priority = std::size_t;
+
+    static constexpr Priority MaxPriority       = std::numeric_limits<Priority>::max();
+    static constexpr Priority MinPriority       = std::numeric_limits<Priority>::min();
+    static constexpr Priority DefaultPriority   = MinPriority + 1;
+
+    Entry(std::string_view mountPath, std::string_view entryPath, IVolumePtr volume, Priority prio = DefaultPriority);
     ~Entry() noexcept;
 
     Entry(const Entry& other);
@@ -45,10 +52,27 @@ public:
     IVolume::Handle handle() const noexcept;
 
     /**
-     * @brief Does mount entry valid
+     * @brief Entry priority
      * @return
      */
-    bool valid() const noexcept;
+    Priority priority() const noexcept;
+
+    /**
+     * @brief Trying to open entry
+     * @return
+     */
+    bool open();
+
+    /**
+     * @brief Closes entry
+     */
+    void close();
+
+    /**
+     * @brief opened
+     * @return
+     */
+    bool opened() const noexcept;
 
 private:
     std::unique_ptr<Impl> impl_;
