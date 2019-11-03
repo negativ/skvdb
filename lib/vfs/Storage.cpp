@@ -26,6 +26,32 @@ namespace skv::vfs {
 
 using namespace skv::util;
 
+template <class IIt, class OIt, class UnaryOp, class Pred>
+OIt transform_future_if(IIt start, IIt stop, OIt result, Pred pred, UnaryOp op) {
+    while (start != stop) {
+        auto&& ret = (*start).get();
+
+        if (pred(ret)) {
+            *result = std::move(op(std::move(ret)));
+            ++result;
+        }
+        ++start;
+    }
+
+    return result;
+}
+
+template <class IIt, class OIt, class UnaryOp>
+OIt transform_future(IIt start, IIt stop, OIt result, UnaryOp op) {
+    while (start != stop) {
+        *result = std::move(op(std::move((*start).get())));
+        ++result;
+        ++start;
+    }
+
+    return result;
+}
+
 using VirtualEntries = std::vector<VirtualEntry>;
 
 struct Storage::Impl {
@@ -42,15 +68,13 @@ struct Storage::Impl {
         auto& index = mpoints_.get<mount::tags::ByMountPath>();
         auto [start, stop] = index.equal_range(util::to_string(mountPath));
         auto subvpath = vpath.substr(mountPath.size(), vpath.size() - mountPath.size()); // extracting subpath from vpath
-
-        Storage::Handle vhandle = newHandle();
         std::vector<future_result_t> results;
 
         std::transform(start, stop,
                        std::back_inserter(results),
-                       [&](auto&& entry) {
+                       [subvpath](auto&& entry) {
                            return std::async(std::launch::async, [=]() -> result_t {
-                               auto volume = entry.volume();
+                               auto volume  = entry.volume();
                                auto subpath = simplifyPath(entry.entryPath() + "/" + subvpath);
                                auto [status, handle] = volume->open(subpath);
 
@@ -61,30 +85,36 @@ struct Storage::Impl {
                            });
                        });
 
-        for (auto& result: results) {
-            auto [status, ventry] = result.get();
+        VirtualEntries openedEntries;
 
-            if (status.isOk())
-                addVirtualEntry(vhandle, ventry);
-        }
+        transform_future_if(std::begin(results), std::end(results),
+                            std::back_inserter(openedEntries),
+                            [](const auto& t) {
+                                const auto& [status, unused] = t;
+                                return status.isOk();
+                            },
+                            [](auto&& t) {
+                                auto&& [unused, ventry] = t;
+                                return ventry;
+                            } );
 
-        if (!hasVirtualEntries(vhandle))
+        if (openedEntries.empty())
             return {Status::InvalidArgument("No such path"), Storage::InvalidHandle};
 
-        return {Status::Ok(), vhandle};
+        return {Status::Ok(), addVirtualEntries(std::move(openedEntries))};
     }
 
     Status close(Storage::Handle handle) {
         using result_t = Status;
         using future_result_t = std::future<result_t>;
 
-        if (hasVirtualEntries(handle))
-            return Status::InvalidArgument("No such entry");
+        const auto& [status, ventries] = getVirtualEntries(handle);
 
-        auto& entries = ventries_[handle];
+        if (!status.isOk())
+            return status;
+
         std::vector<future_result_t> results;
-
-        std::transform(std::begin(entries), std::end(entries),
+        std::transform(std::begin(ventries), std::end(ventries),
                        std::back_inserter(results),
                        [&](auto&& entry) {
                            return std::async(std::launch::async, [=]() -> result_t {
@@ -97,25 +127,103 @@ struct Storage::Impl {
                            });
                        });
 
-        bool ret = true;
+        std::vector<bool> statuses;
+        transform_future(std::begin(results), std::end(results),
+                         std::back_inserter(statuses),
+                         [](auto&& status) { return status.isOk(); });
 
-        for (auto& result: results) {
-            auto status = result.get();
+        removeVirtualEntries(handle);
 
-            ret = ret &&  status.isOk();
-        }
-
-        removeVirtualEntry(handle);
+        auto ret = std::none_of(std::cbegin(statuses), std::cend(statuses), std::logical_not<bool>());
 
         return ret? Status::Ok() : Status::InvalidOperation("Unable to close handle of all volumes");
     }
 
-    std::tuple<Status, Storage::Properties > properties(Storage::Handle handle) {
-        return {Status::Ok(), {}};
+    std::tuple<Status, Storage::Properties> properties(Storage::Handle handle) {
+        using result_t = std::tuple<Status, Storage::Properties>;
+        using future_result_t = std::future<result_t>;
+
+        const auto& [status, ventries] = getVirtualEntries(handle);
+
+        if (!status.isOk())
+            return {status, {}};
+
+        std::vector<future_result_t> futresults;
+        std::transform(std::begin(ventries), std::end(ventries),
+                       std::back_inserter(futresults),
+                       [&](auto&& entry) {
+                           return std::async(std::launch::async, [=]() -> result_t {
+                               auto volume = entry.volume();
+
+                               if (auto volume = entry.volume().lock(); volume)
+                                   return volume->properties(entry.handle());
+
+                               return {Status::InvalidArgument("Invalid volume"), {}};
+                           });
+                       });
+
+        std::vector<result_t> results;
+        transform_future_if(std::begin(futresults), std::end(futresults),
+                            std::back_inserter(results),
+                            [](const auto& t) {
+                                const auto& [status, unused] = t;
+                                return status.isOk();
+                            },
+                            [](auto&& res) { return std::move(res); });
+
+        if (results.size() != futresults.size())
+            return {Status::InvalidArgument("Unable to fetch properties from all volumes"), {}};
+
+        Storage::Properties ret;
+
+        for (auto&& [status, props] : results) {
+            for (auto&& [prop, value] : props) {
+                if (auto it = ret.find(prop); it == std::cend(ret))
+                    ret.emplace(std::move(prop), std::move(value));
+            }
+        }
+
+        return {Status::Ok(), ret};
     }
 
     std::tuple<Status, Property> property(Storage::Handle handle, std::string_view name) {
-        return {Status::Ok(), {}};
+        using result_t = std::tuple<Status, Property>;
+        using future_result_t = std::future<result_t>;
+
+        const auto& [status, ventries] = getVirtualEntries(handle);
+
+        if (!status.isOk())
+            return {status, {}};
+
+        std::vector<future_result_t> futresults;
+        std::transform(std::begin(ventries), std::end(ventries),
+                       std::back_inserter(futresults),
+                       [name](auto&& entry) {
+                           return std::async(std::launch::async, [=]() -> result_t {
+                               auto volume = entry.volume();
+
+                               if (auto volume = entry.volume().lock(); volume)
+                                   return volume->property(entry.handle(), name);
+
+                               return {Status::InvalidArgument("Invalid volume"), {}};
+                           });
+                       });
+
+        std::vector<result_t> results;
+        transform_future_if(std::begin(futresults), std::end(futresults),
+            std::back_inserter(results),
+            [](const auto& t) {
+                const auto& [status, unused] = t;
+                return status.isOk();
+            },
+            [](auto&& res) { return std::move(res); });
+
+        if (results.empty())
+            return {Status::InvalidArgument("No such property"), {}};
+
+        auto [unused, value] = results.front(); // property from volume with highest priority
+
+        return {Status::Ok(), value};
     }
 
     Status setProperty(Storage::Handle handle, std::string_view name, const Property &value) {
@@ -152,23 +260,30 @@ struct Storage::Impl {
         return {Status::NotFound("Unable to find mount point"), {}};
     }
 
-    bool addVirtualEntry(Storage::Handle handle, VirtualEntry entry) {
-        auto& entries = ventries_[handle];
+    Storage::Handle addVirtualEntries(VirtualEntries&& ventries) {
+        // TODO: lock
+        auto handle = newHandle();
 
-        entries.insert(std::lower_bound(std::cbegin(entries), std::cend(entries),
-                                        entry, std::greater<VirtualEntry>()),
-                       entry);
+        std::sort(std::begin(ventries), std::end(ventries), std::greater<VirtualEntry>()); //sort from high priority to low
 
-        return  true;
+        if (ventries_.emplace(handle, ventries).second)
+            return handle;
+
+        return Storage::InvalidHandle;
     }
 
-    bool hasVirtualEntries(Storage::Handle handle) const {
+    std::tuple<Status, VirtualEntries> getVirtualEntries(Storage::Handle handle) const {
+        // TODO: lock
         auto it = ventries_.find(handle);
 
-        return (it != std::cend(ventries_));
+        if (it == std::cend(ventries_))
+            return {Status::InvalidArgument("No such handle"), {}};
+
+        return {Status::Ok(), it->second};
     }
 
-    void removeVirtualEntry(Storage::Handle handle) {
+    void removeVirtualEntries(Storage::Handle handle) {
+        // TODO: lock
         auto it = ventries_.find(handle);
 
         if (it != std::end(ventries_))
@@ -176,12 +291,12 @@ struct Storage::Impl {
     }
 
     Storage::Handle newHandle() noexcept {
-        return ++currentHandle_;
+        return currentHandle_.fetch_add(1);
     }
 
     mount::Points mpoints_{};
     std::unordered_map<Storage::Handle, VirtualEntries> ventries_;
-    Storage::Handle currentHandle_{1};
+    std::atomic<Storage::Handle> currentHandle_{IVolume::RootHandle + 1};
 };
 
 Storage::Storage():

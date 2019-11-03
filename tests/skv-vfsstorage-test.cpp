@@ -138,10 +138,17 @@ TEST_F(VFSStorageTest, MountUnmoutTest) {
 TEST_F(VFSStorageTest, OpenCloseTest) {
     doMounts();
 
-    auto [status, handle] = storage_.open("/");
+    std::vector<std::string> openPaths = {"/",
+                                          "/volume1_a/b",   "/volume2_f/g",
+                                          "/volume1_c",     "/volume1_c/d/e",
+                                          "/volume2_f",     "/volume2_f/g"};
 
-    ASSERT_TRUE(status.isOk());
-    ASSERT_TRUE(storage_.close(handle).isOk());
+    for (const auto& p : openPaths) {
+        auto [status, handle] = storage_.open(p);
+
+        ASSERT_TRUE(status.isOk());
+        ASSERT_TRUE(storage_.close(handle).isOk());
+    }
 
     doUnmounts();
 }
