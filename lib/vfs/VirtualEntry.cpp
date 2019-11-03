@@ -11,6 +11,8 @@ struct VirtualEntry::Impl {
     VirtualEntry::Priority priority_;
 };
 
+VirtualEntry::VirtualEntry() noexcept = default;
+
 VirtualEntry::VirtualEntry(std::string_view entryPath, IVolumeWPtr volume, IVolume::Handle handle, VirtualEntry::Priority prio):
     impl_{new Impl{util::to_string(entryPath), volume, handle, prio}}
 {
@@ -74,6 +76,10 @@ bool VirtualEntry::valid() const noexcept {
 
 bool VirtualEntry::operator<(const VirtualEntry& other) const noexcept {
     return priority() < other.priority();
+}
+
+bool VirtualEntry::operator>(const VirtualEntry& other) const noexcept {
+    return priority() > other.priority();
 }
 
 }

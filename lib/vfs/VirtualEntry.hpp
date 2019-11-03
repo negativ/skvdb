@@ -15,6 +15,7 @@ class VirtualEntry final {
 public:
     using Priority = mount::Entry::Priority;
 
+    VirtualEntry() noexcept;
     VirtualEntry(std::string_view entryPath, IVolumeWPtr volume, IVolume::Handle handle, Priority prio);
     ~VirtualEntry() noexcept;
 
@@ -55,6 +56,7 @@ public:
     bool valid() const noexcept;
 
     bool operator<(const VirtualEntry& other) const noexcept;
+    bool operator>(const VirtualEntry& other) const noexcept;
 
 private:
     std::unique_ptr<Impl> impl_;
