@@ -11,7 +11,7 @@
 
 #include "ControlBlock.hpp"
 #include "Property.hpp"
-#include "Storage.hpp"
+#include "StorageEngine.hpp"
 #include "util/MRUCache.hpp"
 #include "util/SpinLock.hpp"
 #include "util/String.hpp"
@@ -30,7 +30,7 @@ namespace skv::ondisk {
 struct Volume::Impl {
     static constexpr std::size_t PATH_MRU_CACHE_SIZE = 1024;
 
-    using storage_type       = Storage<Volume::Handle,          // key type
+    using storage_type       = StorageEngine<Volume::Handle,          // key type
                                        std::uint32_t,           // block index type
                                        std::uint32_t,           // bytes count in one record (4GB now)
                                        Volume::Properties,      // type of properties container

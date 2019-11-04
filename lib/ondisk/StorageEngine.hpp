@@ -33,7 +33,7 @@ template <typename KeyT          = std::uint64_t,
           typename ClockT        = std::chrono::system_clock,
           KeyT _InvalidKey       = 0,
           KeyT _RootKey          = 1>
-class Storage final {
+class StorageEngine final {
 public:
     using key_type          = std::decay_t<KeyT>;
 
@@ -58,19 +58,19 @@ public:
         bool            LogDeviceCreateNewIfNotExist{true};
     };
 
-    Storage() {
+    StorageEngine() {
 
     }
 
-    ~Storage() noexcept {
+    ~StorageEngine() noexcept {
         static_cast<void>(close());
     }
 
-    Storage(const Storage&) = delete;
-    Storage& operator=(const Storage&) = delete;
+    StorageEngine(const StorageEngine&) = delete;
+    StorageEngine& operator=(const StorageEngine&) = delete;
 
-    Storage(Storage&&) = delete;
-    Storage& operator=(Storage&&) = delete;
+    StorageEngine(StorageEngine&&) = delete;
+    StorageEngine& operator=(StorageEngine&&) = delete;
 
     [[nodiscard]] std::tuple<Status, entry_type> load(const entry_type& e) {
         return load(e.key());

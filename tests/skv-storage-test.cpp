@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-#include <ondisk/Storage.hpp>
+#include <ondisk/StorageEngine.hpp>
 
 using namespace skv::ondisk;
 
@@ -17,17 +17,17 @@ namespace {
 }
 
 TEST(StorageTest, OpenClose) {
-    Storage<> storage;
+    StorageEngine<> storage;
 
     auto status = storage.open(STORAGE_DIR, STORAGE_NAME);
 
     ASSERT_TRUE(status.isOk());
 
     {
-        auto [status, entry] = storage.load(Storage<>::RootEntryId);
+        auto [status, entry] = storage.load(StorageEngine<>::RootEntryId);
 
         ASSERT_TRUE(status.isOk());
-        ASSERT_EQ(entry.key(), Storage<>::RootEntryId);
+        ASSERT_EQ(entry.key(), StorageEngine<>::RootEntryId);
     }
 
     ASSERT_TRUE(storage.close().isOk());

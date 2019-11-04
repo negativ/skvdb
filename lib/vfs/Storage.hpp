@@ -128,8 +128,23 @@ public:
     [[nodiscard]] Status unlink(Handle h, std::string_view name);
 
 
+    /**
+     * @brief Mount volume entry path to VFS storage
+     * @param volume - volume that contains entry path
+     * @param entryPath - entry path to mount
+     * @param mountPath - path in VFS where entry would be mounted
+     * @param prio - priority of mount point
+     * @return Status::Ok() on success
+     */
     [[nodiscard]] Status mount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath, Priority prio = DefaultPriority);
 
+    /**
+     * @brief Unmount volume entry path from VFS storage
+     * @param volume - volume that contains entry paths
+     * @param entryPath - entry path to unmount
+     * @param mountPath - mount point path
+     * @return Status::Ok() on success
+     */
     [[nodiscard]] Status unmount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath);
 
 private:

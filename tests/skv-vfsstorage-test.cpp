@@ -379,7 +379,6 @@ TEST_F(VFSStorageTest, PropertyExpireTest) {
     doUnmounts();
 }
 
-
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
 
