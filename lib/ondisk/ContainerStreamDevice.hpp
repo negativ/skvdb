@@ -14,12 +14,15 @@ namespace io = boost::iostreams;
 template<typename Container = std::vector<char>>
 class ContainerStreamDevice {
 public:
-    using char_type = typename Container::value_type;
-    using category  = io::seekable_device_tag;
+    using container_type    = std::decay_t<Container>;
+    using char_type         = typename Container::value_type;
+    using category          = io::seekable_device_tag;
 
-    ContainerStreamDevice(Container& container)
+    ContainerStreamDevice(Container& container) noexcept
         : container_(container), pos_(0)
     { }
+
+    ~ContainerStreamDevice() noexcept = default;
 
     std::streamsize read(char_type* s, std::streamsize n) {
         std::streamsize amt = static_cast<std::streamsize>(container_.size() - pos_);
@@ -76,11 +79,9 @@ public:
         return pos_;
     }
 
-    Container& container() { return container_; }
-
 private:
-    Container&  container_;
-    typename Container::size_type pos_;
+    container_type&  container_;
+    typename container_type::size_type pos_;
 };
 
 }
