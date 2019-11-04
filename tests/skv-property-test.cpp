@@ -182,6 +182,22 @@ TEST(PropertyTest, ReadWriteDouble) {
     EXPECT_EQ(prop1, prop2);
 }
 
+TEST(PropertyTest, ReadWriteBLOB) {
+    Property prop1{std::vector<char>(1024, 'A')};
+
+    std::stringstream stream;
+
+    stream << prop1;
+
+    auto buffer = stream.str();
+
+    Property prop2;
+
+    stream >> prop2;
+
+    EXPECT_EQ(prop1, prop2);
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
 

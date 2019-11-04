@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <vector>
 
 #include <boost/endian/conversion.hpp>
 
@@ -45,7 +46,8 @@ struct Serializer final {
             os.write(reinterpret_cast<const char*>(&p),  sizeof(p));
         }
         else if constexpr (std::is_same_v<T, std::string> ||
-                           std::is_same_v<T, std::string_view>) {
+                           std::is_same_v<T, std::string_view> ||
+                           std::is_same_v<T, std::vector<char>>) {
             (*this) << std::uint64_t(p.size());
 
             os.write(p.data(), std::streamsize(p.size()));
@@ -93,11 +95,11 @@ struct Deserializer final {
             is.read(reinterpret_cast<char*>(&p), sizeof(p));
             be::little_to_native_inplace(p);
         }
-        else if constexpr (std::is_same_v<T, std::string>) {
+        else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, std::vector<char>>) {
             std::uint64_t pLen;
             (*this) >> pLen;
 
-            std::string ret(std::size_t(pLen), '\0');
+            T ret(std::size_t(pLen), '\0');
 
             is.read(ret.data(), std::streamsize(pLen));
 
