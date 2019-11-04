@@ -41,7 +41,7 @@ void mtTestRoutineN1(std::reference_wrapper<Volume> v) {
     if (!status.isOk())
         return;
 
-    try {
+    {
         auto id = std::to_string(hasher(std::this_thread::get_id()));
         SKV_UNUSED(volume.link(rootHandle, id));
 
@@ -68,14 +68,6 @@ void mtTestRoutineN1(std::reference_wrapper<Volume> v) {
 
         SKV_UNUSED(volume.close(self));
         SKV_UNUSED(volume.close(rootHandle));
-    }
-    catch (std::exception & e) {
-        Log::e("BOOM", e.what());
-    }
-    
-
-    {
-        
     }
 }
 
