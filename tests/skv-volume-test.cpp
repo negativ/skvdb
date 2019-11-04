@@ -93,8 +93,6 @@ TEST(VolumeTest, MTTestN1) {
     ASSERT_TRUE(status.isOk());
     ASSERT_TRUE(volume.initialized());
 
-    go1.store(true, std::memory_order_release);
-
     std::vector<std::thread> threads;
     std::generate_n(std::back_inserter(threads),
                     2 * std::thread::hardware_concurrency(),
@@ -105,8 +103,6 @@ TEST(VolumeTest, MTTestN1) {
     auto startTime = system_clock::now();
 
     go1.store(true, std::memory_order_release);
-
-    std::this_thread::sleep_for(100s);
 
     std::for_each(std::begin(threads), std::end(threads),
                   [](auto& t) {
