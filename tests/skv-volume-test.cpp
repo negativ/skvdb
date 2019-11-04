@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <functional>
@@ -19,8 +20,8 @@ namespace {
     const std::string STORAGE_DIR  = "/tmp";
     const std::string STORAGE_NAME = "test_storage";
 #else
-    const char * const STORAGE_DIR  = ".";
-    const char * const STORAGE_NAME = "test_storage";
+    const std::string STORAGE_DIR  = ".";
+    const std::string STORAGE_NAME = "test_storage";
 #endif
     std::atomic<bool> go1{false}, go2{false};
 

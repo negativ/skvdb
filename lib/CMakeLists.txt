@@ -44,6 +44,8 @@ add_library(${PROJECT_NAME} SHARED
             ${SRCS}
             ${HDRS})
 
+set_target_properties(skv PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
 target_link_libraries(${PROJECT_NAME})
 
 install(TARGETS ${PROJECT_NAME} DESTINATION lib)

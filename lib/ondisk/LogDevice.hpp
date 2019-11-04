@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <memory>
@@ -36,6 +37,7 @@ public:
     using bytes_count_type      = typename buffer_type::size_type;
 
     struct OpenOption {
+        OpenOption() = default;
         std::uint32_t   BlockSize{DEFAULT_BLOCK_SIZE};
         bool            CreateNewIfNotExist{true};
     };

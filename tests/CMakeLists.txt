@@ -40,10 +40,12 @@ elseif(UNIX)
 
     include(GoogleTest)
 
-    include_directories(${GTEST_INCLUDE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/../lib/")
+    include_directories(${GTEST_INCLUDE_DIR})
 
     list(APPEND LIBS ${GTEST_LIBRARY} ${GTEST_MAIN_LIBRARY} -pthread)
 endif()
+
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../lib/")
 
 list(APPEND LIBS ${Boost_LIBRARIES})
 

@@ -20,6 +20,9 @@ class VFSStorageTest: public ::testing::Test {
     const std::string VOLUME_N1_NAME = "volume1";
     const std::string VOLUME_N2_NAME = "volume2";
 #else
+    const std::string VOLUME_DIR  = ".";
+    const std::string VOLUME_N1_NAME = "volume1";
+    const std::string VOLUME_N2_NAME = "volume2";
 #endif
 protected:
     void SetUp() override {
