@@ -150,6 +150,38 @@ TEST(PropertyTest, ReadWriteUInt64) {
     EXPECT_EQ(prop1, prop2);
 }
 
+TEST(PropertyTest, ReadWriteFloat) {
+    Property prop1{1.0f};
+
+    std::stringstream stream;
+
+    stream << prop1;
+
+    auto buffer = stream.str();
+
+    Property prop2;
+
+    stream >> prop2;
+
+    EXPECT_EQ(prop1, prop2);
+}
+
+TEST(PropertyTest, ReadWriteDouble) {
+    Property prop1{999.0};
+
+    std::stringstream stream;
+
+    stream << prop1;
+
+    auto buffer = stream.str();
+
+    Property prop2;
+
+    stream >> prop2;
+
+    EXPECT_EQ(prop1, prop2);
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
 

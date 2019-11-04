@@ -28,7 +28,18 @@ struct Serializer final {
     {
         namespace be = boost::endian;
 
-        if constexpr (std::is_integral_v<T>) {
+        if constexpr (std::is_floating_point_v<T>) {
+            union {
+                T             fvalue;
+                std::uint64_t ivalue{0};
+            } value;
+
+            value.fvalue = p;
+
+            be::native_to_little(value.ivalue);
+            os.write(reinterpret_cast<const char*>(&value),  sizeof(value));
+        }
+        else if constexpr (std::is_integral_v<T>) {
             be::native_to_little(p);
 
             os.write(reinterpret_cast<const char*>(&p),  sizeof(p));
@@ -67,7 +78,18 @@ struct Deserializer final {
     {
         namespace be = boost::endian;
 
-        if constexpr (std::is_integral_v<T>) {
+        if constexpr (std::is_floating_point_v<T>) {
+            union {
+                T             fvalue;
+                std::uint64_t ivalue;
+            } value;
+
+            is.read(reinterpret_cast<char*>(&value), sizeof(value));
+            be::little_to_native_inplace(value.ivalue);
+
+            p = value.fvalue;
+        }
+        else if constexpr (std::is_integral_v<T>) {
             is.read(reinterpret_cast<char*>(&p), sizeof(p));
             be::little_to_native_inplace(p);
         }
