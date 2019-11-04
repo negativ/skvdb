@@ -28,6 +28,8 @@ TEST(StorageTest, OpenClose) {
 
         ASSERT_TRUE(status.isOk());
         ASSERT_EQ(entry.key(), StorageEngine<>::RootEntryId);
+
+        ASSERT_TRUE(storage.save(entry).isOk());
     }
 
     ASSERT_TRUE(storage.close().isOk());

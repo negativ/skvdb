@@ -10,6 +10,9 @@
 #include <fstream>
 #include <vector>
 
+#include <boost/iostreams/stream.hpp>
+
+#include "ContainerStreamDevice.hpp"
 #include "Entry.hpp"
 #include "IndexTable.hpp"
 #include "LogDevice.hpp"
@@ -44,7 +47,8 @@ public:
     using bytes_count_type  = std::decay_t<BytesCountT>;
     using index_table_type  = IndexTable<key_type, block_index_type, bytes_count_type>;
     using index_record_type = typename index_table_type::index_record_type;
-    using log_device_type   = LogDevice<block_index_type, block_index_type, std::string>;
+    using buffer_type       = std::vector<char>;
+    using log_device_type   = LogDevice<block_index_type, block_index_type, buffer_type>;
     using entry_type        = Entry<key_type, PropContainerT, ClockT, InvalidEntryId>;
 
     static_assert (std::is_integral_v<key_type>, "Key type should be integral");
@@ -77,6 +81,8 @@ public:
     }
 
     [[nodiscard]] std::tuple<Status, entry_type> load(const key_type& key) {
+        namespace io = boost::iostreams;
+
         if (key == InvalidEntryId)
             return {Status::InvalidArgument("Invalid entry id"), {}};
 
@@ -92,7 +98,7 @@ public:
 
         index_record_type index = it->second;
 
-        const auto& [status, buffer] = logDevice_.read(index.blockIndex(), index.bytesCount());
+        auto [status, buffer] = logDevice_.read(index.blockIndex(), index.bytesCount());
 
         locker.unlock();
 
@@ -100,7 +106,9 @@ public:
             return {status, {}};
 
         // TODO: implement EntryReader
-        std::stringstream stream{buffer, std::ios_base::in};
+        io::stream<ContainerStreamDevice<buffer_type>> stream(buffer);
+//        std::istream stream{&stream_buffer};
+
         entry_type e;
 
         stream >> e;
@@ -109,17 +117,22 @@ public:
     }
 
     [[nodiscard]] Status save(const entry_type& e) {
+        namespace io = boost::iostreams;
+
         if (e.key() == InvalidEntryId)
             return Status::InvalidArgument("Invalid entry id");
 
         if (!opened())
             return DeviceNotOpenedStatus;
 
+        buffer_type buffer;
+        io::stream<ContainerStreamDevice<buffer_type>> stream(buffer);
+
         // TODO: implement EntryWriter
-        std::stringstream stream{std::ios_base::out};
+//        std::ostream stream{&stream_buffer};
         stream << e;
 
-        const auto& buffer = stream.str();
+        stream.flush();
 
         if (buffer.empty())
             return Status::Fatal("Unable to serialize entry!");

@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <iostream>
 #include <type_traits>
+#include <unordered_map>
 
 #include "IndexRecord.hpp"
 #include "util/Serialization.hpp"
