@@ -210,9 +210,6 @@ public:
     }
 
     [[nodiscard]] Status removeChild(Entry& e) {
-        if (e.parent() != key())
-            return Status::InvalidArgument("Not a child item");
-
         auto& index = impl_->children_.template get<typename Impl::ChildByKey>();
         auto it = index.find(e.key());
 

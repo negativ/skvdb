@@ -332,12 +332,9 @@ struct Volume::Impl {
 
         auto cid = it->second;
 
-        {
-            auto ccb = getControlBlock(cid);
+        if (getControlBlock(cid))
+            return Status::InvalidOperation("Child entry shouldn't be opened");
 
-            if (!ccb)
-                return Status::InvalidOperation("Child entry shouldn't be opened");
-        }
         {
             const auto& [status, child] = storage_->load(cid);
 

@@ -355,7 +355,7 @@ struct Storage::Impl {
                                  });
 
         if (std::any_of(std::cbegin(results), std::cend(results),
-                        [](const auto& t) { const auto& [status, unused] = t; return status.isOk(); }))
+                        [](const auto& t) { const auto& [status, unused] = t; return !status.isOk(); }))
             return {Status::InvalidArgument("Unable to fetch links from all volumes"), {}};
 
         Storage::Links ret;
