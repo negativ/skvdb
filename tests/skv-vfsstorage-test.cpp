@@ -379,6 +379,64 @@ TEST_F(VFSStorageTest, PropertyExpireTest) {
     doUnmounts();
 }
 
+TEST_F(VFSStorageTest, LinkUnlinkTest) {
+    doMounts();
+
+    auto [unused, handle] = storage_.open("/combined");
+
+    {
+        auto [status, links] = storage_.links(handle);
+
+        ASSERT_TRUE(status.isOk());
+        ASSERT_FALSE(links.empty());
+
+        ASSERT_EQ(links.size(), 2);
+
+        ASSERT_TRUE(links.find("e") != std::cend(links));
+        ASSERT_TRUE(links.find("j") != std::cend(links));
+    }
+
+    ASSERT_TRUE(storage_.link(handle,  "w").isOk());
+    ASSERT_FALSE(storage_.link(handle, "w").isOk());
+    ASSERT_TRUE(storage_.link(handle,  "x").isOk());
+    ASSERT_FALSE(storage_.link(handle, "x").isOk());
+
+    {
+        auto [status, links] = storage_.links(handle);
+
+        ASSERT_TRUE(status.isOk());
+        ASSERT_FALSE(links.empty());
+
+        ASSERT_EQ(links.size(), 4);
+
+        ASSERT_TRUE(links.find("e") != std::cend(links));
+        ASSERT_TRUE(links.find("j") != std::cend(links));
+        ASSERT_TRUE(links.find("w") != std::cend(links));
+        ASSERT_TRUE(links.find("x") != std::cend(links));
+    }
+
+    ASSERT_TRUE(storage_.unlink(handle, "e").isOk());
+    ASSERT_FALSE(storage_.unlink(handle, "e").isOk());
+
+    {
+        auto [status, links] = storage_.links(handle);
+
+        ASSERT_TRUE(status.isOk());
+        ASSERT_FALSE(links.empty());
+
+        ASSERT_EQ(links.size(), 3);
+
+        ASSERT_FALSE(links.find("e") != std::cend(links));
+        ASSERT_TRUE(links.find("j") != std::cend(links));
+        ASSERT_TRUE(links.find("w") != std::cend(links));
+        ASSERT_TRUE(links.find("x") != std::cend(links));
+    }
+
+    ASSERT_TRUE(storage_.close(handle).isOk());
+
+    doUnmounts();
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
 
