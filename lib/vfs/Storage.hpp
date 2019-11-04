@@ -128,9 +128,9 @@ public:
     [[nodiscard]] Status unlink(Handle h, std::string_view name);
 
 
-    Status mount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath, Priority prio = DefaultPriority);
+    [[nodiscard]] Status mount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath, Priority prio = DefaultPriority);
 
-    Status unmount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath);
+    [[nodiscard]] Status unmount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath);
 
 private:
     std::unique_ptr<Impl> impl_;
