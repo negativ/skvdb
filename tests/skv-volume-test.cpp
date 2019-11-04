@@ -41,7 +41,7 @@ void mtTestRoutineN1(std::reference_wrapper<Volume> v) {
     if (!status.isOk())
         return;
 
-    {
+    try {
         auto id = std::to_string(hasher(std::this_thread::get_id()));
         SKV_UNUSED(volume.link(rootHandle, id));
 
@@ -55,19 +55,27 @@ void mtTestRoutineN1(std::reference_wrapper<Volume> v) {
 
         for (size_t i = 0; i < NRUNS; ++i) {
             if (i % 7 == 0)
-                SKV_UNUSED(volume.setProperty(self, std::to_string(i), Property{double(i)}));
+                SKV_UNUSED(volume.setProperty(self, std::to_string(i), Property{ double(i) }));
             else if (i % 5 == 0) {
-                SKV_UNUSED(volume.setProperty(self, std::to_string(i), Property{std::to_string(i)}));
+                SKV_UNUSED(volume.setProperty(self, std::to_string(i), Property{ std::to_string(i) }));
             }
             else if (i % 3 == 0) {
-                SKV_UNUSED(volume.setProperty(self, std::to_string(i), Property{float(i)}));
+                SKV_UNUSED(volume.setProperty(self, std::to_string(i), Property{ float(i) }));
             }
             else
-                SKV_UNUSED(volume.setProperty(self, std::to_string(i), Property{"fizz buzz"}));
+                SKV_UNUSED(volume.setProperty(self, std::to_string(i), Property{ "fizz buzz" }));
         }
 
         SKV_UNUSED(volume.close(self));
         SKV_UNUSED(volume.close(rootHandle));
+    }
+    catch (std::exception & e) {
+        Log::e("BOOM", e.what());
+    }
+    
+
+    {
+        
     }
 }
 
@@ -85,10 +93,12 @@ TEST(VolumeTest, MTTestN1) {
     ASSERT_TRUE(status.isOk());
     ASSERT_TRUE(volume.initialized());
 
+    go1.store(true, std::memory_order_release);
+
     std::vector<std::thread> threads;
     std::generate_n(std::back_inserter(threads),
                     2 * std::thread::hardware_concurrency(),
-                    [&] { return std::thread{&mtTestRoutineN1, std::ref(volume)}; });
+                    [&] { return std::move(std::thread{&mtTestRoutineN1, std::ref(volume)}); });
 
     std::this_thread::sleep_for(100ms); // ensure all other threads is started
 
@@ -96,8 +106,10 @@ TEST(VolumeTest, MTTestN1) {
 
     go1.store(true, std::memory_order_release);
 
+    std::this_thread::sleep_for(100s);
+
     std::for_each(std::begin(threads), std::end(threads),
-                  [](auto&& t) {
+                  [](auto& t) {
                       if (t.joinable())
                           t.join();
                       });

@@ -180,7 +180,7 @@ struct Storage::Impl {
         for (auto&& [status, props] : results) {
             for (auto&& [prop, value] : props) {
                 if (auto it = ret.find(prop); it == std::cend(ret))
-                    ret.emplace(std::move(prop), std::move(value));
+                    ret.emplace(prop, value);
             }
         }
 
@@ -481,7 +481,7 @@ struct Storage::Impl {
         if (!volume->release(this).isOk())
             return Status::Fatal("Unable to release volume");
 
-        mount::Entry e(std::move(*entryIt));
+        mount::Entry e(*entryIt);
         e.close();
 
         index.erase(entryIt);

@@ -1,6 +1,8 @@
 #include "StringPathIterator.hpp"
+#include "String.hpp"
 
 #include <algorithm>
+#include <numeric>
 
 namespace skv::util {
 
@@ -45,39 +47,31 @@ StringPathIterator make_path_iterator(std::string path) {
 ReverseStringPathIterator::ReverseStringPathIterator() = default;
 
 ReverseStringPathIterator::ReverseStringPathIterator(std::string path):
-    path_{std::move(path)}, valid_{true}
+    chunks_{util::split(path, separator)}, valid_{true}
 {
-    if (path_.empty())
-        valid_ = false;
-    else {
-        idx = path_.size() - 1;
-
-        if (path[idx] == separator)
-            --idx;
-    }
 }
 
 ReverseStringPathIterator &ReverseStringPathIterator::operator++() {
-    if (!valid_)
-        return *this;
-
-    while (idx != 0 && path_[idx] != separator) {
-        --idx;
-    }
-
-    if (idx == 0) {
+    if (chunks_.empty() || !valid_) {
         valid_ = false;
 
         return *this;
     }
 
-    --idx;
+	chunks_.pop_back();
 
     return *this;
 }
 
 std::string ReverseStringPathIterator::operator*() {
-    return path_.substr(0, idx + 1);
+    return std::accumulate(std::cbegin(chunks_), std::cend(chunks_),
+        std::string{ separator },
+        [](auto&& path, auto&& chunk) {
+            if (path.size() == 1)
+                return path + chunk;
+            else
+                return path + separator + chunk;
+        });
 }
 
 bool ReverseStringPathIterator::operator!=(const ReverseStringPathIterator &other) {

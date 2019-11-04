@@ -158,7 +158,7 @@ public:
 
         buffer_type data(cnt, '\0');
 
-        os::File::seek(fhandle, n * blockSize(), os::File::Seek::Set);
+        os::File::seek(fhandle, std::int64_t(n) * std::int64_t(blockSize()), os::File::Seek::Set);
         os::File::read(data.data(), sizeof(buffer_value_type), cnt, fhandle);
 
         return {Status::Ok(), data};

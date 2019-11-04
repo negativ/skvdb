@@ -125,7 +125,7 @@ public:
             return Status::Fatal("Unable to serialize entry!");
 
         if (sizeof(bytes_count_type) < sizeof(std::uint64_t)) { // overflow check
-            std::uint64_t max_bytes_count = std::numeric_limits<bytes_count_type>::max();
+            constexpr std::uint64_t max_bytes_count = std::numeric_limits<bytes_count_type>::max();
 
             if (buffer.size() > max_bytes_count)
                 return  Status::IOError("Entry to big");

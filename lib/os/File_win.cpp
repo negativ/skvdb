@@ -7,17 +7,12 @@
 namespace skv::os {
 
     File::Handle File::open(std::string_view path, std::string_view mode) noexcept {
-        FILE* handle;
-
-        if (::fopen_s(&handle, path.data(), mode.data()) == 0)
-            return File::Handle{handle,
+        return File::Handle{::fopen(path.data(), mode.data()),
                             [](FILE* f) -> int {
                                 if (f)
                                     return ::fclose(f);
                                 return -1;
-                               }};
-
-        return File::Handle{};
+                            }};
     }
 
     std::int64_t File::tell(const Handle& fhandle) noexcept {

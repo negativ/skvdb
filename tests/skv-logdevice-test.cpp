@@ -14,7 +14,7 @@ namespace {
 #else
     const char * const BLOCK_DEVICE_TMP_FILE = "blockdevice.bin";
 #endif
-    const size_t N_RECORDS = 512;
+    const size_t N_RECORDS = 2;
     const size_t RECORD_GROW_FACTOR = 128; // GROW_FACTOR bytes for first record and GROW_FACTOR * N_RECORDS for last
 }
 
@@ -35,7 +35,7 @@ protected:
         auto status = device_.close();
 
         ASSERT_TRUE(status.isOk() && !device_.opened());
-        ASSERT_TRUE(os::File::unlink(BLOCK_DEVICE_TMP_FILE));
+        //ASSERT_TRUE(os::File::unlink(BLOCK_DEVICE_TMP_FILE));
     }
 
     struct IndexRecord {

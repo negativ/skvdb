@@ -300,7 +300,7 @@ private:
                                                                 bmi::ordered_unique<bmi::tag<ChildByKey>,
                                                                                     bmi::member<child_type, typename child_type::second_type, &child_type::second>>>>;
 
-        key_type key_;
+        key_type key_{ InvalidKey };
         key_type parent_{InvalidKey};
         prop_container_type properties_;
         prop_name_type name_;

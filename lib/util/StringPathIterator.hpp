@@ -1,5 +1,6 @@
 #pragma once
 
+#include <deque>
 #include <string>
 
 namespace skv::util {
@@ -42,9 +43,8 @@ struct ReverseStringPathIterator {
     bool operator!=(const ReverseStringPathIterator& other);
 
 private:
-    std::string path_{};
-    std::size_t idx{0};
-    bool valid_{false};
+	std::deque<std::string> chunks_;
+    bool valid_{ false };
 };
 
 ReverseStringPathIterator make_reverse_path_iterator(std::string path);
