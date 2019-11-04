@@ -105,7 +105,7 @@ public:
     }
 
 private:
-    mutable SpinLock xLock_; // spinlock should be good because all operations on MRU are very fast
+    mutable SpinLock<> xLock_; // spinlock should be good because all operations on MRU are very fast
     cache_type cache_;
     std::uint64_t cacheMissCount_{0};
     std::uint64_t cacheHitCount_{0};

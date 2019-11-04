@@ -186,9 +186,12 @@ struct Volume::Impl {
         if (!cb)
             return NoSuchEntryStatus;
 
+        auto& entry = cb->entry();
+        auto propName = util::to_string(name);
+
         std::unique_lock locker(cb->xLock());
 
-        auto status = cb->entry().setProperty(util::to_string(name), value);
+        auto status = entry.setProperty(propName, value);
 
         if (status.isOk())
             cb->setDirty(true);
@@ -506,7 +509,7 @@ struct Volume::Impl {
     std::shared_mutex controlBlocksLock_;
     std::unordered_map<Volume::Handle, cb_ptr_type> controlBlocks_;
     MRUCache<std::string,Volume::Handle, PATH_MRU_CACHE_SIZE> pathCache_;
-    mutable SpinLock claimLock_;
+    mutable SpinLock<> claimLock_;
     Volume::Token claimToken_{};
     std::size_t claimCount_{0};
 };

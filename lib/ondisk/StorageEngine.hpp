@@ -321,7 +321,7 @@ private:
     std::string directory_;
     std::string storageName_;
     std::shared_mutex xLock_;
-    SpinLock spLock_;
+    SpinLock<> spLock_;
     key_type keyCounter_{0};
     bool opened_{false};
 };
