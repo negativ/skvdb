@@ -505,8 +505,6 @@ struct Volume::Impl {
     std::unique_ptr<storage_type> storage_;
     std::shared_mutex controlBlocksLock_;
     std::unordered_map<Volume::Handle, cb_ptr_type> controlBlocks_;
-    std::list<cb_ptr_type> syncQueue_;
-    std::mutex syncQueueLock_;
     MRUCache<std::string,Volume::Handle, PATH_MRU_CACHE_SIZE> pathCache_;
     mutable SpinLock claimLock_;
     Volume::Token claimToken_{};
