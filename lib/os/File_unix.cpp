@@ -38,7 +38,7 @@ std::uint64_t File::read(void* __restrict ptr, std::uint64_t size, std::uint64_t
 
 bool File::seek(const Handle &handle, std::int64_t offset, Seek s) noexcept {
     if (!handle)
-        return -1;
+        return false;
 
     return (::fseeko(handle.get(), offset, static_cast<int>(s)) == 0);
 }

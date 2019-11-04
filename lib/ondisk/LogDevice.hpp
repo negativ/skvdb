@@ -197,7 +197,7 @@ public:
 
         blocks_.fetch_add(blocksAdded);
 
-        return {Status::Ok(), cpos / blockSize(), blocksAdded};
+        return {Status::Ok(), block_index_type(cpos / blockSize()), block_count_type(blocksAdded)};
     }
 
     /**

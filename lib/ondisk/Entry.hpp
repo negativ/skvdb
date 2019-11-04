@@ -62,7 +62,7 @@ public:
 
     static_assert (std::is_integral_v<key_type>, "Entry key should be an integral type");
 
-    static constexpr key_t InvalidKey = TInvalidKey;
+    static constexpr key_type InvalidKey = TInvalidKey;
 
     Entry():
         impl_{std::make_unique<Impl>()}

@@ -97,7 +97,7 @@ struct Deserializer final {
             std::uint64_t pLen;
             (*this) >> pLen;
 
-            std::string ret(pLen, '\0');
+            std::string ret(std::size_t(pLen), '\0');
 
             is.read(ret.data(), std::streamsize(pLen));
 

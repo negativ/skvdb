@@ -30,7 +30,7 @@ namespace skv::ondisk {
 struct Volume::Impl {
     static constexpr std::size_t PATH_MRU_CACHE_SIZE = 1024;
 
-    using storage_type       = StorageEngine<Volume::Handle,          // key type
+    using storage_type       = StorageEngine<IVolume::Handle,          // key type
                                        std::uint32_t,           // block index type
                                        std::uint32_t,           // bytes count in one record (4GB now)
                                        Volume::Properties,      // type of properties container

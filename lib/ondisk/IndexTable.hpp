@@ -6,7 +6,6 @@
 #include <type_traits>
 
 #include "IndexRecord.hpp"
-#include "btree/btree_map.hpp"
 #include "util/Serialization.hpp"
 
 namespace skv::ondisk {
@@ -20,7 +19,7 @@ public:
     using block_index_type  = std::decay_t<BlockIndex>;
     using bytes_count_type  = std::decay_t<BytesCount>;
     using index_record_type = std::decay_t<IndexRecord<key_type, block_index_type, bytes_count_type>>;
-    using table_type        = std::decay_t<btree::btree_map<key_type, index_record_type>>;
+    using table_type        = std::unordered_map<key_type, index_record_type>;
 
     using iterator          = typename table_type::iterator;
     using const_iterator    = typename table_type::const_iterator;

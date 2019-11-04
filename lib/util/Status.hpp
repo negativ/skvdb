@@ -31,6 +31,7 @@ public:
     [[nodiscard]] static Status Fatal(std::string message) noexcept(noexcept_copy_constructible);
     [[nodiscard]] static Status InvalidOperation(std::string message) noexcept(noexcept_copy_constructible);
 
+    Status() = default;
     ~Status() = default;
 
     Status(const Status&) noexcept(noexcept_copy_constructible) = default;

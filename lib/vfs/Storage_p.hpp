@@ -34,7 +34,7 @@ OIt transform_future_if(IIt start, IIt stop, OIt result, Pred pred, UnaryOp op) 
         auto&& ret = (*start).get();
 
         if (pred(ret)) {
-            *result = std::move(op(std::move(ret)));
+            *result = op(ret);
             ++result;
         }
         ++start;
@@ -282,7 +282,7 @@ struct Storage::Impl {
         if (std::any_of(std::cbegin(results), std::cend(results),
                         [&hasProp](const auto& t) {
                             const auto& [status, v] = t;
-                            hasProp |= v;
+                            hasProp = hasProp || v;
 
                             return !status.isOk();
                         }))

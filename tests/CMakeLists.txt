@@ -1,24 +1,49 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.11)
 
 project(skvdb-tests CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.0.1")
 
-
 set (CMAKE_CXX_STANDARD 17)
 
 enable_testing()
 
-find_package(GTest REQUIRED)
+if (WIN32)
+    configure_file(CMakeListsWIN32.txt.in googletest-download/CMakeLists.txt)
 
-include(GoogleTest)
+    execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
+                    RESULT_VARIABLE result
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/googletest-download )
 
-include_directories(${GTEST_INCLUDE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/../lib/")
+    if(result)
+        message(FATAL_ERROR "CMake step for googletest failed: ${result}")
+    endif()
 
-if (UNIX)
+    execute_process(COMMAND ${CMAKE_COMMAND} --build .
+                    RESULT_VARIABLE result
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/googletest-download )
+
+    if(result)
+        message(FATAL_ERROR "Build step for googletest failed: ${result}")
+    endif()
+
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+
+    add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
+                     ${CMAKE_CURRENT_BINARY_DIR}/googletest-build
+                     EXCLUDE_FROM_ALL)
+
+    list(APPEND LIBS gtest_main)
+elseif(UNIX)
+    find_package(GTest REQUIRED)
+
+    include(GoogleTest)
+
+    include_directories(${GTEST_INCLUDE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/../lib/")
+
     list(APPEND LIBS ${GTEST_LIBRARY} ${GTEST_MAIN_LIBRARY} -pthread)
-endif ()
+endif()
 
 list(APPEND LIBS ${Boost_LIBRARIES})
 
