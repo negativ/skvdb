@@ -22,6 +22,8 @@ public:
 
     ControlBlock(const ControlBlock&) = delete;
     ControlBlock& operator=(const ControlBlock&) = delete;
+    ControlBlock(ControlBlock&&) = delete;
+    ControlBlock& operator=(ControlBlock&&) = delete;
 
     entry_type& entry() const noexcept {
         return entry_;

@@ -24,9 +24,15 @@ public:
 
     ~ContainerStreamDevice() noexcept = default;
 
+    ContainerStreamDevice(const ContainerStreamDevice&) = default;
+    ContainerStreamDevice& operator=(const ContainerStreamDevice&) = default;
+
+    ContainerStreamDevice(ContainerStreamDevice&&) noexcept = default;
+    ContainerStreamDevice& operator=(ContainerStreamDevice&&) noexcept = default;
+
     std::streamsize read(char_type* s, std::streamsize n) {
-        std::streamsize amt = static_cast<std::streamsize>(container_.size() - pos_);
-        std::streamsize result = std::min(n, amt);
+        auto amt = static_cast<std::streamsize>(container_.size() - pos_);
+        auto result = std::min(n, amt);
 
         if (result != 0) {
             std::copy(container_.begin() + pos_,
@@ -44,7 +50,7 @@ public:
         std::streamsize result = 0;
 
         if (pos_ != container_.size()) {
-            std::streamsize amt = static_cast<std::streamsize>(container_.size() - pos_);
+            auto amt = static_cast<std::streamsize>(container_.size() - pos_);
             result = std::min(n, amt);
 
             std::copy(s, s + result, container_.begin() + pos_);

@@ -31,37 +31,37 @@ public:
      * @brief Path of entry in volume
      * @return
      */
-    std::string mountPath() const;
+    [[nodiscard]] std::string mountPath() const;
 
     /**
      * @brief Path of entry in volume
      * @return
      */
-    std::string entryPath() const;
+    [[nodiscard]] std::string entryPath() const;
 
     /**
      * @brief Mounted volume
      * @return
      */
-    IVolumePtr volume() const;
+    [[nodiscard]] IVolumePtr volume() const;
 
     /**
      * @brief Handle of the entry
      * @return
      */
-    IVolume::Handle handle() const noexcept;
+    [[nodiscard]] IVolume::Handle handle() const noexcept;
 
     /**
      * @brief Entry priority
      * @return
      */
-    Priority priority() const noexcept;
+    [[nodiscard]] Priority priority() const noexcept;
 
     /**
      * @brief Trying to open entry
      * @return
      */
-    bool open();
+    [[nodiscard]] bool open();
 
     /**
      * @brief Closes entry
@@ -72,7 +72,7 @@ public:
      * @brief opened
      * @return
      */
-    bool opened() const noexcept;
+    [[nodiscard]] bool opened() const noexcept;
 
 private:
     std::unique_ptr<Impl> impl_;

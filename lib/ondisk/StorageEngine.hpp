@@ -23,12 +23,6 @@
 #include "util/String.hpp"
 #include "util/Unused.hpp"
 
-namespace {
-
-const skv::util::Status DeviceNotOpenedStatus   = skv::util::Status::IOError("Device not opened");
-
-}
-
 namespace skv::ondisk {
 
 template <typename KeyT          = std::uint64_t,
@@ -39,6 +33,8 @@ template <typename KeyT          = std::uint64_t,
           KeyT _InvalidKey       = 0,
           KeyT _RootKey          = 1>
 class StorageEngine final {
+    const skv::util::Status DeviceNotOpenedStatus = skv::util::Status::IOError("Device not opened");
+
 public:
     using key_type          = std::decay_t<KeyT>;
 
@@ -60,15 +56,17 @@ public:
     static_assert (sizeof (bytes_count_type) >= sizeof(std::uint32_t), "Bytes count type should be at least 32 bits long");
 
     struct OpenOptions {
-        double          CompactionRatio{0.6};
-        std::uint64_t   CompactionDeviceMinSize{std::uint64_t{1024 * 1024 * 1024} * 4}; // 4GB
-        std::uint32_t   LogDeviceBlockSize{2048};
+        static constexpr double         DefaultCompactionRatio{0.6}; // 60%
+        static constexpr std::uint64_t  DefaultCompactionDeviceMinSize{std::uint64_t{1024 * 1024 * 1024} * 4}; // 4GB
+        static constexpr std::uint32_t  DefaultLogDeviceBlockSize{2048};
+
+        double          CompactionRatio{DefaultCompactionRatio};
+        std::uint64_t   CompactionDeviceMinSize{DefaultCompactionDeviceMinSize};
+        std::uint32_t   LogDeviceBlockSize{DefaultLogDeviceBlockSize};
         bool            LogDeviceCreateNewIfNotExist{true};
     };
 
-    StorageEngine() {
-
-    }
+    StorageEngine() = default;
 
     ~StorageEngine() noexcept {
         static_cast<void>(close());

@@ -16,14 +16,6 @@
 #include "util/StringPathIterator.hpp"
 #include "util/Unused.hpp"
 
-namespace {
-
-using namespace skv::util;
-
-const Status InvalidVolumeArgumentStatus = Status::InvalidArgument("Invalid volume");
-
-}
-
 namespace skv::vfs {
 
 using namespace skv::util;
@@ -70,7 +62,7 @@ auto spawnCall(VEntries&& ventries, F&& call) {
     std::vector<result_t> results;
     transform_future(std::begin(futresults), std::end(futresults),
                      std::back_inserter(results),
-                     [](auto&& res) { return std::move(res); });
+                     [](auto&& res) { return std::forward<decltype(res)>(res); });
 
     return  results;
 }
@@ -83,6 +75,8 @@ T&& id(T&& t) {
 using VirtualEntries = std::vector<VirtualEntry>;
 
 struct Storage::Impl {
+    const Status InvalidVolumeArgumentStatus = Status::InvalidArgument("Invalid volume");
+
     std::tuple<Status, Storage::Handle> open(std::string_view path) {
         using result_t = std::tuple<Status, VirtualEntry>;
         using future_result_t = std::future<result_t>;
@@ -139,7 +133,7 @@ struct Storage::Impl {
             return status;
 
         auto results = spawnCall(ventries,
-                                 [](VirtualEntry entry) {
+                                 [](const auto& entry) {
                                      auto volume = entry.volume();
 
                                      if (auto volume = entry.volume().lock(); volume)
@@ -162,7 +156,7 @@ struct Storage::Impl {
             return {status, {}};
 
         auto results = spawnCall(ventries,
-                                 [](VirtualEntry entry) -> std::tuple<Status, Storage::Properties> {
+                                 [](const auto& entry) -> std::tuple<Status, Storage::Properties> {
                                      auto volume = entry.volume();
 
                                      if (auto volume = entry.volume().lock(); volume)
@@ -194,7 +188,7 @@ struct Storage::Impl {
             return {status, {}};
 
         auto spawnResults = spawnCall(ventries,
-                                      [name{to_string(name)}](VirtualEntry entry) -> std::tuple<Status, Property> {
+                                      [name{to_string(name)}](const auto& entry) -> std::tuple<Status, Property> {
                                           auto volume = entry.volume();
 
                                           if (auto volume = entry.volume().lock(); volume)
@@ -224,7 +218,7 @@ struct Storage::Impl {
 
         /* Setting property in all volumes */
         auto results = spawnCall(ventries,
-                                 [name{to_string(name)}, value](VirtualEntry entry) {
+                                 [name{to_string(name)}, value](const auto& entry) {
                                      auto volume = entry.volume();
 
                                      if (auto volume = entry.volume().lock(); volume)
@@ -246,7 +240,7 @@ struct Storage::Impl {
 
         /* Removing property in all entries */
         auto results = spawnCall(ventries,
-                                 [name{to_string(name)}](VirtualEntry entry) {
+                                 [name{to_string(name)}](const auto& entry) {
                                      auto volume = entry.volume();
 
                                      if (auto volume = entry.volume().lock(); volume)
@@ -267,7 +261,7 @@ struct Storage::Impl {
             return {status, {}};
 
         auto results = spawnCall(ventries,
-                                 [name{to_string(name)}] (VirtualEntry entry) -> std::tuple<Status, bool> {
+                                 [name{to_string(name)}] (const auto& entry) -> std::tuple<Status, bool> {
                                      auto volume = entry.volume();
 
                                      if (auto volume = entry.volume().lock(); volume)
@@ -302,7 +296,7 @@ struct Storage::Impl {
 
         /* Expiring property in all entries */
         auto results = spawnCall(ventries,
-                                 [name{to_string(name)}, tp](VirtualEntry entry) {
+                                 [name{to_string(name)}, tp](const auto& entry) {
                                      auto volume = entry.volume();
 
                                      if (auto volume = entry.volume().lock(); volume)
@@ -324,7 +318,7 @@ struct Storage::Impl {
 
         /* Canceling property expiration in all entries */
         auto results = spawnCall(ventries,
-                                 [name{to_string(name)}](VirtualEntry entry) {
+                                 [name{to_string(name)}](const auto& entry) {
                                      auto volume = entry.volume();
 
                                      if (auto volume = entry.volume().lock(); volume)
@@ -345,7 +339,7 @@ struct Storage::Impl {
             return {status, {}};
 
         auto results = spawnCall(ventries,
-                                 [](VirtualEntry entry) -> std::tuple<Status, Storage::Links> {
+                                 [](const auto& entry) -> std::tuple<Status, Storage::Links> {
                                      auto volume = entry.volume();
 
                                      if (auto volume = entry.volume().lock(); volume)
@@ -378,7 +372,7 @@ struct Storage::Impl {
 
         /* Canceling property expiration in all entries */
         auto results = spawnCall(ventries,
-                                 [name{to_string(name)}](VirtualEntry entry) {
+                                 [name{to_string(name)}](const auto& entry) {
                                      auto volume = entry.volume();
 
                                      if (auto volume = entry.volume().lock(); volume)
@@ -400,7 +394,7 @@ struct Storage::Impl {
 
         /* Canceling property expiration in all entries */
         auto results = spawnCall(ventries,
-                                 [name{to_string(name)}](VirtualEntry entry) {
+                                 [name{to_string(name)}](const auto& entry) {
                                      auto volume = entry.volume();
 
                                      if (auto volume = entry.volume().lock(); volume)
@@ -416,7 +410,8 @@ struct Storage::Impl {
 
     std::tuple<Status, std::string> searchMountPathFor(std::string_view path) const {
         auto searchPath = simplifyPath(path);
-        ReverseStringPathIterator start{searchPath}, stop{};
+        ReverseStringPathIterator start{searchPath},
+                                  stop{};
 
         auto& index = mpoints_.get<mount::tags::ByMountPath>();
 
@@ -432,7 +427,7 @@ struct Storage::Impl {
         return {Status::NotFound("Unable to find mount point"), {}};
     }
 
-    Status mount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath, Storage::Priority prio) {
+    Status mount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath, Storage::Priority prio) {
         if (!volume)
             return InvalidVolumeArgumentStatus;
 
@@ -450,7 +445,7 @@ struct Storage::Impl {
         // TODO: protect by mutex
 
         auto& index = mpoints_.get<mount::tags::ByAll>();
-        auto retp = index.insert(std::move(entry));
+        auto retp = index.insert(entry);
 
         if (!retp.second) {
             SKV_UNUSED(volume->release(this));

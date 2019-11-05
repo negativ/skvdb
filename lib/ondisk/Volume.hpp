@@ -24,6 +24,12 @@ public:
     Volume();
     ~Volume() noexcept override;
 
+    Volume(const Volume&) = delete;
+    Volume& operator=(const Volume&) = delete;
+
+    Volume(Volume&&) = delete;
+    Volume& operator=(Volume&&) = delete;
+
     // vfs::IVolume interface
     [[nodiscard]] Status initialize(std::string_view directory, std::string_view volumeName) override;
     [[nodiscard]] Status deinitialize() override;
@@ -41,8 +47,8 @@ public:
     [[nodiscard]] Status cancelPropertyExpiration(Handle h, std::string_view name) override;
 
     [[nodiscard]] std::tuple<Status, Links> links(Handle handle) override;
-    [[nodiscard]] Status link(Handle h, std::string_view name) override;
-    [[nodiscard]] Status unlink(Handle h, std::string_view path) override;
+    [[nodiscard]] Status link(Handle handle, std::string_view name) override;
+    [[nodiscard]] Status unlink(Handle handle, std::string_view name) override;
 
     [[nodiscard]] Status claim(Token token) noexcept override;
     [[nodiscard]] Status release(Token token) noexcept override;

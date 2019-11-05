@@ -17,15 +17,14 @@ struct Entry::Impl {
 Entry::Entry(std::string_view mountPath, std::string_view entryPath, IVolumePtr volume, Priority prio):
     impl_{new Impl{util::simplifyPath(mountPath),
                    util::simplifyPath(entryPath),
-                   volume,
+                   std::move(volume),
                    IVolume::InvalidHandle,
                    prio}}
 {
 
 }
 
-Entry::~Entry() noexcept {
-}
+Entry::~Entry() noexcept = default;
 
 Entry::Entry(const Entry& other) {
     using std::swap;

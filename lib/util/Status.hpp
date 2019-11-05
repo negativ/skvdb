@@ -12,10 +12,11 @@ class Status final {
         InvalidArgument,
         NotFound,
         Fatal,
-        InvalidOp
+        InvalidOp,
+        Undefined
     };
 
-    Code code_;
+    Code code_{Code::Undefined};
     std::string message_;
 
     static constexpr bool noexcept_copy_constructible = std::is_nothrow_copy_constructible_v<decltype(message_)>;

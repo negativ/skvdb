@@ -14,7 +14,7 @@ struct VirtualEntry::Impl {
 VirtualEntry::VirtualEntry() noexcept = default;
 
 VirtualEntry::VirtualEntry(std::string_view entryPath, IVolumeWPtr volume, IVolume::Handle handle, VirtualEntry::Priority prio):
-    impl_{new Impl{util::to_string(entryPath), volume, handle, prio}}
+    impl_{new Impl{util::to_string(entryPath), std::move(volume), handle, prio}}
 {
 
 }

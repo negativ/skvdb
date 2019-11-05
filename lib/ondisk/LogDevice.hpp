@@ -253,7 +253,7 @@ private:
 
     std::string path_;
     OpenOption openOption_;
-    std::atomic<block_count_type> blocks_;
+    std::atomic<block_count_type> blocks_{0};
     bool opened_{false};
     os::File::Handle writeHandle_;
     buffer_type fillbuffer;

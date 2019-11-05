@@ -31,6 +31,9 @@ public:
     Storage(const Storage&) = delete;
     Storage& operator=(const Storage&) = delete;
 
+    Storage(Storage&&) noexcept = delete;
+    Storage& operator=(Storage&&) noexcept = delete;
+
     /**
      * @brief Open volume entry
      * @param path - virtual path

@@ -18,16 +18,12 @@
 #include "util/StringPath.hpp"
 #include "util/StringPathIterator.hpp"
 
-namespace {
-
-const skv::util::Status NoSuchEntryStatus   = skv::util::Status::InvalidArgument("No such entry");
-const skv::util::Status InvalidTokenStatus  = skv::util::Status::InvalidArgument("Invalid token");
-
-}
-
 namespace skv::ondisk {
 
 struct Volume::Impl {
+    const skv::util::Status NoSuchEntryStatus   = skv::util::Status::InvalidArgument("No such entry");
+    const skv::util::Status InvalidTokenStatus  = skv::util::Status::InvalidArgument("Invalid token");
+
     static constexpr std::size_t PATH_MRU_CACHE_SIZE = 1024;
 
     using storage_type       = StorageEngine<IVolume::Handle,          // key type
@@ -101,8 +97,8 @@ struct Volume::Impl {
 
                 if (!status.isOk())
                     return {status, Volume::InvalidHandle};
-                else
-                    fetchChildren(handleEntry);
+
+                fetchChildren(handleEntry);
             }
 
             auto it =std::find_if(std::cbegin(children), std::cend(children),
@@ -360,7 +356,8 @@ struct Volume::Impl {
     }
 
     std::tuple<Status, Volume::Handle, std::string> searchCachedPathEntry(const std::string& path) {
-        ReverseStringPathIterator start{path}, stop{};
+        ReverseStringPathIterator start{path},
+                                  stop{};
 
         Volume::Handle handle;
 
@@ -456,7 +453,7 @@ struct Volume::Impl {
         return {};
     }
 
-    Status scheduleControlBlockSync(cb_ptr_type cb) {
+    Status scheduleControlBlockSync(const cb_ptr_type& cb) {
         if (!cb || !cb->dirty())
             return Status::InvalidArgument("Invalid or clean CB");
 
@@ -488,7 +485,8 @@ struct Volume::Impl {
 
         if (claimToken_ == Volume::Token{})
             return Status::InvalidOperation("Volume not claimed");
-        else if (claimToken_ != token)
+
+        if (claimToken_ != token)
             return InvalidTokenStatus;
 
         --claimCount_;

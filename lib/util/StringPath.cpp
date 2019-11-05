@@ -14,7 +14,8 @@ std::string simplifyPath(std::string_view path) {
     for (const auto& d : pathStack) {
         if (d.empty() || d == ".")
             continue;
-        else if (d == "..") {
+
+        if (d == "..") {
             if (!result.empty())
                 result.pop_back();
         }

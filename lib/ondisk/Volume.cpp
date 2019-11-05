@@ -15,9 +15,7 @@ Volume::Volume():
 
 }
 
-Volume::~Volume() noexcept {
-
-}
+Volume::~Volume() noexcept = default;
 
 Status Volume::initialize(std::string_view directory, std::string_view volumeName) {
     if (initialized())
@@ -44,11 +42,11 @@ std::tuple<Status, Volume::Handle> Volume::open(std::string_view path) {
     return impl_->open(path);
 }
 
-Status Volume::close(Volume::Handle d) {
+Status Volume::close(Volume::Handle handle) {
     if (!initialized())
         return VolumeNotOpenedStatus;
 
-    return impl_->close(d);
+    return impl_->close(handle);
 }
 
 std::tuple<Status, Volume::Links> Volume::links(Volume::Handle h) {
@@ -100,18 +98,18 @@ Status Volume::expireProperty(Volume::Handle h, std::string_view name, chrono::s
     return impl_->expireProperty(h, name, tp);
 }
 
-Status Volume::cancelPropertyExpiration(Volume::Handle h, std::string_view name) {
+Status Volume::cancelPropertyExpiration(Volume::Handle handle, std::string_view name) {
     if (!initialized())
         return VolumeNotOpenedStatus;
 
-    return impl_->cancelPropertyExpiration(h, name);
+    return impl_->cancelPropertyExpiration(handle, name);
 }
 
-Status Volume::link(Volume::Handle h, std::string_view name) {
+Status Volume::link(Volume::Handle handle, std::string_view name) {
     if (!initialized())
         return VolumeNotOpenedStatus;
 
-    return impl_->createChild(h, name);
+    return impl_->createChild(handle, name);
 }
 
 Status Volume::unlink(Handle h, std::string_view name) {

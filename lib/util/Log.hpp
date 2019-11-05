@@ -11,6 +11,8 @@ struct Log final {
     ~Log() = delete;
     Log(const Log&) = delete;
     Log& operator=(const Log&) = delete;
+    Log(Log&&) = delete;
+    Log& operator=(Log&&) = delete;
 
 #ifndef NDEBUG
     template <typename ... Ts>

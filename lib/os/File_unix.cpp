@@ -22,14 +22,14 @@ std::int64_t File::tell(const Handle& fhandle) noexcept {
     return ::ftello(fhandle.get());
 }
 
-std::uint64_t File::write(const void* __restrict ptr, std::uint64_t size, std::uint64_t n, Handle handle) noexcept {
+std::uint64_t File::write(const void* __restrict ptr, std::uint64_t size, std::uint64_t n, const Handle& handle) noexcept {
     if (!handle)
         return 0;
 
     return ::fwrite(ptr, size, n, handle.get());
 }
 
-std::uint64_t File::read(void* __restrict ptr, std::uint64_t size, std::uint64_t n, Handle handle) noexcept {
+std::uint64_t File::read(void* __restrict ptr, std::uint64_t size, std::uint64_t n, const Handle& handle) noexcept {
     if (!handle)
         return 0;
 

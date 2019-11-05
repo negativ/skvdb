@@ -23,8 +23,8 @@ struct File {
 
     static Handle open(std::string_view path, std::string_view mode) noexcept;
 
-    static std::uint64_t write(const void* __restrict ptr, std::uint64_t size, std::uint64_t n, Handle handle) noexcept;
-    static std::uint64_t read(void* __restrict ptr, std::uint64_t size, std::uint64_t n, Handle handle) noexcept;
+    static std::uint64_t write(const void* __restrict ptr, std::uint64_t size, std::uint64_t n, const Handle& handle) noexcept;
+    static std::uint64_t read(void* __restrict ptr, std::uint64_t size, std::uint64_t n, const Handle& handle) noexcept;
 
     static bool seek(const Handle& handle, std::int64_t offset, Seek s) noexcept;
     static std::int64_t tell(const Handle& fhandle) noexcept;

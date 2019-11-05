@@ -47,7 +47,7 @@ StringPathIterator make_path_iterator(std::string path) {
 ReverseStringPathIterator::ReverseStringPathIterator() = default;
 
 ReverseStringPathIterator::ReverseStringPathIterator(std::string path):
-    chunks_{util::split(path, separator)}, valid_{true}
+    chunks_{util::split(std::move(path), separator)}, valid_{true}
 {
 }
 
@@ -69,8 +69,8 @@ std::string ReverseStringPathIterator::operator*() {
         [](auto&& path, auto&& chunk) {
             if (path.size() == 1)
                 return path + chunk;
-            else
-                return path + separator + chunk;
+
+            return path + separator + chunk;
         });
 }
 

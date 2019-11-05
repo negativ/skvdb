@@ -29,34 +29,34 @@ public:
      * @brief Path of entry in volume
      * @return
      */
-    std::string entryPath() const;
+    [[nodiscard]] std::string entryPath() const;
 
     /**
      * @brief Parent volume
      * @return
      */
-    IVolumeWPtr volume() const;
+    [[nodiscard]] IVolumeWPtr volume() const;
 
     /**
      * @brief Handle of the entry
      * @return
      */
-    IVolume::Handle handle() const noexcept;
+    [[nodiscard]] IVolume::Handle handle() const noexcept;
 
     /**
      * @brief Entry priority
      * @return
      */
-    Priority priority() const noexcept;
+    [[nodiscard]] Priority priority() const noexcept;
 
     /**
      * @brief valid
      * @return
      */
-    bool valid() const noexcept;
+    [[nodiscard]] bool valid() const noexcept;
 
-    bool operator<(const VirtualEntry& other) const noexcept;
-    bool operator>(const VirtualEntry& other) const noexcept;
+    [[nodiscard]] bool operator<(const VirtualEntry& other) const noexcept;
+    [[nodiscard]] bool operator>(const VirtualEntry& other) const noexcept;
 
 private:
     std::unique_ptr<Impl> impl_;

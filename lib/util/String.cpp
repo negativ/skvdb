@@ -4,7 +4,8 @@ namespace skv::util {
 
 std::deque<std::string> split(std::string_view str, char delim, bool skipEmptyParts) {
     std::deque<std::string> tokens;
-    auto l = 0u, r = 0u;
+    auto l = 0u,
+         r = 0u;
 
     for (auto c : str) {
         if (c != delim)

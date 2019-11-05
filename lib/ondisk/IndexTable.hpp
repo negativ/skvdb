@@ -111,7 +111,7 @@ public:
      * @brief Size of disk block
      * @return
      */
-    std::uint32_t blockSize() const noexcept {
+    [[nodiscard]] std::uint32_t blockSize() const noexcept {
         return blockSize_;
     }
 
