@@ -80,7 +80,17 @@ using VirtualEntries = std::vector<VirtualEntry>;
 struct Storage::Impl {
     const Status InvalidVolumeArgumentStatus = Status::InvalidArgument("Invalid volume");
 
-    std::tuple<Status, Storage::Handle> open(std::string_view path) {
+    Impl() = default;
+    ~Impl() noexcept = default;
+
+    Impl(const Impl&) = delete;
+    Impl& operator=(const Impl&) = delete;
+
+    Impl(Impl&&) noexcept = delete;
+    Impl& operator=(Impl&&) noexcept = delete;
+
+
+    [[nodiscard]] std::tuple<Status, Storage::Handle> open(std::string_view path) {
         using result_t = std::tuple<Status, VirtualEntry>;
         using future_result_t = std::future<result_t>;
 
@@ -127,7 +137,7 @@ struct Storage::Impl {
         return {Status::Ok(), addVirtualEntries(std::move(openedEntries))};
     }
 
-    Status close(Storage::Handle handle) {
+    [[nodiscard]] Status close(Storage::Handle handle) {
         const auto& [status, ventries] = getVirtualEntries(handle);
 
         if (!status.isOk())
@@ -150,7 +160,7 @@ struct Storage::Impl {
         return ret? Status::Ok() : Status::InvalidOperation("Unable to close handle of all volumes");
     }
 
-    std::tuple<Status, Storage::Properties> properties(Storage::Handle handle) {
+    [[nodiscard]] std::tuple<Status, Storage::Properties> properties(Storage::Handle handle) {
         const auto& [status, ventries] = getVirtualEntries(handle);
 
         if (!status.isOk())
@@ -182,7 +192,7 @@ struct Storage::Impl {
         return {Status::Ok(), ret};
     }
 
-    std::tuple<Status, Property> property(Storage::Handle handle, std::string_view name) {
+    [[nodiscard]] std::tuple<Status, Property> property(Storage::Handle handle, std::string_view name) {
         const auto& [status, ventries] = getVirtualEntries(handle);
 
         if (!status.isOk())
@@ -211,7 +221,7 @@ struct Storage::Impl {
         return {Status::Ok(), value};
     }
 
-    Status setProperty(Storage::Handle handle, std::string_view name, const Property &value) {
+    [[nodiscard]] Status setProperty(Storage::Handle handle, std::string_view name, const Property &value) {
         const auto& [status, ventries] = getVirtualEntries(handle);
 
         if (!status.isOk())
@@ -233,7 +243,7 @@ struct Storage::Impl {
         return ret? Status::Ok() : Status::InvalidOperation("Unable to set property on all volumes");
     }
 
-    Status removeProperty(Storage::Handle handle, std::string_view name) {
+    [[nodiscard]] Status removeProperty(Storage::Handle handle, std::string_view name) {
         const auto& [status, ventries] = getVirtualEntries(handle);
 
         if (!status.isOk())
@@ -255,7 +265,7 @@ struct Storage::Impl {
         return ret? Status::Ok() : Status::InvalidOperation("Unable to remove properties from all volumes");
     }
 
-    std::tuple<Status, bool> hasProperty(Storage::Handle handle, std::string_view name) {
+    [[nodiscard]] std::tuple<Status, bool> hasProperty(Storage::Handle handle, std::string_view name) {
         const auto& [status, ventries] = getVirtualEntries(handle);
 
         if (!status.isOk())
@@ -289,7 +299,7 @@ struct Storage::Impl {
         return {Status::Ok(), hasProp};
     }
 
-    Status expireProperty(Storage::Handle handle, std::string_view name, chrono::system_clock::time_point tp) {
+    [[nodiscard]] Status expireProperty(Storage::Handle handle, std::string_view name, chrono::system_clock::time_point tp) {
         const auto& [status, ventries] = getVirtualEntries(handle);
 
         if (!status.isOk())
@@ -311,7 +321,7 @@ struct Storage::Impl {
         return ret? Status::Ok() : Status::InvalidOperation("Unable to expire property on all volumes");
     }
 
-    Status cancelPropertyExpiration(Storage::Handle handle, std::string_view name) {
+    [[nodiscard]] Status cancelPropertyExpiration(Storage::Handle handle, std::string_view name) {
         const auto& [status, ventries] = getVirtualEntries(handle);
 
         if (!status.isOk())
@@ -333,7 +343,7 @@ struct Storage::Impl {
         return ret? Status::Ok() : Status::InvalidOperation("Unable to cancel property expiration on all volumes");
     }
 
-    std::tuple<Status, Storage::Links> links(Storage::Handle handle) {
+    [[nodiscard]] std::tuple<Status, Storage::Links> links(Storage::Handle handle) {
         const auto& [status, ventries] = getVirtualEntries(handle);
 
         if (!status.isOk())
@@ -365,7 +375,7 @@ struct Storage::Impl {
         return {Status::Ok(), ret};
     }
 
-    Status link(Storage::Handle handle, std::string_view name) {
+    [[nodiscard]] Status link(Storage::Handle handle, std::string_view name) {
         const auto& [status, ventries] = getVirtualEntries(handle);
 
         if (!status.isOk())
@@ -387,7 +397,7 @@ struct Storage::Impl {
         return ret? Status::Ok() : Status::InvalidOperation("Unable to create link");
     }
 
-    Status unlink(Handle handle, std::string_view name) {
+    [[nodiscard]] Status unlink(Handle handle, std::string_view name) {
         const auto& [status, ventries] = getVirtualEntries(handle);
 
         if (!status.isOk())
@@ -409,7 +419,7 @@ struct Storage::Impl {
         return ret? Status::Ok() : Status::InvalidOperation("Unable to remove link");
     }
 
-    std::tuple<Status, std::string, std::vector<mount::Entry>> searchMountPathFor(std::string_view path) const {
+    [[nodiscard]] std::tuple<Status, std::string, std::vector<mount::Entry>> searchMountPathFor(std::string_view path) const {
         auto searchPath = simplifyPath(path);
         ReverseStringPathIterator start{searchPath},
                                   stop{};
@@ -437,7 +447,7 @@ struct Storage::Impl {
         return {Status::NotFound("Unable to find mount point"), {}, {}};
     }
 
-    Status mount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath, Storage::Priority prio) {
+    [[nodiscard]] Status mount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath, Storage::Priority prio) {
         if (!volume)
             return InvalidVolumeArgumentStatus;
 
@@ -467,7 +477,7 @@ struct Storage::Impl {
         return Status::Ok();
     }
 
-    Status unmount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath) {
+    [[nodiscard]] Status unmount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath) {
         if (!volume)
             return InvalidVolumeArgumentStatus;
 
@@ -494,7 +504,7 @@ struct Storage::Impl {
         return Status::Ok();
     }
 
-    Storage::Handle addVirtualEntries(VirtualEntries&& ventries) {
+    [[nodiscard]] Storage::Handle addVirtualEntries(VirtualEntries&& ventries) {
         auto handle = newHandle();
 
         std::sort(std::begin(ventries), std::end(ventries), std::greater<VirtualEntry>()); //sort from high priority to low
@@ -506,7 +516,7 @@ struct Storage::Impl {
         return handle;
     }
 
-    std::tuple<Status, VirtualEntries> getVirtualEntries(Storage::Handle handle) const {
+    [[nodiscard]] std::tuple<Status, VirtualEntries> getVirtualEntries(Storage::Handle handle) const {
         std::shared_lock locker(ventriesLock_);
 
         auto it = ventries_.find(handle);
@@ -526,15 +536,15 @@ struct Storage::Impl {
             ventries_.erase(it);
     }
 
-    Storage::Handle newHandle() noexcept {
+    [[nodiscard]] Storage::Handle newHandle() noexcept {
         return currentHandle_.fetch_add(1);
     }
 
     mount::Points mpoints_{};
     std::unordered_map<Storage::Handle, VirtualEntries> ventries_;
-    alignas(64) std::atomic<Storage::Handle> currentHandle_{IVolume::RootHandle + 1};
-    alignas(64) mutable std::shared_mutex mpointsLock_;
-    alignas(64) mutable std::shared_mutex ventriesLock_;
+    std::atomic<Storage::Handle> currentHandle_{IVolume::RootHandle + 1};
+    mutable std::shared_mutex mpointsLock_;
+    mutable std::shared_mutex ventriesLock_;
 };
 
 }

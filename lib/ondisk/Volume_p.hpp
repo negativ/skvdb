@@ -43,27 +43,30 @@ struct Volume::Impl {
 
     }
 
-    ~Impl() {
-        if (initialized())
-            deinitialize();
-    }
+    ~Impl() noexcept = default;
 
-    Status initialize(std::string_view directory, std::string_view volumeName) {
+    Impl(const Impl&) = delete;
+    Impl& operator=(const Impl&) = delete;
+
+    Impl(Impl&&) noexcept = delete;
+    Impl& operator=(Impl&&) noexcept = delete;
+
+    [[nodiscard]] Status initialize(std::string_view directory, std::string_view volumeName) {
         return storage_->open(directory, volumeName);
     }
 
-    Status deinitialize() {
+    [[nodiscard]] Status deinitialize() {
         if (claimed())
             return Status::InvalidOperation("Storage claimed");
 
         return storage_->close();
     }
 
-    bool initialized() const noexcept {
+    [[nodiscard]] bool initialized() const noexcept {
         return storage_->opened();
     }
 
-    std::tuple<Status, Volume::Handle> open(std::string_view p) {
+    [[nodiscard]] std::tuple<Status, Volume::Handle> open(std::string_view p) {
         auto path = simplifyPath(p);
 
         auto [status, handle, foundPath] = searchCachedPathEntry(path);
@@ -120,14 +123,14 @@ struct Volume::Impl {
         return claimControlBlock(handle);
     }
 
-    Status close(Volume::Handle d)  {
+    [[nodiscard]] Status close(Volume::Handle d)  {
         if (d == Volume::InvalidHandle)
             return NoSuchEntryStatus;
 
         return releaseControlBlock(d);
     }
 
-    std::tuple<Status, std::set<std::string>> children(Volume::Handle handle) {
+    [[nodiscard]] std::tuple<Status, std::set<std::string>> children(Volume::Handle handle) {
         auto cb = getControlBlock(handle);
 
         if (!cb)
@@ -154,7 +157,7 @@ struct Volume::Impl {
         return {Status::Ok(), ret};
     }
 
-    std::tuple<Status, Volume::Properties> properties(Volume::Handle handle) {
+    [[nodiscard]] std::tuple<Status, Volume::Properties> properties(Volume::Handle handle) {
         auto cb = getControlBlock(handle);
 
         if (!cb)
@@ -165,7 +168,7 @@ struct Volume::Impl {
         return {Status::Ok(), cb->entry().properties()};
     }
 
-    std::tuple<Status, Property> property(Volume::Handle handle, std::string_view name) {
+    [[nodiscard]] std::tuple<Status, Property> property(Volume::Handle handle, std::string_view name) {
         auto cb = getControlBlock(handle);
 
         if (!cb)
@@ -176,7 +179,7 @@ struct Volume::Impl {
         return cb->entry().property(util::to_string(name));
     }
 
-    Status setProperty(Volume::Handle handle, std::string_view name, const Property &value) {
+    [[nodiscard]] Status setProperty(Volume::Handle handle, std::string_view name, const Property &value) {
         auto cb = getControlBlock(handle);
 
         if (!cb)
@@ -195,7 +198,7 @@ struct Volume::Impl {
         return status;
     }
 
-    Status removeProperty(Volume::Handle handle, std::string_view name) {
+    [[nodiscard]] Status removeProperty(Volume::Handle handle, std::string_view name) {
         auto cb = getControlBlock(handle);
 
         if (!cb)
@@ -211,7 +214,7 @@ struct Volume::Impl {
         return status;
     }
 
-    std::tuple<Status, bool> hasProperty(Volume::Handle handle, std::string_view name) {
+    [[nodiscard]] std::tuple<Status, bool> hasProperty(Volume::Handle handle, std::string_view name) {
         auto cb = getControlBlock(handle);
 
         if (!cb)
@@ -222,7 +225,7 @@ struct Volume::Impl {
         return {Status::Ok(), cb->entry().hasProperty(util::to_string(name))};
     }
 
-    Status expireProperty(Volume::Handle handle, std::string_view name, chrono::system_clock::time_point tp) {
+    [[nodiscard]] Status expireProperty(Volume::Handle handle, std::string_view name, chrono::system_clock::time_point tp) {
         auto cb = getControlBlock(handle);
 
         if (!cb)
@@ -238,7 +241,7 @@ struct Volume::Impl {
         return status;
     }
 
-    Status cancelPropertyExpiration(Volume::Handle handle, std::string_view name) {
+    [[nodiscard]] Status cancelPropertyExpiration(Volume::Handle handle, std::string_view name) {
         auto cb = getControlBlock(handle);
 
         if (!cb)
@@ -254,7 +257,7 @@ struct Volume::Impl {
         return status;
     }
 
-    Status createChild(Volume::Handle handle, std::string_view name) {
+    [[nodiscard]] Status createChild(Volume::Handle handle, std::string_view name) {
         auto it = std::find(std::cbegin(name), std::cend(name),
                             StringPathIterator::separator);
 
@@ -307,7 +310,7 @@ struct Volume::Impl {
         return Status::Ok();
     }
 
-    Status removeChild(Handle handle, std::string_view name) {
+    [[nodiscard]] Status removeChild(Handle handle, std::string_view name) {
         auto cb = getControlBlock(handle);
 
         if (!cb)
@@ -355,7 +358,7 @@ struct Volume::Impl {
         return storage_->remove(child);
     }
 
-    std::tuple<Status, Volume::Handle, std::string> searchCachedPathEntry(const std::string& path) {
+    [[nodiscard]] std::tuple<Status, Volume::Handle, std::string> searchCachedPathEntry(const std::string& path) {
         ReverseStringPathIterator start{path},
                                   stop{};
 
@@ -375,11 +378,11 @@ struct Volume::Impl {
         pathCache_.insert(path, h);
     }
 
-    bool invalidatePathCacheEntry(const std::string& path) {
+    [[nodiscard]] bool invalidatePathCacheEntry(const std::string& path) {
         return pathCache_.remove(path);
     }
 
-    std::tuple<Status, Volume::Handle> claimControlBlock(Volume::Handle handle) {
+    [[nodiscard]] std::tuple<Status, Volume::Handle> claimControlBlock(Volume::Handle handle) {
         std::unique_lock locker(controlBlocksLock_);
 
         auto it = controlBlocks_.find(handle);
@@ -400,7 +403,7 @@ struct Volume::Impl {
         return claimControlBlock(handle, std::move(entry));
     }
 
-    std::tuple<Status, Volume::Handle> claimControlBlock(Volume::Handle handle, entry_type&& e) {
+    [[nodiscard]] std::tuple<Status, Volume::Handle> claimControlBlock(Volume::Handle handle, entry_type&& e) {
         std::unique_lock locker(controlBlocksLock_);
 
         auto it = controlBlocks_.find(handle);
@@ -419,7 +422,7 @@ struct Volume::Impl {
         return {Status::Ok(), handle};
     }
 
-    Status releaseControlBlock(Volume::Handle handle) {
+    [[nodiscard]] Status releaseControlBlock(Volume::Handle handle) {
         std::unique_lock locker(controlBlocksLock_);
 
         auto it = controlBlocks_.find(handle);
@@ -442,7 +445,7 @@ struct Volume::Impl {
         return NoSuchEntryStatus;
     }
 
-    cb_ptr_type getControlBlock(Volume::Handle handle) {
+    [[nodiscard]] cb_ptr_type getControlBlock(Volume::Handle handle) {
         std::shared_lock locker(controlBlocksLock_);
 
         auto it = controlBlocks_.find(handle);
@@ -453,7 +456,7 @@ struct Volume::Impl {
         return {};
     }
 
-    Status scheduleControlBlockSync(const cb_ptr_type& cb) {
+    [[nodiscard]] Status scheduleControlBlockSync(const cb_ptr_type& cb) {
         if (!cb || !cb->dirty())
             return Status::InvalidArgument("Invalid or clean CB");
 
@@ -462,7 +465,7 @@ struct Volume::Impl {
         return storage_->save(cb->entry());
     }
 
-    Status claim(Volume::Token token) noexcept {
+    [[nodiscard]] Status claim(Volume::Token token) noexcept {
         std::unique_lock locker(claimLock_);
 
         if (claimToken_ != Volume::Token{} &&
@@ -480,7 +483,7 @@ struct Volume::Impl {
         return Status::Ok();
     }
 
-    Status release(Volume::Token token) noexcept {
+    [[nodiscard]] Status release(Volume::Token token) noexcept {
         std::unique_lock locker(claimLock_);
 
         if (claimToken_ == Volume::Token{})
@@ -497,7 +500,7 @@ struct Volume::Impl {
         return Status::Ok();
     }
 
-    bool claimed() const noexcept {
+    [[nodiscard]] bool claimed() const noexcept {
         std::unique_lock locker(claimLock_);
 
         return claimCount_ != 0;

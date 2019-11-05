@@ -19,24 +19,22 @@ class Status final {
     Code code_{Code::Undefined};
     std::string message_;
 
-    static constexpr bool noexcept_copy_constructible = std::is_nothrow_copy_constructible_v<decltype(message_)>;
-    static constexpr bool noexcept_copy_assignable = std::is_nothrow_copy_assignable_v<decltype(message_)>;
     static constexpr bool noexcept_move_constructible = std::is_nothrow_move_constructible_v<decltype(message_)>;
     static constexpr bool noexcept_move_assignable = std::is_nothrow_move_assignable_v<decltype(message_)>;
 
 public:
-    [[nodiscard]] static Status Ok() noexcept(noexcept_copy_constructible);
-    [[nodiscard]] static Status IOError(std::string message) noexcept(noexcept_copy_constructible);
-    [[nodiscard]] static Status InvalidArgument(std::string message) noexcept(noexcept_copy_constructible);
-    [[nodiscard]] static Status NotFound(std::string message) noexcept(noexcept_copy_constructible);
-    [[nodiscard]] static Status Fatal(std::string message) noexcept(noexcept_copy_constructible);
-    [[nodiscard]] static Status InvalidOperation(std::string message) noexcept(noexcept_copy_constructible);
+    [[nodiscard]] static Status Ok();
+    [[nodiscard]] static Status IOError(std::string message);
+    [[nodiscard]] static Status InvalidArgument(std::string message);
+    [[nodiscard]] static Status NotFound(std::string message);
+    [[nodiscard]] static Status Fatal(std::string message);
+    [[nodiscard]] static Status InvalidOperation(std::string message);
 
     Status() = default;
     ~Status() = default;
 
-    Status(const Status&) noexcept(noexcept_copy_constructible) = default;
-    Status& operator=(const Status&) noexcept(noexcept_copy_assignable) = default;
+    Status(const Status&) = default;
+    Status& operator=(const Status&) = default;
 
     Status(Status&&) noexcept(noexcept_move_constructible) = default;
     Status& operator=(Status&&) noexcept(noexcept_move_assignable) = default;
@@ -51,6 +49,7 @@ public:
     [[nodiscard]] bool isNotFound() const noexcept;
     [[nodiscard]] bool isFatal() const noexcept;
     [[nodiscard]] bool isInvalidOperation() const noexcept;
+
 private:
     Status(Code code, std::string message) noexcept(noexcept_move_constructible);
 };

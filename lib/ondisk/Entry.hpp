@@ -259,7 +259,6 @@ private:
     friend std::ostream& operator<< <Key, PropertyContainer, ClockType,TInvalidKey>(std::ostream& _os, const Entry& p);
     friend std::istream& operator>> <Key, PropertyContainer, ClockType,TInvalidKey>(std::istream& _is, Entry& p);
 
-
     void setParent(key_type p) noexcept {
         impl_->parent_ = p;
     }

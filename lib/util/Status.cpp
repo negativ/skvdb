@@ -2,27 +2,27 @@
 
 namespace skv::util {
 
-Status Status::Ok() noexcept(noexcept_copy_constructible) {
+Status Status::Ok() {
     return Status{Status::Code::Ok, ""};
 }
 
-Status Status::IOError(std::string message) noexcept(noexcept_copy_constructible) {
+Status Status::IOError(std::string message) {
     return Status{Status::Code::IOError, std::move(message)};
 }
 
-Status Status::InvalidArgument(std::string message) noexcept(noexcept_copy_constructible) {
+Status Status::InvalidArgument(std::string message) {
     return Status{Status::Code::InvalidArgument, std::move(message)};
 }
 
-Status Status::NotFound(std::string message) noexcept(noexcept_copy_constructible) {
+Status Status::NotFound(std::string message) {
     return Status{Status::Code::NotFound, std::move(message)};
 }
 
-Status Status::Fatal(std::string message) noexcept(noexcept_copy_constructible) {
+Status Status::Fatal(std::string message) {
     return Status{Status::Code::Fatal, std::move(message)};
 }
 
-Status Status::InvalidOperation(std::string message) noexcept(noexcept_copy_constructible) {
+Status Status::InvalidOperation(std::string message) {
     return Status{Status::Code::InvalidOp, std::move(message)};
 }
 

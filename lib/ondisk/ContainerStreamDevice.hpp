@@ -27,16 +27,16 @@ public:
     ContainerStreamDevice(const ContainerStreamDevice&) = default;
     ContainerStreamDevice& operator=(const ContainerStreamDevice&) = default;
 
-    ContainerStreamDevice(ContainerStreamDevice&&) noexcept = default;
-    ContainerStreamDevice& operator=(ContainerStreamDevice&&) noexcept = default;
+    ContainerStreamDevice(ContainerStreamDevice&&) noexcept = delete;
+    ContainerStreamDevice& operator=(ContainerStreamDevice&&) noexcept = delete;
 
     [[nodiscard]] std::streamsize read(char_type* s, std::streamsize n) {
         auto amt = static_cast<std::streamsize>(container_.size() - pos_);
         auto result = std::min(n, amt);
 
         if (result != 0) {
-            std::copy(container_.begin() + pos_,
-                      container_.begin() + pos_ + result,
+            std::copy(std::next(std::cbegin(container_), pos_),
+                      std::next(std::cbegin(container_), pos_ + result),
                       s);
 
             pos_ += result;
@@ -54,13 +54,14 @@ public:
             auto amt = static_cast<std::streamsize>(container_.size() - pos_);
             result = std::min(n, amt);
 
-            std::copy(s, s + result, container_.begin() + pos_);
+            std::copy(s, s + result,
+                      std::next(std::begin(container_), pos_));
 
             pos_ += result;
         }
 
         if (result < n) {
-            container_.insert(container_.end(), s + result, s + n);
+            container_.insert(std::end(container_), std::next(s, result), std::next(s, n));
             pos_ = container_.size();
         }
 

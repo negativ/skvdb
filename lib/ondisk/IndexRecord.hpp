@@ -27,6 +27,14 @@ public:
         key_{k}, blockIndex_{bi}, bytesCount_{bc}
     {}
 
+    ~IndexRecord() noexcept = default;
+
+    IndexRecord(const IndexRecord&) noexcept = default;
+    IndexRecord& operator=(const IndexRecord&) noexcept = default;
+
+    IndexRecord(IndexRecord&&) noexcept = default;
+    IndexRecord& operator=(IndexRecord&&) noexcept = default;
+
     [[nodiscard]] constexpr key_type key() const noexcept { return key_; }
 
     [[nodiscard]] constexpr block_index_type  blockIndex() const noexcept { return blockIndex_; }

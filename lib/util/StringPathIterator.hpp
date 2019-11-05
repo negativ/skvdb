@@ -17,9 +17,9 @@ struct StringPathIterator {
 
     StringPathIterator &operator++();
 
-    std::string operator*();
+    [[nodiscard]] std::string operator*();
 
-    bool operator!=(const StringPathIterator& other);
+    [[nodiscard]] bool operator!=(const StringPathIterator& other);
 
 private:
     std::string path_{};
@@ -38,9 +38,9 @@ struct ReverseStringPathIterator {
 
     ReverseStringPathIterator &operator++();
 
-    std::string operator*();
+    [[nodiscard]] std::string operator*();
 
-    bool operator!=(const ReverseStringPathIterator& other);
+    [[nodiscard]] bool operator!=(const ReverseStringPathIterator& other);
 
 private:
 	std::deque<std::string> chunks_;

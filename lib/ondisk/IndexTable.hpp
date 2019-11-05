@@ -12,6 +12,21 @@
 
 namespace skv::ondisk {
 
+template <typename Key,
+          typename BlockIndex,
+          typename BytesCount>
+class IndexTable;
+
+template <typename Key,
+          typename BlockIndex,
+          typename BytesCount>
+std::ostream& operator<<(std::ostream& _os, const IndexTable<Key, BlockIndex, BytesCount>& p);
+
+template <typename Key,
+          typename BlockIndex,
+          typename BytesCount>
+std::istream& operator>>(std::istream& _is, IndexTable<Key, BlockIndex, BytesCount>& p);
+
 template <typename Key          = std::uint64_t,
           typename BlockIndex   = std::uint32_t,
           typename BytesCount   = std::uint32_t> // in one record(!!!)
@@ -124,11 +139,8 @@ public:
     }
 
 private:
-    template <typename K, typename BI, typename BC>
-    friend std::istream& operator>>(std::istream& is, IndexTable<K, BI, BC>& p);
-
-    template <typename K, typename BI, typename BC>
-    friend std::istream& operator>>(std::istream& is, IndexTable<K, BI, BC>& p);
+    friend std::istream& operator>> <Key, BlockIndex, BytesCount>(std::istream& is, IndexTable& p);
+    friend std::istream& operator>> <Key, BlockIndex, BytesCount>(std::istream& is, IndexTable& p);
 
     table_type table_;
     std::uint32_t blockSize_{0};
@@ -136,8 +148,10 @@ private:
     std::uint64_t blockFootprint_{0};
 };
 
-template <typename K, typename BI, typename BC>
-inline std::ostream& operator<<(std::ostream& _os, const IndexTable<K, BI, BC>& p)
+template <typename Key,
+          typename BlockIndex,
+          typename BytesCount>
+inline std::ostream& operator<<(std::ostream& _os, const IndexTable<Key, BlockIndex, BytesCount>& p)
 {
     util::Serializer s{_os};
 
@@ -152,12 +166,14 @@ inline std::ostream& operator<<(std::ostream& _os, const IndexTable<K, BI, BC>& 
     return _os;
 }
 
-template <typename K, typename BI, typename BC>
-inline std::istream& operator>>(std::istream& _is, IndexTable<K, BI, BC>& p)
+template <typename Key,
+          typename BlockIndex,
+          typename BytesCount>
+inline std::istream& operator>>(std::istream& _is, IndexTable<Key, BlockIndex, BytesCount>& p)
 {
     util::Deserializer ds{_is};
 
-    using index_type = typename IndexTable<K, BI, BC>::index_record_type;
+    using index_type = typename IndexTable<Key, BlockIndex, BytesCount>::index_record_type;
 
     std::int64_t d;
     ds >> d;

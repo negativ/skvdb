@@ -325,7 +325,7 @@ private:
         keyCounter_ = RootEntryId;
     }
 
-    Status doOfflineCompaction() {
+    [[nodiscard]] Status doOfflineCompaction() {
         if (logDevice_.sizeInBytes() < openOptions_.CompactionDeviceMinSize)
             return Status::Ok();
 

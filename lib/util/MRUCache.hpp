@@ -34,8 +34,14 @@ public:
                                                                                 bmi::member<cache_item_type,
                                                                                             typename cache_item_type::first_type,
                                                                                             &cache_item_type::first>>>>;
-    using iterator = typename cache_type::iterator;
-    using const_iterator = typename cache_type::const_iterator;
+    MRUCache() = default;
+    ~MRUCache() noexcept = default;
+
+    MRUCache(const MRUCache&) = delete;
+    MRUCache& operator=(const MRUCache&) = delete;
+
+    MRUCache(MRUCache&&) = delete;
+    MRUCache& operator=(MRUCache&&) = delete;
 
     void insert(const key_type& key, const value_type& value) {
         std::lock_guard locker(xLock_);
