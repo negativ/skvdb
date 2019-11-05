@@ -59,6 +59,10 @@ char File::sep() noexcept {
     return '/';
 }
 
+bool File::rename(std::string_view oldName, std::string newName) noexcept {
+    return ::rename(oldName.data(), newName.data()) == 0;
+}
+
 }
 
 #endif

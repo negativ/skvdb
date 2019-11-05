@@ -58,6 +58,10 @@ namespace skv::os {
                 !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
     }
 
+    bool File::rename(std::string_view oldName, std::string newName) noexcept {
+        return ::rename(oldName.data(), newName.data()) == 0;
+    }
+
     char File::sep() noexcept {
         return '\\';
     }

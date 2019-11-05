@@ -20,6 +20,8 @@
 #include "util/Serialization.hpp"
 #include "util/SpinLock.hpp"
 #include "util/Status.hpp"
+#include "util/String.hpp"
+#include "util/Unused.hpp"
 
 namespace {
 
@@ -58,6 +60,8 @@ public:
     static_assert (sizeof (bytes_count_type) >= sizeof(std::uint32_t), "Bytes count type should be at least 32 bits long");
 
     struct OpenOptions {
+        double          CompactionRatio{0.6};
+        std::uint64_t   CompactionDeviceMinSize{std::uint64_t{1024 * 1024 * 1024} * 4}; // 4GB
         std::uint32_t   LogDeviceBlockSize{2048};
         bool            LogDeviceCreateNewIfNotExist{true};
     };
@@ -184,7 +188,9 @@ public:
 
         openOptions_ = opts;
 
-        if (auto status = openDevice(createPath(directory, storageName, LOG_DEVICE_SUFFIX)); !status.isOk())
+        logDevicePath_ = createPath(directory, storageName, LOG_DEVICE_SUFFIX);
+
+        if (auto status = openDevice(logDevicePath_); !status.isOk())
             return status;
         if (auto status = openIndexTable(createPath(directory, storageName, INDEX_TABLE_SUFFIX)); !status.isOk())
             return status;
@@ -197,17 +203,20 @@ public:
         directory_ = directory;
         storageName_ = storageName;
 
+        Status status = Status::Ok();
+
         if (indexTable_.find(RootEntryId) == std::cend(indexTable_)) {// creating root index if needed
             locker.unlock();
 
-            auto status = createRootIndex();
+            status = createRootIndex();
 
             opened_ = status.isOk();
-
-            return status;
         }
 
-        return Status::Ok();
+        if (status.isOk())
+            return doOfflineCompaction();
+
+        return status;
     }
 
     [[nodiscard]] Status close() {
@@ -244,10 +253,11 @@ public:
     }
 
 private:
-    static constexpr const char * const INDEX_TABLE_SUFFIX  = ".index";
-    static constexpr const char * const LOG_DEVICE_SUFFIX   = ".logd";
+    static constexpr const char * const INDEX_TABLE_SUFFIX       = ".index";
+    static constexpr const char * const LOG_DEVICE_SUFFIX        = ".logd";
+    static constexpr const char * const LOG_DEVICE_COMP_SUFFIX   = ".logdc";
 
-    Status openDevice(std::string_view path) {
+    [[nodiscard]] Status openDevice(std::string_view path) {
         typename log_device_type::OpenOption opts;
         opts.BlockSize = openOptions_.LogDeviceBlockSize;
         opts.CreateNewIfNotExist = openOptions_.LogDeviceCreateNewIfNotExist;
@@ -255,12 +265,14 @@ private:
         return logDevice_.open(path, opts);
     }
 
-    Status closeDevice() {
+    [[nodiscard]] Status closeDevice() {
         return logDevice_.close();
     }
 
-    Status openIndexTable(std::string_view path) {
+    [[nodiscard]] Status openIndexTable(std::string_view path) {
         std::fstream stream{path.data(), std::ios_base::in};
+
+        indexTable_.setBlockSize(openOptions_.LogDeviceBlockSize);
 
         if (stream.is_open()) {
             Deserializer d{stream};
@@ -275,7 +287,7 @@ private:
         return Status::Ok();
     }
 
-    Status closeIndexTable() {
+    [[nodiscard]] Status closeIndexTable() {
         std::fstream stream{createPath(directory_, storageName_, INDEX_TABLE_SUFFIX), std::ios_base::out};
 
         if (stream.is_open()) {
@@ -301,17 +313,96 @@ private:
         return save(root);
     }
 
+
+    [[nodiscard]] std::string createPath(std::string_view directory, std::string_view storageName, std::string_view suffix) {
+        std::stringstream stream;
+        stream << directory << os::File::sep() << storageName << suffix;
+
+        return stream.str();
+    }
+
     void resetKeyCounter() noexcept {
         std::lock_guard locker(spLock_);
 
         keyCounter_ = RootEntryId;
     }
 
-    std::string createPath(std::string_view directory, std::string_view storageName, std::string_view suffix) {
-        std::stringstream stream;
-        stream << directory << os::File::sep() << storageName << suffix;
+    Status doOfflineCompaction() {
+        if (logDevice_.sizeInBytes() < openOptions_.CompactionDeviceMinSize)
+            return Status::Ok();
 
-        return stream.str();
+        const auto idxtBlocksOccupied = indexTable_.blockFootprint();
+        const auto diskBlocksOccupied = logDevice_.sizeInBlocks();
+
+        double ratio = double(idxtBlocksOccupied) / double(diskBlocksOccupied);
+
+        if (ratio > openOptions_.CompactionRatio)
+            return Status::Ok();
+
+        index_table_type idxtCompacted;
+        typename log_device_type::OpenOption opts;
+        auto path = createPath(directory_, storageName_, LOG_DEVICE_COMP_SUFFIX);
+
+        os::File::unlink(path);
+
+        opts.BlockSize = openOptions_.LogDeviceBlockSize;
+        opts.CreateNewIfNotExist = true;
+
+        log_device_type device;
+
+        if (!device.open(path, opts).isOk())
+            return Status::IOError("Unable to open: " + path);
+
+        Status compStatus = Status::Ok();
+
+        for (const auto& p : indexTable_) {
+            auto [key, index] = p;
+            auto [status, buffer] = logDevice_.read(index.blockIndex(), index.bytesCount());
+
+            if (!status.isOk()) {
+                compStatus = status;
+
+                break;
+            }
+
+            auto [appendStatus, blockIndex, blockCount] = device.append(buffer);
+
+            if (!appendStatus.isOk()) {
+                compStatus = status;
+
+                break;
+            }
+
+            idxtCompacted[key] = index_record_type(key, blockIndex, bytes_count_type(buffer.size()));
+        }
+
+        if (!compStatus.isOk()) {
+            SKV_UNUSED(device.close());
+
+            os::File::unlink(path);
+
+            return Status::IOError("Unable to compact device");
+        }
+
+        SKV_UNUSED(logDevice_.close());
+        SKV_UNUSED(device.close());
+
+        if (!os::File::unlink(logDevicePath_)) {
+            os::File::unlink(path);
+
+            return openDevice(logDevicePath_);
+        }
+
+        if (!os::File::rename(path, logDevicePath_))
+            return Status::Fatal("Unable to rename device");
+
+        if (auto status = openDevice(logDevicePath_); status.isOk()) {
+            indexTable_ = std::move(idxtCompacted);
+
+            return status;
+        }
+
+        return Status::Fatal("Unable to compact device");
     }
 
     index_table_type indexTable_;
@@ -319,6 +410,7 @@ private:
     OpenOptions openOptions_;
     std::string directory_;
     std::string storageName_;
+    std::string logDevicePath_;
     std::shared_mutex xLock_;
     SpinLock<> spLock_;
     key_type keyCounter_{0};

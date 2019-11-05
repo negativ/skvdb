@@ -20,7 +20,7 @@ public:
     using key_type          = std::decay_t<Key>;
     using block_index_type  = std::decay_t<BlockIndex>;
     using bytes_count_type  = std::decay_t<BytesCount>;
-    using index_record_type = std::decay_t<IndexRecord<key_type, block_index_type, bytes_count_type>>;
+    using index_record_type = IndexRecord<key_type, block_index_type, bytes_count_type>;
     using table_type        = std::unordered_map<key_type, index_record_type>;
 
     using iterator          = typename table_type::iterator;
@@ -87,12 +87,40 @@ public:
         return end();
     }
 
+    [[nodiscard]] std::size_t size() const noexcept {
+        return table_.size();
+    }
+
     /**
      * @brief Size of all records on disk (in bytes). Updates only on loading index table from disk. Used for calulation of compaction rate.
      * @return
      */
     [[nodiscard]] std::uint64_t diskFootprint() const noexcept {
         return diskFootprint_;
+    }
+
+    /**
+     * @brief Size of all records on disk (in blocks). Updates only on loading index table from disk. Used for calulation of compaction rate.
+     * @return
+     */
+    [[nodiscard]] std::uint64_t blockFootprint() const noexcept {
+        return blockFootprint_;
+    }
+
+    /**
+     * @brief Size of disk block
+     * @return
+     */
+    std::uint32_t blockSize() const noexcept {
+        return blockSize_;
+    }
+
+    /**
+     * @brief Sets block size
+     * @return
+     */
+    void setBlockSize(std::uint32_t bs) noexcept {
+        blockSize_ = bs;
     }
 
 private:
@@ -103,7 +131,9 @@ private:
     friend std::istream& operator>>(std::istream& is, IndexTable<K, BI, BC>& p);
 
     table_type table_;
+    std::uint32_t blockSize_{0};
     std::uint64_t diskFootprint_{0};
+    std::uint64_t blockFootprint_{0};
 };
 
 template <typename K, typename BI, typename BC>
@@ -138,6 +168,15 @@ inline std::istream& operator>>(std::istream& _is, IndexTable<K, BI, BC>& p)
 
         p[idx.key()] = idx;
         p.diskFootprint_ += idx.bytesCount();
+
+        if (p.blockSize() > 0) {
+            auto blockCount = idx.bytesCount() / p.blockSize();
+
+            if (idx.bytesCount() % p.blockSize() != 0)
+                ++blockCount;
+
+            p.blockFootprint_ += blockCount;
+        }
     }
 
     return _is;

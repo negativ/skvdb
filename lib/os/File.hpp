@@ -36,6 +36,8 @@ struct File {
     static bool exists(std::string_view filePath) noexcept;
 
     static char sep() noexcept;  // path separator
+
+    static bool rename(std::string_view oldName, std::string newName) noexcept;
 };
 
 
