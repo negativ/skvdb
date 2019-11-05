@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <functional>
 #include <future>
+#include <mutex>
+#include <new>
+#include <shared_mutex>
 #include <thread>
 #include <type_traits>
 #include <unordered_map>
@@ -82,17 +85,15 @@ struct Storage::Impl {
         using future_result_t = std::future<result_t>;
 
         std::string vpath = simplifyPath(path);
-        auto [status, mountPath] = searchMountPathFor(vpath);
+        auto [status, mountPath, mountEntries] = searchMountPathFor(vpath);
 
         if (!status.isOk())
             return {status, Storage::InvalidHandle};
 
-        auto& index = mpoints_.get<mount::tags::ByMountPath>();
-        auto [start, stop] = index.equal_range(util::to_string(mountPath));
         auto subvpath = vpath.substr(mountPath.size(), vpath.size() - mountPath.size()); // extracting subpath from vpath
         std::vector<future_result_t> results;
 
-        std::transform(start, stop,
+        std::transform(std::cbegin(mountEntries), std::cend(mountEntries),
                        std::back_inserter(results),
                        [subvpath](auto&& entry) {
                            return std::async(std::launch::async, [entry, subvpath]() -> result_t {
@@ -408,23 +409,32 @@ struct Storage::Impl {
         return ret? Status::Ok() : Status::InvalidOperation("Unable to remove link");
     }
 
-    std::tuple<Status, std::string> searchMountPathFor(std::string_view path) const {
+    std::tuple<Status, std::string, std::vector<mount::Entry>> searchMountPathFor(std::string_view path) const {
         auto searchPath = simplifyPath(path);
         ReverseStringPathIterator start{searchPath},
                                   stop{};
 
+        std::shared_lock locker(mpointsLock_);
+
         auto& index = mpoints_.get<mount::tags::ByMountPath>();
 
         while (start != stop) {
-            auto it = index.find(*start);
+            auto mpath = *start;
+            auto it = index.find(mpath);
 
-            if (it != std::cend(index))
-                return {Status::Ok(), it->mountPath()};
+            if (it != std::cend(index)) {
+                auto [start, stop] = index.equal_range(mpath);
+
+                std::vector<mount::Entry> ret;
+                std::copy(start, stop, std::back_inserter(ret));
+
+                return {Status::Ok(), mpath, ret};
+            }
 
             ++start;
         }
 
-        return {Status::NotFound("Unable to find mount point"), {}};
+        return {Status::NotFound("Unable to find mount point"), {}, {}};
     }
 
     Status mount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath, Storage::Priority prio) {
@@ -432,7 +442,7 @@ struct Storage::Impl {
             return InvalidVolumeArgumentStatus;
 
         if (!volume->claim(this).isOk())
-            return Status::InvalidOperation("Volume claimed by another instance of storage");
+            return Status::InvalidOperation("Volume claimed by another instance of VFS storage");
 
         mount::Entry entry(mountPath, entryPath, volume, prio);
 
@@ -442,7 +452,7 @@ struct Storage::Impl {
             return Status::InvalidArgument("Unable to create mount point entry. Check volume is properly initialized and entry path exists.");
         }
 
-        // TODO: protect by mutex
+        std::unique_lock locker(mpointsLock_);
 
         auto& index = mpoints_.get<mount::tags::ByAll>();
         auto retp = index.insert(entry);
@@ -461,7 +471,7 @@ struct Storage::Impl {
         if (!volume)
             return InvalidVolumeArgumentStatus;
 
-        // TODO: protect by mutex
+        std::unique_lock locker(mpointsLock_);
 
         auto& index = mpoints_.get<mount::tags::ByMountPath>();
         auto [start, stop] = index.equal_range(util::to_string(mountPath));
@@ -485,19 +495,20 @@ struct Storage::Impl {
     }
 
     Storage::Handle addVirtualEntries(VirtualEntries&& ventries) {
-        // TODO: lock
         auto handle = newHandle();
 
         std::sort(std::begin(ventries), std::end(ventries), std::greater<VirtualEntry>()); //sort from high priority to low
 
-        if (ventries_.emplace(handle, ventries).second)
-            return handle;
+        std::unique_lock locker(ventriesLock_);
 
-        return Storage::InvalidHandle;
+        ventries_.emplace(handle, ventries);
+
+        return handle;
     }
 
     std::tuple<Status, VirtualEntries> getVirtualEntries(Storage::Handle handle) const {
-        // TODO: lock
+        std::shared_lock locker(ventriesLock_);
+
         auto it = ventries_.find(handle);
 
         if (it == std::cend(ventries_))
@@ -507,7 +518,8 @@ struct Storage::Impl {
     }
 
     void removeVirtualEntries(Storage::Handle handle) {
-        // TODO: lock
+        std::unique_lock locker(ventriesLock_);
+
         auto it = ventries_.find(handle);
 
         if (it != std::end(ventries_))
@@ -520,7 +532,9 @@ struct Storage::Impl {
 
     mount::Points mpoints_{};
     std::unordered_map<Storage::Handle, VirtualEntries> ventries_;
-    std::atomic<Storage::Handle> currentHandle_{IVolume::RootHandle + 1};
+    alignas(64) std::atomic<Storage::Handle> currentHandle_{IVolume::RootHandle + 1};
+    alignas(64) mutable std::shared_mutex mpointsLock_;
+    alignas(64) mutable std::shared_mutex ventriesLock_;
 };
 
 }
