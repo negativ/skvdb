@@ -139,7 +139,7 @@ public:
      * @param prio - priority of mount point
      * @return Status::Ok() on success
      */
-    [[nodiscard]] Status mount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath, Priority prio = DefaultPriority);
+    [[nodiscard]] Status mount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath, Priority prio = DefaultPriority);
 
     /**
      * @brief Unmount volume entry path from VFS storage
@@ -148,7 +148,7 @@ public:
      * @param mountPath - mount point path
      * @return Status::Ok() on success
      */
-    [[nodiscard]] Status unmount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath);
+    [[nodiscard]] Status unmount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath);
 
 private:
     std::unique_ptr<Impl> impl_;

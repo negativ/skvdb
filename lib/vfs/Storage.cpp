@@ -59,12 +59,12 @@ Status Storage::unlink(Handle handle, std::string_view name) {
     return impl_->unlink(handle, name);
 }
 
-Status Storage::mount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath, Storage::Priority prio) {
-    return impl_->mount(std::move(volume), entryPath, mountPath, prio);
+Status Storage::mount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath, Storage::Priority prio) {
+    return impl_->mount(volume, entryPath, mountPath, prio);
 }
 
-Status Storage::unmount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath) {
-    return impl_->unmount(std::move(volume), entryPath, mountPath);
+Status Storage::unmount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath) {
+    return impl_->unmount(volume, entryPath, mountPath);
 }
 
 }
