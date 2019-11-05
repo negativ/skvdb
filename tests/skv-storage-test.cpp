@@ -3,20 +3,26 @@
 #include <gtest/gtest.h>
 
 #include <ondisk/StorageEngine.hpp>
+#include <os/File.hpp>
 
+using namespace skv;
 using namespace skv::ondisk;
 
 namespace {
 #ifdef BUILDING_UNIX
-    const char * const STORAGE_DIR  = "/tmp";
-    const char * const STORAGE_NAME = "test_storage";
+const std::string STORAGE_DIR  = "/tmp";
+const std::string STORAGE_NAME = "test_storage";
 #else
-    const char * const STORAGE_DIR  = ".";
-    const char * const STORAGE_NAME = "test_storage";
+const std::string STORAGE_DIR  = ".";
+const std::string STORAGE_NAME = "test_storage";
 #endif
 }
 
 TEST(StorageTest, OpenClose) {
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logdc");
+
     StorageEngine<> storage;
 
     auto status = storage.open(STORAGE_DIR, STORAGE_NAME);
@@ -33,6 +39,68 @@ TEST(StorageTest, OpenClose) {
     }
 
     ASSERT_TRUE(storage.close().isOk());
+
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logdc");
+}
+
+TEST(StorageTest, Compaction) {
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logdc");
+
+    StorageEngine<> storage;
+
+    StorageEngine<>::OpenOptions opts;
+    opts.CompactionRatio = 0.9;
+    opts.CompactionDeviceMinSize = 1 * 1024 * 1024; // 1 Mb
+
+    {
+        auto status = storage.open(STORAGE_DIR, STORAGE_NAME, opts);
+
+        ASSERT_TRUE(status.isOk());
+
+        {
+            auto [status, entry] = storage.load(StorageEngine<>::RootEntryId);
+
+            entry.setProperty("some_property", Property{std::string(4096, 'a')});
+
+            ASSERT_TRUE(status.isOk());
+            ASSERT_EQ(entry.key(), StorageEngine<>::RootEntryId);
+
+            for (std::size_t i = 0; i < 1024; ++i)
+                ASSERT_TRUE(storage.save(entry).isOk());
+        }
+
+        ASSERT_TRUE(storage.close().isOk());
+    }
+
+    {
+        auto status = storage.open(STORAGE_DIR, STORAGE_NAME, opts); // should start compaction
+
+        ASSERT_TRUE(status.isOk());
+
+        {
+            auto [status, entry] = storage.load(StorageEngine<>::RootEntryId);
+
+            {
+                auto [status, value] = entry.property("some_property");
+
+                ASSERT_TRUE(status.isOk());
+                ASSERT_EQ(value, Property{std::string(4096, 'a')});
+            }
+
+            ASSERT_TRUE(status.isOk());
+            ASSERT_EQ(entry.key(), StorageEngine<>::RootEntryId);
+        }
+
+        ASSERT_TRUE(storage.close().isOk());
+    }
+
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logdc");
 }
 
 int main(int argc, char** argv) {

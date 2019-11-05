@@ -20,7 +20,7 @@ class VFSStorageTest: public ::testing::Test {
     const std::string VOLUME_N1_NAME = "volume1";
     const std::string VOLUME_N2_NAME = "volume2";
 #else
-    const std::string VOLUME_DIR  = "D:\\Projects\\skvdb\\out\\build\\x64-Debug\\tests";
+    const std::string VOLUME_DIR  = ".";
     const std::string VOLUME_N1_NAME = "volume1";
     const std::string VOLUME_N2_NAME = "volume2";
 #endif
@@ -49,10 +49,10 @@ protected:
     }
 
     void removeFiles() {
-        os::File::unlink(VOLUME_DIR + "/" + VOLUME_N1_NAME + ".logd");
-        os::File::unlink(VOLUME_DIR + "/" + VOLUME_N1_NAME+ ".index");
-        os::File::unlink(VOLUME_DIR + "/" + VOLUME_N2_NAME + ".logd");
-        os::File::unlink(VOLUME_DIR + "/" + VOLUME_N2_NAME+ ".index");
+        os::File::unlink(VOLUME_DIR + os::File::sep() + VOLUME_N1_NAME + ".logd");
+        os::File::unlink(VOLUME_DIR + os::File::sep() + VOLUME_N1_NAME+ ".index");
+        os::File::unlink(VOLUME_DIR + os::File::sep() + VOLUME_N2_NAME + ".logd");
+        os::File::unlink(VOLUME_DIR + os::File::sep() + VOLUME_N2_NAME+ ".index");
     }
 
     void createPath(IVolumePtr& ptr, std::string_view path) {

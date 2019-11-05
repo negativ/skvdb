@@ -10,9 +10,9 @@
 
 namespace {
 #ifdef BUILDING_UNIX
-    const char * const BLOCK_DEVICE_TMP_FILE = "/tmp/blockdevice.bin";
+const std::string BLOCK_DEVICE_TMP_FILE = "/tmp/blockdevice.bin";
 #else
-    const char * const BLOCK_DEVICE_TMP_FILE = "blockdevice.bin";
+const std::string BLOCK_DEVICE_TMP_FILE = "blockdevice.bin";
 #endif
     const size_t N_RECORDS = 2;
     const size_t RECORD_GROW_FACTOR = 128; // GROW_FACTOR bytes for first record and GROW_FACTOR * N_RECORDS for last
@@ -26,6 +26,8 @@ using namespace skv::ondisk;
 class LogDeviceTest: public ::testing::Test {
 protected:
     void SetUp() override {
+        os::File::unlink(BLOCK_DEVICE_TMP_FILE);
+
         auto status = device_.open(BLOCK_DEVICE_TMP_FILE, ondisk::LogDevice<>::OpenOption());
 
         ASSERT_TRUE(status.isOk() && device_.opened());
@@ -35,7 +37,8 @@ protected:
         auto status = device_.close();
 
         ASSERT_TRUE(status.isOk() && !device_.opened());
-        //ASSERT_TRUE(os::File::unlink(BLOCK_DEVICE_TMP_FILE));
+
+        os::File::unlink(BLOCK_DEVICE_TMP_FILE);
     }
 
     struct IndexRecord {

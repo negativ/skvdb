@@ -78,8 +78,8 @@ TEST(VolumeTest, MTTestN1) {
 
     Volume volume;
 
-    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".logd");
-    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".index");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index");
 
     auto status = volume.initialize(STORAGE_DIR, STORAGE_NAME);
 
@@ -112,8 +112,8 @@ TEST(VolumeTest, MTTestN1) {
 
     std::this_thread::sleep_for(20ms);
 
-    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".logd");
-    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".index");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index");
 }
 
 void mtTestRoutineN2(std::reference_wrapper<Volume> v) {
@@ -163,8 +163,8 @@ TEST(VolumeTest, MTTestN2) {
 
     Volume volume;
 
-    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".logd");
-    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".index");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index");
 
     auto opened = volume.initialize(STORAGE_DIR, STORAGE_NAME);
 
@@ -216,15 +216,15 @@ TEST(VolumeTest, MTTestN2) {
 
     std::this_thread::sleep_for(20ms);
 
-    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".logd");
-    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".index");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index");
 }
 
 TEST(VolumeTest, OpenCloseLinkClaim) {
     Volume volume;
 
-    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".logd");
-    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".index");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index");
 
     auto status = volume.initialize(STORAGE_DIR, STORAGE_NAME);
 
@@ -406,8 +406,8 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
     ASSERT_TRUE(volume.deinitialize().isOk());
     ASSERT_FALSE(volume.initialized());
 
-    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".logd");
-    os::File::unlink(STORAGE_DIR + "/" + STORAGE_NAME + ".index");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd");
+    os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index");
 }
 
 int main(int argc, char** argv) {
