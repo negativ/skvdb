@@ -12,6 +12,7 @@
 
 #include "os/File.hpp"
 #include "util/Status.hpp"
+#include "util/Unused.hpp"
 
 namespace skv::ondisk {
 
@@ -88,7 +89,8 @@ public:
             return Status::IOError("Unable top open device for writing");
 
         opened_ = true;
-        os::File::seek(writeHandle_, 0, os::File::Seek::End);
+
+        SKV_UNUSED(os::File::seek(writeHandle_, 0, os::File::Seek::End));
 
         blocks_.store(block_count_type(os::File::tell(writeHandle_) / blockSize()));
 
@@ -147,6 +149,8 @@ public:
         if ((n + readBlocks) > totalBlocks)
             return {Status::InvalidArgument(""), {}};
 
+        buffer_type data(cnt, '\0');
+
         const auto readerId = hasher(std::this_thread::get_id()) % MAX_READ_THREADS;
 
         std::unique_lock lock(readMutexes_[readerId]);
@@ -156,10 +160,11 @@ public:
         if (!fhandle)
             return {Status::IOError("Device not opened"), {}};
 
-        buffer_type data(cnt, '\0');
+        if (!os::File::seek(fhandle, std::int64_t(n) * std::int64_t(blockSize()), os::File::Seek::Set))
+            return {Status::IOError("Unable to seek to specified position"), {}};
 
-        os::File::seek(fhandle, std::int64_t(n) * std::int64_t(blockSize()), os::File::Seek::Set);
-        os::File::read(data.data(), sizeof(buffer_value_type), cnt, fhandle);
+        if (!os::File::read(data.data(), sizeof(buffer_value_type), cnt, fhandle))
+            return {Status::IOError("Unable to seek to specified position"), {}};
 
         return {Status::Ok(), data};
     }

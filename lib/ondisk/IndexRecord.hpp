@@ -33,13 +33,17 @@ public:
 
     [[nodiscard]] constexpr bytes_count_type bytesCount() const noexcept { return bytesCount_; }
 
-    bool operator==(const IndexRecord& other) const noexcept {
+    [[nodiscard]] bool operator==(const IndexRecord& other) const noexcept {
         return key_ == other.key_ &&
                blockIndex_ == other.blockIndex_ &&
                bytesCount_ == other.bytesCount_;
     }
 
-    bool operator<(const IndexRecord& other) const noexcept {
+    [[nodiscard]] bool operator!=(const IndexRecord& other) const noexcept {
+        return !(*this == other);
+    }
+
+    [[nodiscard]] bool operator<(const IndexRecord& other) const noexcept {
         return key_ < other.key_;
     }
 

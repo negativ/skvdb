@@ -12,7 +12,7 @@ namespace skv::ondisk {
 namespace io = boost::iostreams;
 
 template<typename Container = std::vector<char>>
-class ContainerStreamDevice {
+class ContainerStreamDevice final {
 public:
     using container_type    = std::decay_t<Container>;
     using char_type         = typename Container::value_type;
@@ -30,7 +30,7 @@ public:
     ContainerStreamDevice(ContainerStreamDevice&&) noexcept = default;
     ContainerStreamDevice& operator=(ContainerStreamDevice&&) noexcept = default;
 
-    std::streamsize read(char_type* s, std::streamsize n) {
+    [[nodiscard]] std::streamsize read(char_type* s, std::streamsize n) {
         auto amt = static_cast<std::streamsize>(container_.size() - pos_);
         auto result = std::min(n, amt);
 
@@ -46,7 +46,8 @@ public:
 
         return -1;
     }
-    std::streamsize write(const char_type* s, std::streamsize n) {
+
+    [[nodiscard]] std::streamsize write(const char_type* s, std::streamsize n) {
         std::streamsize result = 0;
 
         if (pos_ != container_.size()) {
@@ -66,7 +67,7 @@ public:
         return n;
     }
 
-    io::stream_offset seek(io::stream_offset off, std::ios_base::seekdir way) {
+    [[nodiscard]] io::stream_offset seek(io::stream_offset off, std::ios_base::seekdir way) {
         io::stream_offset next;
 
         if (way == std::ios_base::beg)

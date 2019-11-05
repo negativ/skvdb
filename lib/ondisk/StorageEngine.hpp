@@ -341,7 +341,7 @@ private:
         typename log_device_type::OpenOption opts;
         auto path = createPath(directory_, storageName_, LOG_DEVICE_COMP_SUFFIX);
 
-        os::File::unlink(path);
+        SKV_UNUSED(os::File::unlink(path));
 
         opts.BlockSize = openOptions_.LogDeviceBlockSize;
         opts.CreateNewIfNotExist = true;
@@ -377,7 +377,7 @@ private:
         if (!compStatus.isOk()) {
             SKV_UNUSED(device.close());
 
-            os::File::unlink(path);
+            SKV_UNUSED(os::File::unlink(path));
 
             return Status::IOError("Unable to compact device");
         }
@@ -386,7 +386,7 @@ private:
         SKV_UNUSED(device.close());
 
         if (!os::File::unlink(logDevicePath_)) {
-            os::File::unlink(path);
+            SKV_UNUSED(os::File::unlink(path));
 
             return openDevice(logDevicePath_);
         }

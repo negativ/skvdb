@@ -25,11 +25,11 @@ public:
     ControlBlock(ControlBlock&&) = delete;
     ControlBlock& operator=(ControlBlock&&) = delete;
 
-    entry_type& entry() const noexcept {
+    [[nodiscard]] entry_type& entry() const noexcept {
         return entry_;
     }
 
-    std::shared_mutex& xLock() const noexcept {
+    [[nodiscard]] std::shared_mutex& xLock() const noexcept {
         return xLock_;
     }
 
@@ -41,7 +41,7 @@ public:
         --usageCounter_;
     }
 
-    bool free() const noexcept {
+    [[nodiscard]] bool free() const noexcept {
         return usageCounter_ == 0;
     }
 
@@ -49,7 +49,7 @@ public:
         dirty_ = d;
     }
 
-    bool dirty() const noexcept {
+    [[nodiscard]] bool dirty() const noexcept {
         return dirty_;
     }
 

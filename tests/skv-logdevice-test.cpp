@@ -26,7 +26,7 @@ using namespace skv::ondisk;
 class LogDeviceTest: public ::testing::Test {
 protected:
     void SetUp() override {
-        os::File::unlink(BLOCK_DEVICE_TMP_FILE);
+        SKV_UNUSED(os::File::unlink(BLOCK_DEVICE_TMP_FILE));
 
         auto status = device_.open(BLOCK_DEVICE_TMP_FILE, ondisk::LogDevice<>::OpenOption());
 
@@ -38,7 +38,7 @@ protected:
 
         ASSERT_TRUE(status.isOk() && !device_.opened());
 
-        os::File::unlink(BLOCK_DEVICE_TMP_FILE);
+        SKV_UNUSED(os::File::unlink(BLOCK_DEVICE_TMP_FILE));
     }
 
     struct IndexRecord {
