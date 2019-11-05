@@ -81,7 +81,7 @@ public:
         if (!exists && !createNew())
             return Status::IOError(std::string{"Unable to create block device at: "} + std::string{path});
 
-        auto file = os::File::open(path_, "r+");
+        auto file = os::File::open(path_, "rb+");
         writeHandle_.swap(file);
 
         if (!writeHandle_)

@@ -43,7 +43,8 @@ void mtTestRoutineN1(std::reference_wrapper<Volume> v) {
 
     {
         auto id = std::to_string(hasher(std::this_thread::get_id()));
-        SKV_UNUSED(volume.link(rootHandle, id));
+        
+        SKV_UNUSED(volume.link(rootHandle, id).isOk());
 
         auto path = "/" + id;
 

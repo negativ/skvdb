@@ -107,7 +107,8 @@ public:
 
         // TODO: implement EntryReader
         io::stream<ContainerStreamDevice<buffer_type>> stream(buffer);
-//        std::istream stream{&stream_buffer};
+        
+        stream.seekg(0, BOOST_IOS::beg);
 
         entry_type e;
 
@@ -128,8 +129,6 @@ public:
         buffer_type buffer;
         io::stream<ContainerStreamDevice<buffer_type>> stream(buffer);
 
-        // TODO: implement EntryWriter
-//        std::ostream stream{&stream_buffer};
         stream << e;
 
         stream.flush();

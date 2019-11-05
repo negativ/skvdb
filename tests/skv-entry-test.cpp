@@ -2,8 +2,11 @@
 #include <sstream>
 #include <thread>
 
+#include <boost/iostreams/stream.hpp>
+
 #include <gtest/gtest.h>
 
+#include <ondisk/ContainerStreamDevice.hpp>
 #include <ondisk/Entry.hpp>
 
 using namespace skv::ondisk;
@@ -74,6 +77,7 @@ TEST(EntryTest, ChildrenTest) {
 TEST(EntryTest, ReadWriteTest) {
     using namespace std::literals;
     using namespace std::chrono;
+    namespace io = boost::iostreams;
 
     E root{1, ""};
     E dev{root.key() + 1, "dev"};
@@ -91,17 +95,19 @@ TEST(EntryTest, ReadWriteTest) {
     ASSERT_TRUE(root.expireProperty("test_str_prop", system_clock::now() + 100ms).isOk());
     ASSERT_TRUE(root.expireProperty("test_int_prop", system_clock::now() + 500ms).isOk());
 
-    std::stringstream stream;
+    std::vector<char> buffer;
+    io::stream<ContainerStreamDevice<std::vector<char>>> stream(buffer);
 
     stream << root;
-
-    auto buffer = stream.str();
+    stream.flush();
 
     ASSERT_FALSE(buffer.empty());
 
     std::this_thread::sleep_for(200ms);
 
     E anotherRoot;
+    stream.seekg(0, BOOST_IOS::beg);
+
     stream >> anotherRoot;
 
     ASSERT_EQ(root, anotherRoot);

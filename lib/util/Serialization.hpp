@@ -37,19 +37,19 @@ struct Serializer final {
 
             value.fvalue = p;
 
-            be::native_to_little(value.ivalue);
-            os.write(reinterpret_cast<const char*>(&value),  sizeof(value));
+            auto x = be::native_to_little(value.ivalue);
+            os.write(reinterpret_cast<const char*>(&x),  sizeof(x));
         }
         else if constexpr (std::is_integral_v<T>) {
-            be::native_to_little(p);
-
-            os.write(reinterpret_cast<const char*>(&p),  sizeof(p));
+            auto x = be::native_to_little(p);
+            os.write(reinterpret_cast<const char*>(&x),  sizeof(x));
         }
         else if constexpr (std::is_same_v<T, std::string> ||
                            std::is_same_v<T, std::string_view> ||
                            std::is_same_v<T, std::vector<char>>) {
-            (*this) << std::uint64_t(p.size());
+            auto x = be::native_to_little(std::uint64_t(p.size()));
 
+            os.write(reinterpret_cast<const char*>(&x), sizeof(x));
             os.write(p.data(), std::streamsize(p.size()));
         }
         else
@@ -97,7 +97,9 @@ struct Deserializer final {
         }
         else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, std::vector<char>>) {
             std::uint64_t pLen;
-            (*this) >> pLen;
+            is.read(reinterpret_cast<char*>(&pLen), sizeof(pLen));
+
+            be::little_to_native_inplace(pLen);
 
             T ret(std::size_t(pLen), '\0');
 
