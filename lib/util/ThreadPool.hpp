@@ -13,6 +13,7 @@
 
 namespace skv::util {
 
+template <std::size_t BACKOFF_STEPS = 64, std::size_t SLEEP_PREIOD_MS = 50>
 class ThreadPool final {
     struct Callable {
         Callable() noexcept = default;
@@ -31,10 +32,7 @@ class ThreadPool final {
 
             ~Call() noexcept override = default;
 
-            void call() override {
-                func_();
-            }
-
+            void call() override { func_(); }
         private:
             F func_;
         };
@@ -71,7 +69,7 @@ class ThreadPool final {
         }
 
     private:
-        mutable std::unique_ptr<Callable> impl_;
+        std::unique_ptr<Callable> impl_;
     };
 
 public:

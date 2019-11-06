@@ -150,7 +150,7 @@ protected:
                                       Property{std::uint32_t{1024 * 1024 * 1024}},
                                       Property{std::uint64_t{1024} * 1024 * 1024 * 1024 * 1024},
                                       Property{std::string(256, 'a')},
-                                      Property{std::vector<char>(4 * 1024, 'Z')}};
+                                      Property{std::vector<char>(1024, 'Z')}};
     std::array<std::string, 7> propsNames{"flt_prop",
                                           "double_prop",
                                           "uint8t_prop",
@@ -201,48 +201,7 @@ TEST_F(VFSStoragePerfomanceTest, SingleThread_VolumeOnly) {
     doUnmounts();
 }
 
-TEST_F(VFSStoragePerfomanceTest, SingleThread) {
-    doMounts();
-
-    auto [status, handle] = storage_.open("/proc");
-
-    ASSERT_TRUE(status.isOk());
-
-    auto startTime = chrono::steady_clock::now();
-
-    for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
-        auto status = storage_.setProperty(handle, propsNames[i % propsPool.size()], propsPool[i % propsPool.size()]);
-        SKV_UNUSED(status);
-    }
-
-    auto stopTime = chrono::steady_clock::now();
-
-    auto msElapsed = chrono::duration_cast<chrono::milliseconds>(stopTime - startTime).count();
-
-    Log::i("SingleThread", "setProperty() elapsed time: ", msElapsed, " ms.");
-    Log::i("SingleThread", "setProperty() speed: ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
-
-    startTime = chrono::steady_clock::now();
-
-    for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
-        const auto& [status, value] = storage_.property(handle, propsNames[i % propsPool.size()]);
-
-        ASSERT_EQ(value, propsPool[i % propsPool.size()]);
-    }
-
-    stopTime = chrono::steady_clock::now();
-
-    msElapsed = chrono::duration_cast<chrono::milliseconds>(stopTime - startTime).count();
-
-    Log::i("SingleThread", "getProperty() elapsed time: ", msElapsed, " ms.");
-    Log::i("SingleThread", "getProperty() speed: ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
-
-    ASSERT_TRUE(storage_.close(handle).isOk());
-
-    doUnmounts();
-}
-
-TEST_F(VFSStoragePerfomanceTest, MultipleThread) {
+TEST_F(VFSStoragePerfomanceTest, OneRecordMultipleThreads) {
     doMounts();
 
     auto [status, handle] = storage_.open("/proc");
@@ -251,7 +210,7 @@ TEST_F(VFSStoragePerfomanceTest, MultipleThread) {
 
     static std::atomic<bool> go_{false};
 
-    auto routine = [handle{handle}, this] {
+    auto writerRoutine = [handle{handle}, this] {
         while (!go_.load(std::memory_order_acquire))
             std::this_thread::yield();
 
@@ -261,11 +220,23 @@ TEST_F(VFSStoragePerfomanceTest, MultipleThread) {
         }
     };
 
-    for (size_t i = 2; i <= std::thread::hardware_concurrency(); ++i) {
+    auto readerRoutine = [handle{handle}, this] {
+        while (!go_.load(std::memory_order_acquire))
+            std::this_thread::yield();
+
+        for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
+            const auto& [status, value] = storage_.property(handle, propsNames[i % propsPool.size()]);
+
+            SKV_UNUSED(status);
+            SKV_UNUSED(value);
+        }
+    };
+
+    for (size_t i = 1; i <= std::thread::hardware_concurrency(); ++i) {
         go_.store(false);
 
         std::vector<std::thread> threads;
-        std::generate_n(std::back_inserter(threads), i, [&] { return std::thread(routine); });
+        std::generate_n(std::back_inserter(threads), i, [&] { return std::thread(writerRoutine); });
 
         auto startTime = chrono::steady_clock::now();
 
@@ -278,26 +249,137 @@ TEST_F(VFSStoragePerfomanceTest, MultipleThread) {
 
         auto msElapsed = chrono::duration_cast<chrono::milliseconds>(stopTime - startTime).count();
 
-        Log::i("MultiThread [threads: " + std::to_string(i) + "]", "setProperty() elapsed time: ", msElapsed, " ms.");
-        Log::i("MultiThread [threads: " + std::to_string(i) + "]", "setProperty() speed: ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
+        Log::i("OneRecordMultipleThreads [threads: " + std::to_string(i) + "]", "setProperty() elapsed time (per. thread): ", msElapsed, " ms.");
+        Log::i("OneRecordMultipleThreads [threads: " + std::to_string(i) + "]", "setProperty() speed (per.thread): ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
     }
 
-//    startTime = chrono::steady_clock::now();
+    for (size_t i = 1; i <= std::thread::hardware_concurrency(); ++i) {
+        go_.store(false);
 
-//    for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
-//        const auto& [status, value] = storage_.property(handle, propsNames[i % propsPool.size()]);
+        std::vector<std::thread> threads;
+        std::generate_n(std::back_inserter(threads), i, [&] { return std::thread(readerRoutine); });
 
-//        ASSERT_EQ(value, propsPool[i % propsPool.size()]);
-//    }
+        auto startTime = chrono::steady_clock::now();
 
-//    stopTime = chrono::steady_clock::now();
+        go_.store(true, std::memory_order_release);
 
-//    msElapsed = chrono::duration_cast<chrono::milliseconds>(stopTime - startTime).count();
+        std::for_each(std::begin(threads), std::end(threads),
+                      [](auto& t) { if (t.joinable()) t.join(); });
 
-//    Log::i("SingleThread", "getProperty() elapsed time: ", msElapsed, " ms.");
-//    Log::i("SingleThread", "getProperty() speed: ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
+        auto stopTime = chrono::steady_clock::now();
 
-//    ASSERT_TRUE(storage_.close(handle).isOk());
+        auto msElapsed = chrono::duration_cast<chrono::milliseconds>(stopTime - startTime).count();
+
+        Log::i("OneRecordMultipleThreads [threads: " + std::to_string(i) + "]", "getProperty() elapsed time (per. thread): ", msElapsed, " ms.");
+        Log::i("OneRecordMultipleThreads [threads: " + std::to_string(i) + "]", "getProperty() speed (per.thread): ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
+    }
+
+    ASSERT_TRUE(storage_.close(handle).isOk());
+
+    doUnmounts();
+}
+
+TEST_F(VFSStoragePerfomanceTest, MultipleRecordsMultipleThreads) {
+    using namespace chrono;
+    doMounts();
+
+    auto [status, handle] = storage_.open("/proc");
+
+    ASSERT_TRUE(status.isOk());
+
+    for (size_t i = 1; i <= std::thread::hardware_concurrency(); ++i) {
+        ASSERT_TRUE(storage_.link(handle, std::to_string(i)).isOk());
+    }
+
+    static std::atomic<bool> go_{false};
+
+    auto writerRoutine = [this](std::size_t id) {
+        auto [status, handle] = storage_.open("/proc/" + std::to_string(id));
+
+        ASSERT_TRUE(status.isOk());
+
+        while (!go_.load(std::memory_order_acquire))
+            std::this_thread::yield();
+
+        for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
+            auto status = storage_.setProperty(handle, propsNames[i % propsPool.size()], propsPool[i % propsPool.size()]);
+            SKV_UNUSED(status);
+        }
+
+        ASSERT_TRUE(storage_.close(handle).isOk());
+    };
+
+    auto readerRoutine = [this](std::size_t id) {
+        auto [status, handle] = storage_.open("/proc/" + std::to_string(id));
+
+        ASSERT_TRUE(status.isOk());
+
+        while (!go_.load(std::memory_order_acquire))
+            std::this_thread::yield();
+
+        for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
+            const auto& [status, value] = storage_.property(handle, propsNames[i % propsPool.size()]);
+
+            SKV_UNUSED(status);
+            SKV_UNUSED(value);
+        }
+
+        ASSERT_TRUE(storage_.close(handle).isOk());
+    };
+
+    for (size_t i = 1; i <= std::thread::hardware_concurrency(); ++i) {
+        go_.store(false);
+
+        std::vector<std::thread> threads;
+
+        for (std::size_t j = 1; j <= i; ++j)
+            threads.emplace_back(writerRoutine, j);
+
+        auto startTime = chrono::steady_clock::now();
+
+        go_.store(true, std::memory_order_release);
+
+        std::for_each(std::begin(threads), std::end(threads),
+                      [](auto& t) { if (t.joinable()) t.join(); });
+
+        auto stopTime = chrono::steady_clock::now();
+
+        auto msElapsed = chrono::duration_cast<chrono::milliseconds>(stopTime - startTime).count();
+
+        Log::i("MultipleRecordsMultipleThreads [threads: " + std::to_string(i) + "]", "setProperty() elapsed time (per. thread): ", msElapsed, " ms.");
+        Log::i("MultipleRecordsMultipleThreads [threads: " + std::to_string(i) + "]", "setProperty() speed (per.thread): ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
+    }
+
+    for (size_t i = 1; i <= std::thread::hardware_concurrency(); ++i) {
+        go_.store(false);
+
+        std::vector<std::thread> threads;
+
+        for (std::size_t j = 1; j <= i; ++j)
+            threads.emplace_back(readerRoutine, j);
+
+        auto startTime = chrono::steady_clock::now();
+
+        go_.store(true, std::memory_order_release);
+
+        std::for_each(std::begin(threads), std::end(threads),
+                      [](auto& t) { if (t.joinable()) t.join(); });
+
+        auto stopTime = chrono::steady_clock::now();
+
+        auto msElapsed = chrono::duration_cast<chrono::milliseconds>(stopTime - startTime).count();
+
+        Log::i("MultipleRecordsMultipleThreads [threads: " + std::to_string(i) + "]", "getProperty() elapsed time (per. thread): ", msElapsed, " ms.");
+        Log::i("MultipleRecordsMultipleThreads [threads: " + std::to_string(i) + "]", "getProperty() speed (per.thread): ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
+    }
+
+    {
+        auto [status, links] = storage_.links(handle);
+
+        ASSERT_TRUE(status.isOk());
+    }
+
+    ASSERT_TRUE(storage_.close(handle).isOk());
 
     doUnmounts();
 }

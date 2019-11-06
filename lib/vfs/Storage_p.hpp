@@ -561,7 +561,7 @@ struct Storage::Impl {
     std::atomic<Storage::Handle> currentHandle_{IVolume::RootHandle + 1};
     mutable std::shared_mutex mpointsLock_;
     mutable std::shared_mutex ventriesLock_;
-    ThreadPool threadPool_;
+    ThreadPool<> threadPool_;
 };
 
 }
