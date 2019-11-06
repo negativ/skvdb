@@ -4,7 +4,7 @@
 namespace skv::vfs {
 
 Storage::Storage():
-    impl_{new Impl{}}
+    impl_{std::make_unique<Impl>()}
 {
 
 }

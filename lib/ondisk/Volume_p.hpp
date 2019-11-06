@@ -38,7 +38,7 @@ struct Volume::Impl {
     using cb_ptr_type        = cb_type::ptr;
 
     Impl(Volume::OpenOptions opts):
-        storage_{new storage_type{}},
+        storage_{std::make_unique<storage_type>()},
         opts_{opts}
     {
 

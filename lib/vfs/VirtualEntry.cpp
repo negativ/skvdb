@@ -5,6 +5,21 @@
 namespace skv::vfs {
 
 struct VirtualEntry::Impl {
+    Impl(std::string entryPath, IVolumeWPtr volume, IVolume::Handle handle, VirtualEntry::Priority priority):
+        entryPath_{std::move(entryPath)},
+        volume_{std::move(volume)},
+        handle_{handle},
+        priority_{priority}
+    {}
+
+    ~Impl() noexcept = default;
+
+    Impl(const Impl&) = default;
+    Impl& operator=(const Impl&) = default;
+
+    Impl(Impl&&) noexcept = default;
+    Impl& operator=(Impl&&) noexcept = default;
+
     std::string entryPath_;
     IVolumeWPtr volume_;
     IVolume::Handle handle_;
@@ -14,7 +29,7 @@ struct VirtualEntry::Impl {
 VirtualEntry::VirtualEntry() noexcept = default;
 
 VirtualEntry::VirtualEntry(std::string_view entryPath, IVolumeWPtr volume, IVolume::Handle handle, VirtualEntry::Priority prio):
-    impl_{new Impl{util::to_string(entryPath), std::move(volume), handle, prio}}
+    impl_{std::make_unique<Impl>(util::to_string(entryPath), std::move(volume), handle, prio)}
 {
 
 }

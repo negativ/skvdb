@@ -7,6 +7,23 @@
 namespace skv::vfs::mount {
 
 struct Entry::Impl {
+    Impl(std::string mp, std::string ep, IVolumePtr volume, IVolume::Handle handle, Entry::Priority prio):
+        mountPath_(std::move(mp)),
+        entryPath_(std::move(ep)),
+        volume_(std::move(volume)),
+        handle_(handle),
+        priority_(prio)
+    {
+
+    }
+    ~Impl() noexcept  = default;
+
+    Impl(const Impl&) = default;
+    Impl& operator=(const Impl&) = default;
+
+    Impl(Impl&&) noexcept = default;
+    Impl& operator=(Impl&&) noexcept = default;
+
     std::string mountPath_;
     std::string entryPath_;
     IVolumePtr volume_;
@@ -15,11 +32,11 @@ struct Entry::Impl {
 };
 
 Entry::Entry(std::string_view mountPath, std::string_view entryPath, IVolumePtr volume, Priority prio):
-    impl_{new Impl{util::simplifyPath(mountPath),
-                   util::simplifyPath(entryPath),
-                   std::move(volume),
-                   IVolume::InvalidHandle,
-                   prio}}
+    impl_{std::make_unique<Impl>(util::simplifyPath(mountPath),
+                                 util::simplifyPath(entryPath),
+                                 std::move(volume),
+                                 IVolume::InvalidHandle,
+                                 prio)}
 {
 
 }

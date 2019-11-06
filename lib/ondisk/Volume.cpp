@@ -16,7 +16,7 @@ Volume::Volume():
 }
 
 Volume::Volume(OpenOptions opts):
-    impl_{new Impl{opts}}
+    impl_{std::make_unique<Impl>(opts)}
 {
 
 }
