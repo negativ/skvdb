@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <functional>
 #include <future>
 #include <mutex>
@@ -62,6 +63,8 @@ struct Storage::Impl {
 
     template <typename F, typename VEntries>
     auto spawnCall(VEntries&& ventries, F&& call) {
+        using namespace std::literals;
+
         using result_t = std::invoke_result_t<F, VirtualEntry>;
         using future_result_t = std::future<result_t>;
 
@@ -75,6 +78,14 @@ struct Storage::Impl {
                                return call(entry);
                            });
                        });
+
+
+        while (!std::all_of(std::begin(futresults),
+                            std::end(futresults),
+                            [](auto& f) {
+                                return (f.wait_for(0ms) == std::future_status::ready);
+                            }))
+            threadPool_.throttle();
 
         std::vector<result_t> results;
         results.reserve(ventries.size());

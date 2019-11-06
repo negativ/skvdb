@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <future>
 #include <thread>
 #include <vector>
@@ -121,6 +122,17 @@ public:
         return done_.load(std::memory_order_acquire);
     }
 
+    void throttle() {
+        if (!done()) {
+            auto [status, task] = nextTask();
+
+            if (status.isOk())
+                task();
+            else
+                std::this_thread::yield();
+        }
+    }
+
 private:
     using container_type = std::vector<std::thread>;
 
@@ -147,14 +159,31 @@ private:
     }
 
     void routine() {
+        using namespace std::literals;
+
+        constexpr std::size_t MAX_STEPS = 1000;
+        constexpr auto SLEEP_PERIOD = 100ms;
+
+        std::size_t step = 0;
 
         while (!done()) {
+            ++step;
+
             auto [status, task] = nextTask();
 
-            if (!status.isOk())
-                std::this_thread::yield();
-            else
+            if (!status.isOk()) {
+                if (step == MAX_STEPS) {
+                    std::this_thread::sleep_for(SLEEP_PERIOD);
+                    step = 0;
+                }
+                else
+                    std::this_thread::yield();
+            }
+            else {
                 task();
+
+                step = 0;
+            }
         }
     }
 

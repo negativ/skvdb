@@ -1,3 +1,4 @@
+#include <atomic>
 #include <chrono>
 #include <thread>
 
@@ -159,6 +160,47 @@ protected:
                                           "blob_prop"};
 };
 
+TEST_F(VFSStoragePerfomanceTest, SingleThread_VolumeOnly) {
+    doMounts();
+
+    auto [status, handle] = volume1_->open("/proc");
+
+    ASSERT_TRUE(status.isOk());
+
+    auto startTime = chrono::steady_clock::now();
+
+    for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
+        auto status = volume1_->setProperty(handle, propsNames[i % propsPool.size()], propsPool[i % propsPool.size()]);
+        SKV_UNUSED(status);
+    }
+
+    auto stopTime = chrono::steady_clock::now();
+
+    auto msElapsed = chrono::duration_cast<chrono::milliseconds>(stopTime - startTime).count();
+
+    Log::i("SingleThreadVolume", "setProperty() elapsed time: ", msElapsed, " ms.");
+    Log::i("SingleThreadVolume", "setProperty() speed: ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
+
+    startTime = chrono::steady_clock::now();
+
+    for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
+        const auto& [status, value] = volume1_->property(handle, propsNames[i % propsPool.size()]);
+
+        ASSERT_EQ(value, propsPool[i % propsPool.size()]);
+    }
+
+    stopTime = chrono::steady_clock::now();
+
+    msElapsed = chrono::duration_cast<chrono::milliseconds>(stopTime - startTime).count();
+
+    Log::i("SingleThreadVolume", "getProperty() elapsed time: ", msElapsed, " ms.");
+    Log::i("SingleThreadVolume", "getProperty() speed: ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
+
+    ASSERT_TRUE(volume1_->close(handle).isOk());
+
+    doUnmounts();
+}
+
 TEST_F(VFSStoragePerfomanceTest, SingleThread) {
     doMounts();
 
@@ -196,6 +238,66 @@ TEST_F(VFSStoragePerfomanceTest, SingleThread) {
     Log::i("SingleThread", "getProperty() speed: ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
 
     ASSERT_TRUE(storage_.close(handle).isOk());
+
+    doUnmounts();
+}
+
+TEST_F(VFSStoragePerfomanceTest, MultipleThread) {
+    doMounts();
+
+    auto [status, handle] = storage_.open("/proc");
+
+    ASSERT_TRUE(status.isOk());
+
+    static std::atomic<bool> go_{false};
+
+    auto routine = [handle{handle}, this] {
+        while (!go_.load(std::memory_order_acquire))
+            std::this_thread::yield();
+
+        for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
+            auto status = storage_.setProperty(handle, propsNames[i % propsPool.size()], propsPool[i % propsPool.size()]);
+            SKV_UNUSED(status);
+        }
+    };
+
+    for (size_t i = 2; i <= std::thread::hardware_concurrency(); ++i) {
+        go_.store(false);
+
+        std::vector<std::thread> threads;
+        std::generate_n(std::back_inserter(threads), i, [&] { return std::thread(routine); });
+
+        auto startTime = chrono::steady_clock::now();
+
+        go_.store(true, std::memory_order_release);
+
+        std::for_each(std::begin(threads), std::end(threads),
+                      [](auto& t) { if (t.joinable()) t.join(); });
+
+        auto stopTime = chrono::steady_clock::now();
+
+        auto msElapsed = chrono::duration_cast<chrono::milliseconds>(stopTime - startTime).count();
+
+        Log::i("MultiThread [threads: " + std::to_string(i) + "]", "setProperty() elapsed time: ", msElapsed, " ms.");
+        Log::i("MultiThread [threads: " + std::to_string(i) + "]", "setProperty() speed: ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
+    }
+
+//    startTime = chrono::steady_clock::now();
+
+//    for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
+//        const auto& [status, value] = storage_.property(handle, propsNames[i % propsPool.size()]);
+
+//        ASSERT_EQ(value, propsPool[i % propsPool.size()]);
+//    }
+
+//    stopTime = chrono::steady_clock::now();
+
+//    msElapsed = chrono::duration_cast<chrono::milliseconds>(stopTime - startTime).count();
+
+//    Log::i("SingleThread", "getProperty() elapsed time: ", msElapsed, " ms.");
+//    Log::i("SingleThread", "getProperty() speed: ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
+
+//    ASSERT_TRUE(storage_.close(handle).isOk());
 
     doUnmounts();
 }
