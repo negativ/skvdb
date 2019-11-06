@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
 #include <limits>
@@ -93,27 +93,22 @@ public:
         if (!opened())
             return {DeviceNotOpenedStatus, {}};
 
-        auto it = indexTable_.find(key);
-
-        if (it == std::cend(indexTable_))
-            return {Status::InvalidArgument("Key doesnt exist"), {}};
-
-        index_record_type index = it->second;
-
-        auto [status, buffer] = logDevice_.read(index.blockIndex(), index.bytesCount());
+        auto [istatus, index] = getIndexRecord(key);
 
         locker.unlock();
+
+        if (!istatus.isOk())
+            return {Status::InvalidArgument("Key doesnt exist"), {}};
+
+        auto [status, buffer] = logDevice_.read(index.blockIndex(), index.bytesCount());
 
         if (!status.isOk())
             return {status, {}};
 
-        // TODO: implement EntryReader
         io::stream<ContainerStreamDevice<buffer_type>> stream(buffer);
-        
-        stream.seekg(0, BOOST_IOS::beg);
-
         entry_type e;
 
+        stream.seekg(0, BOOST_IOS::beg);
         stream >> e;
 
         return {Status::Ok(), e};
@@ -125,14 +120,10 @@ public:
         if (e.key() == InvalidEntryId)
             return Status::InvalidArgument("Invalid entry id");
 
-        if (!opened())
-            return DeviceNotOpenedStatus;
-
         buffer_type buffer;
         io::stream<ContainerStreamDevice<buffer_type>> stream(buffer);
 
         stream << e;
-
         stream.flush();
 
         if (buffer.empty())
@@ -155,10 +146,7 @@ public:
         if (!status.isOk())
             return status;
 
-        index_record_type index(e.key(), blockIndex, bytes_count_type(buffer.size()));
-        indexTable_[e.key()] = index;
-
-        return Status::Ok();
+        return insertIndexRecord(e.key(), index_record_type{e.key(), blockIndex, bytes_count_type(buffer.size())});
     }
 
     [[nodiscard]] Status remove(const entry_type& e) {
@@ -187,10 +175,11 @@ public:
         openOptions_ = opts;
 
         logDevicePath_ = createPath(directory, storageName, LOG_DEVICE_SUFFIX);
+        idxtPath_   = createPath(directory, storageName, INDEX_TABLE_SUFFIX);
 
         if (auto status = openDevice(logDevicePath_); !status.isOk())
             return status;
-        if (auto status = openIndexTable(createPath(directory, storageName, INDEX_TABLE_SUFFIX)); !status.isOk())
+        if (auto status = openIndexTable(idxtPath_); !status.isOk())
             return status;
 
         if (indexTable_.empty() && logDevice_.sizeInBlocks() > 0)
@@ -202,8 +191,9 @@ public:
         storageName_ = storageName;
 
         Status status = Status::Ok();
+        auto [istatus, index] = getIndexRecord(RootEntryId);
 
-        if (indexTable_.find(RootEntryId) == std::cend(indexTable_)) {// creating root index if needed
+        if (!istatus.isOk()) {// creating root index if needed
             locker.unlock();
 
             status = createRootIndex();
@@ -251,9 +241,24 @@ public:
     }
 
 private:
-    static constexpr const char * const INDEX_TABLE_SUFFIX       = ".index";
-    static constexpr const char * const LOG_DEVICE_SUFFIX        = ".logd";
-    static constexpr const char * const LOG_DEVICE_COMP_SUFFIX   = ".logdc";
+    const std::string INDEX_TABLE_SUFFIX       = ".index";
+    const std::string LOG_DEVICE_SUFFIX        = ".logd";
+    const std::string LOG_DEVICE_COMP_SUFFIX   = ".logdc";
+
+    [[nodiscard]] std::tuple<Status, index_record_type> getIndexRecord(key_type key) const {
+        auto it = indexTable_.find(key);
+
+        if (it == std::cend(indexTable_))
+            return {Status::InvalidArgument("Key doesnt exist"), {}};
+
+        return {Status::Ok(), it->second};
+    }
+
+    [[nodiscard]] Status insertIndexRecord(key_type key, const index_record_type& index) {
+        indexTable_[key] = index;
+
+        return Status::Ok();
+    }
 
     [[nodiscard]] Status openDevice(std::string_view path) {
         typename log_device_type::OpenOption opts;
@@ -409,6 +414,7 @@ private:
     std::string directory_;
     std::string storageName_;
     std::string logDevicePath_;
+    std::string idxtPath_;
     std::shared_mutex xLock_;
     SpinLock<> spLock_;
     key_type keyCounter_{0};
