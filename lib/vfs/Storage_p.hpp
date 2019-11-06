@@ -1,10 +1,10 @@
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <functional>
 #include <future>
 #include <mutex>
-#include <new>
 #include <shared_mutex>
 #include <thread>
 #include <type_traits>
@@ -13,10 +13,11 @@
 #include "Storage.hpp"
 #include "MountPoint.hpp"
 #include "VirtualEntry.hpp"
-#include "util/Log.hpp"
+#include "util/Status.hpp"
 #include "util/String.hpp"
 #include "util/StringPath.hpp"
 #include "util/StringPathIterator.hpp"
+#include "util/ThreadPool.hpp"
 #include "util/Unused.hpp"
 
 namespace skv::vfs {
@@ -49,27 +50,6 @@ OIt transform_future(IIt start, IIt stop, OIt result, UnaryOp op) {
     return result;
 }
 
-template <typename F, typename VEntries>
-auto spawnCall(VEntries&& ventries, F&& call) {
-    using result_t = std::invoke_result_t<F, VirtualEntry>;
-    using future_result_t = std::future<result_t>;
-
-    std::vector<future_result_t> futresults;
-    std::transform(std::begin(ventries), std::end(ventries),
-                   std::back_inserter(futresults),
-                   [call](auto&& entry) { return std::async(std::launch::async,
-                                                            [call, entry]() -> result_t {
-                                                                return call(entry);
-                                                            }); });
-
-    std::vector<result_t> results;
-    transform_future(std::begin(futresults), std::end(futresults),
-                     std::back_inserter(results),
-                     [](auto&& res) { return std::forward<decltype(res)>(res); });
-
-    return  results;
-}
-
 template <typename T>
 T&& id(T&& t) {
     return std::forward<T>(t);
@@ -80,6 +60,32 @@ using VirtualEntries = std::vector<VirtualEntry>;
 struct Storage::Impl {
     const Status InvalidVolumeArgumentStatus = Status::InvalidArgument("Invalid volume");
 
+    template <typename F, typename VEntries>
+    auto spawnCall(VEntries&& ventries, F&& call) {
+        using result_t = std::invoke_result_t<F, VirtualEntry>;
+        using future_result_t = std::future<result_t>;
+
+        std::vector<future_result_t> futresults;
+        futresults.reserve(ventries.size());
+
+        std::transform(std::begin(ventries), std::end(ventries),
+                       std::back_inserter(futresults),
+                       [this, call](auto&& entry) {
+                           return threadPool_.schedule([call, entry]() -> result_t {
+                               return call(entry);
+                           });
+                       });
+
+        std::vector<result_t> results;
+        results.reserve(ventries.size());
+
+        transform_future(std::begin(futresults), std::end(futresults),
+                         std::back_inserter(results),
+                         [](auto&& res) { return std::forward<decltype(res)>(res); });
+
+        return  results;
+    }
+
     Impl() = default;
     ~Impl() noexcept = default;
 
@@ -88,7 +94,6 @@ struct Storage::Impl {
 
     Impl(Impl&&) noexcept = delete;
     Impl& operator=(Impl&&) noexcept = delete;
-
 
     [[nodiscard]] std::tuple<Status, Storage::Handle> open(std::string_view path) {
         using result_t = std::tuple<Status, VirtualEntry>;
@@ -545,6 +550,7 @@ struct Storage::Impl {
     std::atomic<Storage::Handle> currentHandle_{IVolume::RootHandle + 1};
     mutable std::shared_mutex mpointsLock_;
     mutable std::shared_mutex ventriesLock_;
+    ThreadPool threadPool_;
 };
 
 }
