@@ -10,7 +10,13 @@ const skv::util::Status VolumeNotOpenedStatus = skv::util::Status::InvalidOperat
 namespace skv::ondisk {
 
 Volume::Volume():
-    impl_{new Impl{}}
+    Volume(OpenOptions{})
+{
+
+}
+
+Volume::Volume(OpenOptions opts):
+    impl_{new Impl{opts}}
 {
 
 }
@@ -133,8 +139,8 @@ Status Volume::release(IVolume::Token token) noexcept {
     return impl_->release(token);
 }
 
-IVolumePtr make_ondisk_volume() {
-    return std::static_pointer_cast<vfs::IVolume>(std::make_shared<ondisk::Volume>());
+IVolumePtr make_ondisk_volume(Volume::OpenOptions opts) {
+    return std::static_pointer_cast<vfs::IVolume>(std::make_shared<ondisk::Volume>(opts));
 }
 
 

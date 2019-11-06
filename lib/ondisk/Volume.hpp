@@ -21,7 +21,19 @@ class Volume final: public vfs::IVolume {
     struct Impl;
 
 public:
+    struct OpenOptions {
+        static constexpr double         DefaultCompactionRatio{0.6}; // 60% of blocks used, 40% wasted
+        static constexpr std::uint64_t  DefaultCompactionDeviceMinSize{std::uint64_t{1024 * 1024 * 1024} * 4}; // compaction starts only if device size exceeds this value. 4GB default
+        static constexpr std::uint32_t  DefaultLogDeviceBlockSize{2048}; // 2KB
+
+        double          CompactionRatio{DefaultCompactionRatio};
+        std::uint64_t   CompactionDeviceMinSize{DefaultCompactionDeviceMinSize};
+        std::uint32_t   LogDeviceBlockSize{DefaultLogDeviceBlockSize};
+        bool            LogDeviceCreateNewIfNotExist{true};
+    };
+
     Volume();
+    Volume(OpenOptions opts);
     ~Volume() noexcept override;
 
     Volume(const Volume&) = delete;
@@ -57,6 +69,6 @@ private:
     std::unique_ptr<Impl> impl_;
 };
 
-[[nodiscard]] IVolumePtr make_ondisk_volume();
+[[nodiscard]] IVolumePtr make_ondisk_volume(Volume::OpenOptions opts = Volume::OpenOptions{});
 
 }

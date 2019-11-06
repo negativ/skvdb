@@ -27,18 +27,19 @@ struct Volume::Impl {
     static constexpr std::size_t PATH_MRU_CACHE_SIZE = 1024;
 
     using storage_type       = StorageEngine<IVolume::Handle,          // key type
-                                       std::uint32_t,           // block index type
-                                       std::uint32_t,           // bytes count in one record (4GB now)
-                                       Volume::Properties,      // type of properties container
-                                       Volume::Clock,           // type of used clock (system/steady,etc.)
-                                       Volume::InvalidHandle,   // key value of invalid entry
-                                       Volume::RootHandle>;     // key value of root entry
+                                             std::uint32_t,            // block index type
+                                             std::uint32_t,            // bytes count in one record (4GB now)
+                                             Volume::Properties,       // type of properties container
+                                             Volume::Clock,            // type of used clock (system/steady,etc.)
+                                             Volume::InvalidHandle,    // key value of invalid entry
+                                             Volume::RootHandle>;      // key value of root entry
     using entry_type         = storage_type::entry_type;
     using cb_type            = ControlBlock<entry_type>;
     using cb_ptr_type        = cb_type::ptr;
 
-    Impl():
-        storage_{new storage_type{}}
+    Impl(Volume::OpenOptions opts):
+        storage_{new storage_type{}},
+        opts_{opts}
     {
 
     }
@@ -52,7 +53,14 @@ struct Volume::Impl {
     Impl& operator=(Impl&&) noexcept = delete;
 
     [[nodiscard]] Status initialize(std::string_view directory, std::string_view volumeName) {
-        return storage_->open(directory, volumeName);
+        storage_type::OpenOptions storageOpts;
+
+        storageOpts.CompactionRatio = opts_.CompactionRatio;
+        storageOpts.CompactionDeviceMinSize = opts_.CompactionDeviceMinSize;
+        storageOpts.LogDeviceBlockSize = opts_.LogDeviceBlockSize;
+        storageOpts.LogDeviceCreateNewIfNotExist = opts_.LogDeviceCreateNewIfNotExist;
+
+        return storage_->open(directory, volumeName, storageOpts);
     }
 
     [[nodiscard]] Status deinitialize() {
@@ -507,6 +515,7 @@ struct Volume::Impl {
     }
 
     std::unique_ptr<storage_type> storage_;
+    Volume::OpenOptions opts_;
     std::shared_mutex controlBlocksLock_;
     std::unordered_map<Volume::Handle, cb_ptr_type> controlBlocks_;
     MRUCache<std::string,Volume::Handle, PATH_MRU_CACHE_SIZE> pathCache_;
