@@ -67,6 +67,9 @@ struct Volume::Impl {
         if (claimed())
             return Status::InvalidOperation("Storage claimed");
 
+        flushControlBlocks();
+        invalidatePathCache();
+
         return storage_->close();
     }
 
@@ -390,6 +393,10 @@ struct Volume::Impl {
         return pathCache_.remove(path);
     }
 
+    void invalidatePathCache() {
+        pathCache_.clear();
+    }
+
     [[nodiscard]] std::tuple<Status, Volume::Handle> claimControlBlock(Volume::Handle handle) {
         std::unique_lock locker(controlBlocksLock_);
 
@@ -471,6 +478,17 @@ struct Volume::Impl {
         // TODO: implement SYNC queue
 
         return storage_->save(cb->entry());
+    }
+
+    void flushControlBlocks() {
+        std::unique_lock locker(controlBlocksLock_);
+
+        for (const auto& [handle, cb] : controlBlocks_) {
+            if (cb->dirty())
+                SKV_UNUSED(scheduleControlBlockSync(cb));
+        }
+
+        controlBlocks_.clear();
     }
 
     [[nodiscard]] Status claim(Volume::Token token) noexcept {

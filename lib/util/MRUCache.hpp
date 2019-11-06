@@ -98,6 +98,10 @@ public:
         return cache_.size();
     }
 
+    void clear() {
+        cache_.clear();
+    }
+
     [[nodiscard]] constexpr std::size_t capacity() const noexcept {
         return capacity_value;
     }
