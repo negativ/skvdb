@@ -48,7 +48,7 @@ namespace skv::os {
     }
 
     bool File::unlink(std::string_view filePath) noexcept {
-        return ::DeleteFile(filePath.data()) == 0;
+        return ::DeleteFile(filePath.data()) != 0;
     }
 
     bool File::exists(std::string_view filePath) noexcept {
