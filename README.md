@@ -5,10 +5,9 @@ Embedded simple key-value database library written in C++17.
 
 SKVDB was benchmarked on Ubuntu 19.04 (CPU: AMD FX(tm)-8150 Eight-Core Processor, RAM: 16 GB DDR3, Intel® SSD 520 Series). 
 
-All entry property names was up to 12 bytes length long, property types: uint8_t, uint32_t, uint64_t, float, double, string (256 bytes), BLOB (1024 bytes).
+All entry property names was up to 12 bytes length long, property types: uint8_t, uint32_t, uint64_t, float, double, string (256 bytes), BLOB (1024 bytes) in equal proportions.
 
 Each benchmark was run on one mount point of virtual storage with 1, 2 and 3 disk volume entries mounted to it.
-
 
 
 **Table 1**. One record, multiple threads writing properties to it. Properties/sec. per-thread
@@ -33,6 +32,7 @@ No. threads | 3 entries | 2 entries| 1 entry|
 
 ![One Record Multiple Threads Writing](/tests/images/one_record_multiple_threads_set_prop.png)
 
+
 **Table 2**. One record, multiple threads reading properties from it. Properties/sec. per-thread
 
 No. threads | 3 entries | 2 entries| 1 entry|
@@ -54,6 +54,7 @@ No. threads | 3 entries | 2 entries| 1 entry|
 16 |	20000	| 26000	| 40000
 
 ![One Record Multiple Threads Reading](/tests/images/one_record_multiple_threads_get_prop.png)
+
 
 **Table 3**. Mutiple records, multiple threads writing properties to them (each thread to owned record). Properties/sec. per-thread
 
@@ -77,6 +78,7 @@ No. threads | 3 entries | 2 entries| 1 entry|
 
 ![Multiple Records Multiple Threads Writing](/tests/images/multiple_records_multiple_threads_set_prop.png)
 
+
 **Table 4**. Mutiple records, multiple threads reading properties from them (each thread from owned record). Properties/sec. per-thread
 
 No. threads | 3 entries | 2 entries| 1 entry|
@@ -98,3 +100,65 @@ No. threads | 3 entries | 2 entries| 1 entry|
 16 |	20000	|	26000	|	43000
 
 ![Multiple Records Multiple Threads Reading](/tests/images/multiple_records_multiple_threads_get_prop.png)
+
+
+**Table 5**. Mutiple records, multiple threads removing properties from them (each thread from owned record). Properties/sec. per-thread
+
+No. threads | 3 entries | 2 entries| 1 entry|
+---|--------|-------|-------
+2  |	52000 |	61000 |	193000
+3  |	40000 |	53000 |	122000
+4  |	33000 |	44000 |	93000
+5  |	31000 |	39000 |	75000
+6  |	28000 |	35000 |	74000
+7  |	25000 |	32000 |	60000
+8  |	22000 |	29000 |	53000
+9  |	20000 |	26000 |	44000
+10 |	18000 |	24000 |	41000
+11 |	17000 |	23000 |	37000
+12 |	15000 |	22000 |	33000
+13 |	14000 |	19000 |	31000
+14 |	13000 |	17000 |	30000
+15 |	12000 |	17000 |	26000
+16 |	11000 |	15000 |	25000
+
+![Multiple Records Multiple Threads Removing](/tests/images/rm_property.png)
+
+
+**Table 6**. Create record
+
+Count to create | Speed, records/s |
+------|--------|
+1000  |	3000
+2000  |	1250
+3000  |	910
+4000  |	670
+5000  |	510
+6000 ||	435
+7000  |	365
+8000  |	315
+9000  |	270
+10000 |	250
+
+![Creating records](/tests/images/link_perf.png)
+
+
+**Table 7**. Remove record
+
+Count to remove | Speed, records/s |
+------|--------|
+1000  |	3750
+2000  |	1700
+3000  |	975
+4000  |	710
+5000  |	550
+6000 ||	435
+7000  |	360
+8000  |	315
+9000  |	272
+10000 |	240
+
+![Removing records](/tests/images/unlink_perf.png)
+
+
+Both creating and removing are closely related to disk I/O (creating of record allocates block on disk and updates index table, removing of record perform loading from disk to check that it doesn't contains any child item (yeah, i would fix it in near future) and it safe to delete it). 
