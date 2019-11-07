@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <chrono>
 #include <thread>
 
 namespace skv::util {
@@ -14,6 +15,16 @@ template <std::size_t Steps = 10000>
 struct FixedStepBackoff {
     static void backoff([[maybe_unused]] std::size_t step) {
         if (step % Steps == 0)
+            std::this_thread::yield();
+    }
+};
+
+template <std::size_t Steps = 10000, std::size_t SleepMs = 50>
+struct FixedStepSleepBackoff {
+    static void backoff(std::size_t step) {
+        if (step % Steps == 0)
+            std::this_thread::sleep_for(std::chrono::milliseconds{SleepMs});
+        else
             std::this_thread::yield();
     }
 };

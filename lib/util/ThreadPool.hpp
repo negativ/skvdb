@@ -3,75 +3,22 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <functional>
 #include <future>
+#include <memory>
 #include <thread>
+#include <type_traits>
 #include <vector>
 
 #include <boost/lockfree/queue.hpp>
 
+#include "util/SpinLock.hpp"
 #include "util/Status.hpp"
 
 namespace skv::util {
 
-template <std::size_t BACKOFF_STEPS = 64, std::size_t SLEEP_PREIOD_MS = 50>
+template <typename Backoff = FixedStepSleepBackoff<256, 50>> // try for 128 steps, 50ms sleep
 class ThreadPool final {
-    struct Callable {
-        Callable() noexcept = default;
-        virtual ~Callable() noexcept = default;
-
-        virtual void call() = 0;
-    };
-
-    class CallWrapper {
-        template <typename F>
-        class Call final: public Callable {
-        public:
-            Call(F&& f):
-                func_{std::move(f)}
-            {}
-
-            ~Call() noexcept override = default;
-
-            void call() override { func_(); }
-        private:
-            F func_;
-        };
-
-    public:
-        CallWrapper() noexcept  = default;
-
-        template <typename F>
-        CallWrapper(F&& f):
-            impl_{new Call{std::move(f)}}
-        {}
-
-        ~CallWrapper() noexcept = default;
-
-        CallWrapper(const CallWrapper&) = delete;
-        CallWrapper& operator=(const CallWrapper&) = delete;
-
-        CallWrapper(CallWrapper&& other) noexcept {
-            using std::swap;
-
-            swap(impl_, other.impl_);
-        }
-
-        CallWrapper& operator=(CallWrapper&& other) noexcept {
-            using std::swap;
-
-            swap(impl_, other.impl_);
-
-            return *this;
-        }
-
-        void operator()() {
-            impl_->call();
-        }
-
-    private:
-        std::unique_ptr<Callable> impl_;
-    };
-
 public:
     ThreadPool(std::size_t nThreads = std::thread::hardware_concurrency()):
         done_{false},
@@ -97,23 +44,23 @@ public:
             CallWrapper *wrapper;
 
             if (taskQueue_.pop(wrapper))
-                delete wrapper;
+                destroyCallWrapper(wrapper);
         }
     }
 
-    template <typename F>
-    decltype(auto) schedule(F&& f) {
-        using result_t = std::invoke_result_t<F>;
+    template <typename F, typename ... Args, std::enable_if_t<std::is_invocable_v<F, Args...>, int> = 0>
+    [[nodiscard]] auto schedule(F&& f, Args&& ... args) {
+        using result= std::invoke_result_t<F, Args...>;
+        using packaged_task = std::packaged_task<result()>;
+        using packaged_task_ptr = std::shared_ptr<packaged_task>;
 
-        std::packaged_task<result_t()> packagedTask{std::move(f)};
-        auto future{packagedTask.get_future()};
+        packaged_task_ptr task = std::make_shared<packaged_task>(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+        auto future = task->get_future();
+        auto cw = createCallWrapper([task{std::move(task)}] { (*task)(); });
 
-        CallWrapper *task = new CallWrapper(std::move(packagedTask));
-
-        while (!taskQueue_.push(task));
+        while (!taskQueue_.push(cw));
 
         return future;
-
     }
 
     [[nodiscard]] bool done() const noexcept {
@@ -142,14 +89,31 @@ private:
 
         ~Joiner() {
             std::for_each(std::begin(threads_), std::end(threads_),
-                          [](auto& t) {
-                              if (t.joinable())
-                                  t.join();
-                          });
+                          [](auto& t) { if (t.joinable()) t.join(); });
         }
 
     private:
         container_type& threads_;
+    };
+
+    class CallWrapper {
+    public:
+        using function = std::function<void()>;
+
+        CallWrapper() = default;
+        CallWrapper(function&& f):
+            call{std::move(f)}
+        {}
+
+
+        ~CallWrapper() noexcept = default;
+
+        void operator()() {
+            call();
+        }
+
+    private:
+        function call{ []() {}};
     };
 
     void markDone() {
@@ -157,11 +121,6 @@ private:
     }
 
     void routine() {
-        using namespace std::literals;
-
-        constexpr std::size_t MAX_STEPS = 1000;
-        constexpr auto SLEEP_PERIOD = 100ms;
-
         std::size_t step = 0;
 
         while (!done()) {
@@ -170,12 +129,7 @@ private:
             auto [status, task] = nextTask();
 
             if (!status.isOk()) {
-                if (step == MAX_STEPS) {
-                    std::this_thread::sleep_for(SLEEP_PERIOD);
-                    step = 0;
-                }
-                else
-                    std::this_thread::yield();
+                Backoff::backoff(step);
             }
             else {
                 task();
@@ -186,17 +140,26 @@ private:
     }
 
     std::tuple<Status, CallWrapper> nextTask() {
-        CallWrapper* task;
+        CallWrapper* cw;
 
-        if (taskQueue_.pop(task)) {
-            auto ret = std::move(*task);
+        if (taskQueue_.pop(cw)) {
+            CallWrapper ret = std::move(*cw);
 
-            delete task;
+            destroyCallWrapper(cw);
 
             return {Status::Ok(), ret};
         }
 
         return {Status::InvalidOperation("Task queue empty"), CallWrapper{}};
+    }
+
+    template<typename F>
+    CallWrapper* createCallWrapper(F&& f) {
+        return new CallWrapper{std::forward<F>(f)};
+    }
+
+    void destroyCallWrapper(CallWrapper* cw) {
+        delete cw;
     }
 
     std::atomic<bool> done_;
