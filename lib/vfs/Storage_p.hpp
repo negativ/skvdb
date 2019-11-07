@@ -50,29 +50,44 @@ struct Storage::Impl {
     auto spawnCall(F call, Iterator start, Iterator stop) {
         using namespace std::literals;
 
-        using result_t = std::invoke_result_t<F, typename std::iterator_traits<Iterator>::value_type>;
-        using future_result_t = std::future<result_t>;
+        using result   = std::invoke_result_t<F, typename std::iterator_traits<Iterator>::value_type>;
+        using fresults = std::future<result>;
+        using results  = std::vector<result>;
 
-        std::vector<future_result_t> futresults;
+        results ret;
 
-        std::for_each(start, stop,
-                      [&](auto&& entry) { futresults.emplace_back(threadPool_.schedule(call, entry)); });
+        auto callCount = std::abs(std::distance(start, stop));
 
-        while (!std::all_of(std::begin(futresults),
-                            std::end(futresults),
-                            [](auto& f) {
-                                return (f.wait_for(0ms) == std::future_status::ready);
-                            }))
-            threadPool_.throttle();
+        if (callCount > 1) {
+            auto ownCallIt = start;
 
-        std::vector<result_t> results;
-        results.reserve(futresults.size());
+            std::advance(start, 1);// so, we do the first call in current thread context
 
-        transform_future(std::begin(futresults), std::end(futresults),
-                         std::back_inserter(results),
-                         [](auto&& res) { return std::forward<decltype(res)>(res); });
+            std::vector<fresults> futresults;
 
-        return  results;
+            std::for_each(start, stop,
+                          [&](auto&& entry) { futresults.emplace_back(threadPool_.schedule(call, entry)); });
+
+            ret.reserve(futresults.size());
+
+            if (ownCallIt != stop)
+                ret.emplace_back(call(*ownCallIt));
+
+            while (!std::all_of(std::begin(futresults),
+                                std::end(futresults),
+                                [](auto& f) {
+                                    return (f.wait_for(0ms) == std::future_status::ready);
+                                }))
+                threadPool_.throttle(); // helping thread pool to do his work
+
+            transform_future(std::begin(futresults), std::end(futresults),
+                             std::back_inserter(ret),
+                             [](auto&& res) { return std::forward<decltype(res)>(res); });
+        }
+        else if (callCount == 1)
+            ret.emplace_back(call(*start));
+
+        return  ret;
     }
 
     Impl() = default;
