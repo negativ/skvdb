@@ -35,7 +35,9 @@ class VFSStoragePerfomanceTest: public ::testing::Test {
 #endif
 
 protected:
+    const std::size_t N_THREADS = 2 * std::thread::hardware_concurrency();
     static constexpr std::size_t PROPS_COUNT = 100000;
+    static constexpr std::size_t LINKS_COUNT = 10000;
 
     void SetUp() override {
         removeFiles();
@@ -119,19 +121,19 @@ protected:
     void doMounts() {
         createPath(volume1_, "/proc");
         createPath(volume2_, "/proc");
-        createPath(volume3_, "/proc");
+        //createPath(volume3_, "/proc");
 
-        ASSERT_TRUE(storage_.mount(volume1_, "/",     "/",     Storage::MaxPriority).isOk());
+        ASSERT_TRUE(storage_.mount(volume1_, "/proc", "/",     Storage::MaxPriority).isOk());
         ASSERT_TRUE(storage_.mount(volume1_, "/proc", "/proc", Storage::MaxPriority).isOk());
-        ASSERT_TRUE(storage_.mount(volume2_, "/proc", "/proc", Storage::DefaultPriority).isOk());
-        ASSERT_TRUE(storage_.mount(volume3_, "/proc", "/proc", Storage::MinPriority).isOk());
+        //ASSERT_TRUE(storage_.mount(volume2_, "/proc", "/proc", Storage::DefaultPriority).isOk());
+        //ASSERT_TRUE(storage_.mount(volume3_, "/proc", "/proc", Storage::MinPriority).isOk());
     }
 
     void doUnmounts() {
         ASSERT_TRUE(storage_.unmount(volume1_, "/proc", "/proc").isOk());
-        ASSERT_TRUE(storage_.unmount(volume2_, "/proc", "/proc").isOk());
-        ASSERT_TRUE(storage_.unmount(volume3_, "/proc", "/proc").isOk());
-        ASSERT_TRUE(storage_.unmount(volume1_, "/",     "/").isOk());
+        //bASSERT_TRUE(storage_.unmount(volume2_, "/proc", "/proc").isOk());
+        //ASSERT_TRUE(storage_.unmount(volume3_, "/proc", "/proc").isOk());
+        ASSERT_TRUE(storage_.unmount(volume1_, "/proc", "/").isOk());
     }
 
     std::string currentThreadIdString() {
@@ -235,7 +237,7 @@ TEST_F(VFSStoragePerfomanceTest, OneRecordMultipleThreads) {
         }
     };
 
-    for (size_t i = 1; i <= std::thread::hardware_concurrency(); ++i) {
+    for (size_t i = 1; i <= N_THREADS; ++i) {
         go_.store(false);
 
         std::vector<std::thread> threads;
@@ -256,7 +258,7 @@ TEST_F(VFSStoragePerfomanceTest, OneRecordMultipleThreads) {
         Log::i("OneRecordMultipleThreads [threads: " + std::to_string(i) + "]", "setProperty() speed (per.thread): ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
     }
 
-    for (size_t i = 1; i <= std::thread::hardware_concurrency(); ++i) {
+    for (size_t i = 1; i <= N_THREADS; ++i) {
         go_.store(false);
 
         std::vector<std::thread> threads;
@@ -291,7 +293,7 @@ TEST_F(VFSStoragePerfomanceTest, MultipleRecordsMultipleThreads) {
 
     ASSERT_TRUE(status.isOk());
 
-    for (size_t i = 1; i <= std::thread::hardware_concurrency(); ++i) {
+    for (size_t i = 1; i <= N_THREADS; ++i) {
         ASSERT_TRUE(storage_.link(handle, std::to_string(i)).isOk());
     }
 
@@ -331,7 +333,7 @@ TEST_F(VFSStoragePerfomanceTest, MultipleRecordsMultipleThreads) {
         ASSERT_TRUE(storage_.close(handle).isOk());
     };
 
-    for (size_t i = 1; i <= std::thread::hardware_concurrency(); ++i) {
+    for (size_t i = 1; i <= N_THREADS; ++i) {
         go_.store(false);
 
         std::vector<std::thread> threads;
@@ -354,7 +356,7 @@ TEST_F(VFSStoragePerfomanceTest, MultipleRecordsMultipleThreads) {
         Log::i("MultipleRecordsMultipleThreads [threads: " + std::to_string(i) + "]", "setProperty() speed (per.thread): ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
     }
 
-    for (size_t i = 1; i <= std::thread::hardware_concurrency(); ++i) {
+    for (size_t i = 1; i <= N_THREADS; ++i) {
         go_.store(false);
 
         std::vector<std::thread> threads;
@@ -377,11 +379,91 @@ TEST_F(VFSStoragePerfomanceTest, MultipleRecordsMultipleThreads) {
         Log::i("MultipleRecordsMultipleThreads [threads: " + std::to_string(i) + "]", "getProperty() speed (per.thread): ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
     }
 
-    {
+    {   // inspecting storage links
         auto [status, links] = storage_.links(handle);
 
         ASSERT_TRUE(status.isOk());
+        ASSERT_EQ(links.size(), N_THREADS);
+
+        for (const auto& link : links) {
+            auto path = util::simplifyPath("/proc/" + link);
+
+            auto [status, cHandle] = storage_.open(path);
+
+            ASSERT_TRUE(status.isOk());
+
+            auto [pstatus, props] = storage_.properties(cHandle);
+
+            ASSERT_TRUE(pstatus.isOk());
+            ASSERT_EQ(props.size(), propsPool.size());
+
+
+            for (std::size_t i = 0; i < propsNames.size(); ++i)
+                ASSERT_EQ(props[propsNames[i]], propsPool[i]);
+
+            ASSERT_TRUE(storage_.close(cHandle).isOk());
+        }
     }
+
+    ASSERT_TRUE(storage_.close(handle).isOk());
+
+    doUnmounts();
+}
+
+TEST_F(VFSStoragePerfomanceTest, RemovePropertyRecordTest) {
+    using namespace std::chrono;
+
+    doMounts();
+
+    auto [status, handle] = storage_.open("/proc");
+
+    ASSERT_TRUE(status.isOk());
+
+    for (std::size_t i = 0; i < PROPS_COUNT; ++i)
+        ASSERT_TRUE(storage_.setProperty(handle, std::to_string(i), propsPool[i % propsPool.size()]).isOk());
+
+    auto startTime = steady_clock::now();
+
+    for (std::size_t i = 0; i < PROPS_COUNT; ++i)
+        ASSERT_TRUE(storage_.removeProperty(handle, std::to_string(i)).isOk());
+
+    auto stopTime = steady_clock::now();
+
+    auto msElapsed = duration_cast<milliseconds>(stopTime - startTime).count();
+
+    Log::i("RemovePropertyRecordTest", "removeProperty() elapsed time: ", msElapsed, " ms.");
+    Log::i("RemovePropertyRecordTest", "removeProperty() speed: ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
+
+    ASSERT_TRUE(storage_.close(handle).isOk());
+
+    doUnmounts();
+}
+
+TEST_F(VFSStoragePerfomanceTest, LinkUnlinkRecordTest) {
+    using namespace std::chrono;
+
+    doMounts();
+
+    auto [status, handle] = storage_.open("/proc");
+
+    ASSERT_TRUE(status.isOk());
+
+    auto startTime = steady_clock::now();
+
+    for (std::size_t i = 0; i < LINKS_COUNT; ++i)
+        ASSERT_TRUE(storage_.link(handle, std::to_string(i)).isOk());
+
+    auto stopTime = steady_clock::now();
+
+    auto msElapsed = duration_cast<milliseconds>(stopTime - startTime).count();
+
+    Log::i("CreateRecordTest", "link() elapsed time: ", msElapsed, " ms.");
+    Log::i("CreateRecordTest", "link() speed: ", (1000.0 / msElapsed) * LINKS_COUNT, " link/s");
+
+    auto [lstatus, links] = storage_.links(handle);
+
+    ASSERT_TRUE(lstatus.isOk());
+    ASSERT_EQ(links.size(), LINKS_COUNT);
 
     ASSERT_TRUE(storage_.close(handle).isOk());
 
