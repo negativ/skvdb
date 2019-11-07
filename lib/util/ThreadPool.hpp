@@ -17,7 +17,7 @@
 
 namespace skv::util {
 
-template <typename Backoff = FixedStepSleepBackoff<256, 50>> // try for 128 steps, 50ms sleep
+template <typename Backoff = FixedStepSleepBackoff<256, 50>> // try for 256 steps, 50ms sleep
 class ThreadPool final {
 public:
     ThreadPool(std::size_t nThreads = std::thread::hardware_concurrency()):
