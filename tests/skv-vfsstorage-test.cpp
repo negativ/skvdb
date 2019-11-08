@@ -169,7 +169,7 @@ TEST_F(VFSStorageTest, PropertiesGetSetRemoveTest) {
 
     {
         auto [status, handle] = volume1_->open("/a/b/c/d");
-
+        SKV_UNUSED(status);
         ASSERT_TRUE(volume1_->setProperty(handle, "test_int", Property{1024 * 1024}).isOk());
         ASSERT_TRUE(volume1_->setProperty(handle, "test_str", Property{"First test text"}).isOk());
         ASSERT_TRUE(volume1_->setProperty(handle, "test_flt", Property{1.0f}).isOk());
@@ -181,7 +181,7 @@ TEST_F(VFSStorageTest, PropertiesGetSetRemoveTest) {
 
     {
         auto [status, handle] = volume2_->open("/f/g/h/i");
-
+        SKV_UNUSED(status);
         ASSERT_TRUE(volume2_->setProperty(handle, "test_int", Property{1024 * 1024 * 1024}).isOk());
         ASSERT_TRUE(volume2_->setProperty(handle, "test_str", Property{"Second test text"}).isOk());
         ASSERT_TRUE(volume2_->setProperty(handle, "test_flt", Property{100.0f}).isOk());
@@ -193,7 +193,7 @@ TEST_F(VFSStorageTest, PropertiesGetSetRemoveTest) {
 
     {
         auto [status, handle] = storage_.open("/combined");
-
+        SKV_UNUSED(status);
         {
             {
                 auto [status, v] = storage_.hasProperty(handle, "test_int");
@@ -214,7 +214,7 @@ TEST_F(VFSStorageTest, PropertiesGetSetRemoveTest) {
 
         {
             auto [status, properties] = storage_.properties(handle);
-
+            SKV_UNUSED(status);
             ASSERT_EQ(properties.size(), 6);
 
             ASSERT_EQ(properties["test_int"], Property{1024 * 1024 * 1024}); // volume 2 has highest priority
@@ -230,7 +230,7 @@ TEST_F(VFSStorageTest, PropertiesGetSetRemoveTest) {
         {
             auto [status, handle] = volume1_->open("/a/b/c/d");
             auto [pstatus, v] = volume1_->hasProperty(handle, "combined_property");
-
+            SKV_UNUSED(status);
             ASSERT_TRUE(pstatus.isOk());
             ASSERT_TRUE(v);
 
@@ -246,7 +246,7 @@ TEST_F(VFSStorageTest, PropertiesGetSetRemoveTest) {
         {
             auto [status, handle] = volume2_->open("/f/g/h/i");
             auto [pstatus, v] = volume2_->hasProperty(handle, "combined_property");
-
+            SKV_UNUSED(status);
             ASSERT_TRUE(pstatus.isOk());
             ASSERT_TRUE(v);
 
@@ -265,7 +265,7 @@ TEST_F(VFSStorageTest, PropertiesGetSetRemoveTest) {
 
     {
         auto [status, handle] = storage_.open("/combined");
-
+        SKV_UNUSED(status);
         ASSERT_TRUE(storage_.removeProperty(handle, "test_int").isOk());
         ASSERT_TRUE(storage_.removeProperty(handle, "test_str").isOk());
         ASSERT_TRUE(storage_.removeProperty(handle, "test_flt").isOk());
@@ -358,9 +358,9 @@ TEST_F(VFSStorageTest, PropertyExpireTest) {
 
     {
         auto [status, handle] = volume1_->open("/a/b/c/d");
-
         auto [pstatus, properties] = volume1_->properties(handle);
 
+        SKV_UNUSED(status);
         ASSERT_TRUE(pstatus.isOk());
         ASSERT_TRUE(properties.empty());
 
@@ -369,9 +369,9 @@ TEST_F(VFSStorageTest, PropertyExpireTest) {
 
     {
         auto [status, handle] = volume2_->open("/f/g/h/i");
-
         auto [pstatus, properties] = volume2_->properties(handle);
 
+        SKV_UNUSED(status);
         ASSERT_TRUE(pstatus.isOk());
         ASSERT_TRUE(properties.empty());
 
@@ -387,7 +387,7 @@ TEST_F(VFSStorageTest, LinkUnlinkTest) {
     doMounts();
 
     auto [unused, handle] = storage_.open("/combined");
-
+    SKV_UNUSED(unused);
     {
         auto [status, links] = storage_.links(handle);
 

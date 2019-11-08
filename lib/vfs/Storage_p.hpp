@@ -179,12 +179,14 @@ struct Storage::Impl {
                                  std::begin(ventries), std::end(ventries));
 
         if (std::any_of(std::cbegin(results), std::cend(results),
-                        [](const auto& t) { const auto& [status, unused] = t; return !status.isOk(); }))
+                        [](const auto& t) { const auto& [status, unused] = t; SKV_UNUSED(unused); return !status.isOk(); }))
             return {Status::InvalidArgument("Unable to fetch links from all volumes"), {}};
 
         Storage::Properties ret;
 
         for (auto&& [status, props] : results) {
+            SKV_UNUSED(status);
+
             for (auto&& [prop, value] : props) {
                 if (auto it = ret.find(prop); it == std::cend(ret))
                     ret.emplace(prop, value);
@@ -213,12 +215,14 @@ struct Storage::Impl {
         decltype(spawnResults) results;
         std::copy_if(std::begin(spawnResults), std::end(spawnResults),
                      std::back_inserter(results),
-                     [](const auto& t) { const auto& [status, unused] = t; return status.isOk(); });
+                     [](const auto& t) { const auto& [status, unused] = t; SKV_UNUSED(unused); return status.isOk(); });
 
         if (results.empty())
             return {Status::InvalidArgument("No such property"), {}};
 
         auto [unused, value] = results.front(); // property from volume with highest priority
+
+        SKV_UNUSED(unused);
 
         return {Status::Ok(), value};
     }
@@ -362,12 +366,14 @@ struct Storage::Impl {
                                  std::begin(ventries), std::end(ventries));
 
         if (std::any_of(std::cbegin(results), std::cend(results),
-                        [](const auto& t) { const auto& [status, unused] = t; return !status.isOk(); }))
+                        [](const auto& t) { const auto& [status, unused] = t; SKV_UNUSED(unused); return !status.isOk(); }))
             return {Status::InvalidArgument("Unable to fetch links from all volumes"), {}};
 
         Storage::Links ret;
 
         for (auto&& [status, ls] : results) {
+            SKV_UNUSED(status);
+
             for (auto&& l : ls) {
                 if (auto it = ret.find(l); it == std::cend(ret))
                     ret.insert(l);

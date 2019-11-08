@@ -188,7 +188,7 @@ TEST_F(VFSStoragePerfomanceTest, SingleThread_VolumeOnly) {
 
     for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
         const auto& [status, value] = volume1_->property(handle, propsNames[i % propsPool.size()]);
-
+        SKV_UNUSED(status);
         ASSERT_EQ(value, propsPool[i % propsPool.size()]);
     }
 

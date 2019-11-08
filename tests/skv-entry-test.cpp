@@ -8,6 +8,7 @@
 
 #include <ondisk/ContainerStreamDevice.hpp>
 #include <ondisk/Entry.hpp>
+#include <util/Unused.hpp>
 
 using namespace skv::ondisk;
 
@@ -207,6 +208,7 @@ TEST(EntryTest, PropertyTest) {
 
     {
         const auto& [status, value] = root.property("not_exist");
+        SKV_UNUSED(value);
         ASSERT_FALSE(status.isOk());
     }
 

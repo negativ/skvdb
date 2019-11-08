@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <limits>
 #include <mutex>
@@ -193,6 +194,8 @@ public:
         Status status = Status::Ok();
         auto [istatus, index] = getIndexRecord(RootEntryId);
 
+        SKV_UNUSED(index);
+
         if (!istatus.isOk()) {// creating root index if needed
             locker.unlock();
 
@@ -369,6 +372,9 @@ private:
             }
 
             auto [appendStatus, blockIndex, blockCount] = device.append(buffer);
+
+            assert(blockCount >= 1);
+            SKV_UNUSED(blockCount);
 
             if (!appendStatus.isOk()) {
                 compStatus = status;

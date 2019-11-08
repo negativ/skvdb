@@ -89,7 +89,7 @@ TEST(VolumeTest, MTTestN1) {
     std::vector<std::thread> threads;
     std::generate_n(std::back_inserter(threads),
                     2 * std::thread::hardware_concurrency(),
-                    [&] { return std::move(std::thread{&mtTestRoutineN1, std::ref(volume)}); });
+                    [&] { return std::thread{&mtTestRoutineN1, std::ref(volume)}; });
 
     std::this_thread::sleep_for(100ms); // ensure all other threads is started
 
@@ -204,7 +204,7 @@ TEST(VolumeTest, MTTestN2) {
 
         {
             const auto& [status, properties] = volume.properties(self);
-
+            SKV_UNUSED(status);
             ASSERT_EQ(properties.size(), NRUNS * threads.size());
         }
 
@@ -257,7 +257,7 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
 
         {
             auto [status, children] = volume.links(rootHandle);
-
+            SKV_UNUSED(status);
             ASSERT_EQ(children.size(), 3);
         }
 
@@ -277,7 +277,7 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
 
         {
             auto [status, children] = volume.links(procHandle);
-
+            SKV_UNUSED(status);
             ASSERT_EQ(children.size(), 2);
         }
 
@@ -289,7 +289,7 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
 
         {
             auto [status, children] = volume.links(procHandle);
-
+            SKV_UNUSED(status);
             ASSERT_EQ(children.size(), 2);
         }
 
@@ -304,10 +304,10 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
 
     {
         auto [status, selfHandle] = volume.open("/proc/self");
-
+        SKV_UNUSED(status);
         {
             auto [status, children] = volume.links(selfHandle);
-
+            SKV_UNUSED(status);
             ASSERT_TRUE(children.empty());
         }
 
@@ -321,10 +321,10 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
 
     {
         auto [status, selfHandle] = volume.open("/proc/self");
-
+        SKV_UNUSED(status);
         {
             auto [status, children] = volume.links(selfHandle);
-
+            SKV_UNUSED(status);
             ASSERT_TRUE(children.empty());
         }
 
@@ -343,7 +343,7 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
 
     {
         auto [status, selfHandle] = volume.open("/proc/self");
-
+        SKV_UNUSED(status);
         auto [s1, v1] = volume.property(selfHandle, "int_property");
         auto [s2, v2] = volume.property(selfHandle, "str_property");
         auto [s3, v3] = volume.property(selfHandle, "flt_property");
@@ -367,10 +367,10 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
 
     {
         auto [status, selfHandle] = volume.open("/proc/self");
-
+        SKV_UNUSED(status);
         {
             auto [status, children] = volume.links(selfHandle);
-
+            SKV_UNUSED(status);
             ASSERT_TRUE(children.empty());
         }
 
@@ -389,7 +389,7 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
 
     {
         auto [status, selfHandle] = volume.open("/proc/self");
-
+        SKV_UNUSED(status);
         auto [s1, v1] = volume.property(selfHandle, "int_property");
         auto [s2, v2] = volume.property(selfHandle, "str_property");
         auto [s3, v3] = volume.property(selfHandle, "flt_property");

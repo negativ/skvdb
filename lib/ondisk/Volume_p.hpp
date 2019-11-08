@@ -118,6 +118,9 @@ struct Volume::Impl {
             auto it =std::find_if(std::cbegin(children), std::cend(children),
                                   [&](auto&& p) {
                                       auto&& [name, id] = p;
+
+                                      SKV_UNUSED(id);
+
                                       return (name == t);
                                   });
 
@@ -484,6 +487,8 @@ struct Volume::Impl {
         std::unique_lock locker(controlBlocksLock_);
 
         for (const auto& [handle, cb] : controlBlocks_) {
+            SKV_UNUSED(handle);
+
             if (cb->dirty())
                 SKV_UNUSED(scheduleControlBlockSync(cb));
         }
