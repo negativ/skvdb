@@ -144,6 +144,9 @@ public:
 
         auto [status, blockIndex, blockCount] = logDevice_.append(buffer);
 
+        assert(blockCount >= 1);
+        SKV_UNUSED(blockCount);
+
         if (!status.isOk())
             return status;
 
