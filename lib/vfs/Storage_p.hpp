@@ -14,6 +14,7 @@
 #include "Storage.hpp"
 #include "MountPoint.hpp"
 #include "VirtualEntry.hpp"
+#include "util/Log.hpp"
 #include "util/Status.hpp"
 #include "util/String.hpp"
 #include "util/StringPath.hpp"
@@ -65,8 +66,13 @@ struct Storage::Impl {
 
             std::vector<fresults> futresults;
 
-            std::for_each(start, stop,
-                          [&](auto&& entry) { futresults.emplace_back(threadPool_.schedule(call, entry)); });
+            try {
+                std::for_each(start, stop,
+                              [&](auto&& entry) { futresults.emplace_back(threadPool_.schedule(call, entry)); });
+            }
+            catch (const std::exception& e) {
+                Log::e("vfs::Storage", "Exception: ", e.what());
+            }
 
             ret.reserve(futresults.size());
 

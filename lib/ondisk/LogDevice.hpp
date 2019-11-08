@@ -26,9 +26,9 @@ template <typename BlockIndex = std::uint32_t,
           typename Buffer     = std::vector<char>>
 class LogDevice final
 {
-    static constexpr std::size_t MAX_READ_THREADS = 17;
+    static constexpr std::size_t   MAX_READ_THREADS = 17;
     static constexpr std::uint32_t DEFAULT_BLOCK_SIZE = 2048;
-    static constexpr std::uint32_t MIN_BLOCK_SIZE = 512;
+    static constexpr std::uint32_t MIN_BLOCK_SIZE = 2048;
 
 public:
     using buffer_type           = std::decay_t<Buffer>;                           /* maybe std::uint8_t is better choice */
@@ -63,7 +63,7 @@ public:
      */
     [[nodiscard]] Status open(std::string_view path, OpenOption options) {
         if (options.BlockSize % MIN_BLOCK_SIZE != 0)
-            return Status::InvalidArgument("Block size should be a multiple of 512 (e.g. 4096)");
+            return Status::InvalidArgument("Block size should be a multiple of 2048 (e.g. 4096)");
 
         std::unique_lock lock(lock_);
 
@@ -106,7 +106,7 @@ public:
     }
 
     /**
-     * @brief Closes block device file
+     * @brief Close block device file
      */
     [[nodiscard]] Status close() {
         std::unique_lock lock(lock_);
@@ -136,12 +136,12 @@ public:
      * @brief Read "cnt" bytes starting from block index "n"
      * @param n - block index
      * @param cnt - bytes count
-     * @return Status of operation and buffer
+     * @return {Status::Ok(), data} on success
      */
     [[nodiscard]] std::tuple<Status, buffer_type> read(block_index_type n, bytes_count_type cnt) {
         static constexpr std::hash<std::thread::id> hasher;
 
-        auto totalBlocks = blocks_.load();
+        auto totalBlocks = sizeInBlocks();
         auto readBlocks = (cnt / blockSize()) + (cnt % blockSize()? 1 : 0);
 
         if (!opened())
@@ -170,9 +170,9 @@ public:
     }
 
     /**
-     * @brief append
+     * @brief Append data to device
      * @param buffer
-     * @return
+     * @return {Status::Ok(), index of written block, total written block count} on success
      */
     [[nodiscard]] std::tuple<Status, block_index_type, block_count_type> append(const buffer_type& buffer) {
         if (buffer.empty())

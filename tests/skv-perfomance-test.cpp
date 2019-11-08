@@ -36,7 +36,7 @@ class VFSStoragePerfomanceTest: public ::testing::Test {
 
 protected:
     const std::size_t N_THREADS = 2 * std::thread::hardware_concurrency();
-    static constexpr std::size_t PROPS_COUNT = 100000;
+    static constexpr std::size_t PROPS_COUNT = 20000;
     static constexpr std::size_t LINKS_COUNT = 1000;
 
     void SetUp() override {

@@ -22,7 +22,7 @@ class MRUCache final {
 public:
     static constexpr std::size_t capacity_value = Capacity;
 
-    static_assert (capacity_value != 0, "MRU capacity should be > 0");
+    static_assert (capacity_value > 0, "MRU capacity should be > 0");
 
     using key_type          = std::decay_t<Key>;
     using value_type        = std::decay_t<Value>;

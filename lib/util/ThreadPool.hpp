@@ -6,6 +6,7 @@
 #include <functional>
 #include <future>
 #include <memory>
+#include <stdexcept>
 #include <thread>
 #include <type_traits>
 #include <vector>
@@ -39,17 +40,13 @@ public:
 
     ~ThreadPool() noexcept {
         markDone();
-
-        while (!taskQueue_.empty()) {
-            CallWrapper *wrapper;
-
-            if (taskQueue_.pop(wrapper))
-                destroyCallWrapper(wrapper);
-        }
     }
 
     template <typename F, typename ... Args, std::enable_if_t<std::is_invocable_v<F, Args...>, int> = 0>
     [[nodiscard]] auto schedule(F&& f, Args&& ... args) {
+        if (done())
+            throw std::runtime_error{"Thread pool has stopped his work"};
+
         using result= std::invoke_result_t<F, Args...>;
         using packaged_task = std::packaged_task<result()>;
         using packaged_task_ptr = std::shared_ptr<packaged_task>;
@@ -84,16 +81,16 @@ private:
     class Joiner final {
     public:
         Joiner(container_type& threads):
-            threads_{threads}
+            threads_{std::ref(threads)}
         {}
 
         ~Joiner() {
-            std::for_each(std::begin(threads_), std::end(threads_),
+            std::for_each(std::begin(threads_.get()), std::end(threads_.get()),
                           [](auto& t) { if (t.joinable()) t.join(); });
         }
 
     private:
-        container_type& threads_;
+        std::reference_wrapper<container_type> threads_;
     };
 
     class CallWrapper {
@@ -113,7 +110,7 @@ private:
         }
 
     private:
-        function call{ []() {}};
+        function call{[]() {}};
     };
 
     void markDone() {
@@ -123,7 +120,7 @@ private:
     void routine() {
         std::size_t step = 0;
 
-        while (!done()) {
+        while (!done() || hasTasks()) {
             ++step;
 
             auto [status, task] = nextTask();
@@ -137,6 +134,10 @@ private:
                 step = 0;
             }
         }
+    }
+
+    bool hasTasks() const noexcept {
+        return !taskQueue_.empty();
     }
 
     std::tuple<Status, CallWrapper> nextTask() {

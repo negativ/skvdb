@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <functional>
 #include <iostream>
 #include <vector>
 
@@ -19,7 +20,7 @@ public:
     using category          = io::seekable_device_tag;
 
     ContainerStreamDevice(Container& container) noexcept
-        : container_(container), pos_(0)
+        : container_(std::ref(container)), pos_(0)
     { }
 
     ~ContainerStreamDevice() noexcept = default;
@@ -31,12 +32,13 @@ public:
     ContainerStreamDevice& operator=(ContainerStreamDevice&&) noexcept = delete;
 
     [[nodiscard]] std::streamsize read(char_type* s, std::streamsize n) {
-        auto amt = static_cast<std::streamsize>(container_.size() - pos_);
+        auto& container = container_.get();
+        auto amt = static_cast<std::streamsize>(container.size() - pos_);
         auto result = std::min(n, amt);
 
         if (result != 0) {
-            std::copy(std::next(std::cbegin(container_), pos_),
-                      std::next(std::cbegin(container_), pos_ + result),
+            std::copy(std::next(std::cbegin(container), pos_),
+                      std::next(std::cbegin(container), pos_ + result),
                       s);
 
             pos_ += result;
@@ -49,20 +51,21 @@ public:
 
     [[nodiscard]] std::streamsize write(const char_type* s, std::streamsize n) {
         std::streamsize result = 0;
+        auto& container = container_.get();
 
-        if (pos_ != container_.size()) {
-            auto amt = static_cast<std::streamsize>(container_.size() - pos_);
+        if (pos_ != container.size()) {
+            auto amt = static_cast<std::streamsize>(container.size() - pos_);
             result = std::min(n, amt);
 
             std::copy(s, s + result,
-                      std::next(std::begin(container_), pos_));
+                      std::next(std::begin(container), pos_));
 
             pos_ += result;
         }
 
         if (result < n) {
-            container_.insert(std::end(container_), std::next(s, result), std::next(s, n));
-            pos_ = container_.size();
+            container.insert(std::end(container), std::next(s, result), std::next(s, n));
+            pos_ = container.size();
         }
 
         return n;
@@ -70,17 +73,18 @@ public:
 
     [[nodiscard]] io::stream_offset seek(io::stream_offset off, std::ios_base::seekdir way) {
         io::stream_offset next;
+        auto& container = container_.get();
 
         if (way == std::ios_base::beg)
             next = off;
         else if (way == std::ios_base::cur)
             next = pos_ + off;
         else if (way == std::ios_base::end)
-            next = container_.size() + off - 1;
+            next = container.size() + off - 1;
         else
             throw std::ios_base::failure("bad seek direction");
 
-        if (next < 0 || next >= static_cast<io::stream_offset>(container_.size()))
+        if (next < 0 || next >= static_cast<io::stream_offset>(container.size()))
             throw std::ios_base::failure("bad seek offset");
 
         pos_ = next;
@@ -88,7 +92,7 @@ public:
     }
 
 private:
-    container_type&  container_;
+    std::reference_wrapper<container_type> container_;
     typename container_type::size_type pos_;
 };
 

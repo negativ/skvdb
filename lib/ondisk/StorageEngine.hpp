@@ -36,7 +36,7 @@ class StorageEngine final {
     const skv::util::Status DeviceNotOpenedStatus = skv::util::Status::IOError("Device not opened");
 
 public:
-    using key_type          = std::decay_t<KeyT>;
+    using key_type = std::decay_t<KeyT>;
 
     static constexpr key_type InvalidEntryId = _InvalidKey;
     static constexpr key_type RootEntryId = _RootKey;
@@ -49,9 +49,9 @@ public:
     using log_device_type   = LogDevice<block_index_type, block_index_type, buffer_type>;
     using entry_type        = Entry<key_type, PropContainerT, ClockT, InvalidEntryId>;
 
-    static_assert (std::is_integral_v<key_type>, "Key type should be integral");
-    static_assert (std::is_unsigned_v<block_index_type>, "Block index type should be unsigned");
-    static_assert (std::is_unsigned_v<bytes_count_type>, "Bytes count type should be unsigned");
+    static_assert (std::is_integral_v<key_type>,            "Key type should be integral");
+    static_assert (std::is_unsigned_v<block_index_type>,    "Block index type should be unsigned");
+    static_assert (std::is_unsigned_v<bytes_count_type>,    "Bytes count type should be unsigned");
     static_assert (sizeof (block_index_type) >= sizeof(std::uint32_t), "Block index type should be at least 32 bits long");
     static_assert (sizeof (bytes_count_type) >= sizeof(std::uint32_t), "Bytes count type should be at least 32 bits long");
 
