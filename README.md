@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.com/negativ/skvdb.svg?branch=master)](https://travis-ci.com/negativ/skvdb)
+[![License](https://img.shields.io/github/license/negativ/skvdb?style=round-square)](https://github.com/negativ/skvdb/blob/master/LICENSE)
+
 # SKVDB
 Embedded simple key-value database library written in C++17.
 
