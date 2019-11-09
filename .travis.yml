@@ -45,16 +45,16 @@ addons:
       - cmake
 
 before_install:
-    - eval "${MATRIX_EVAL}"
     - sudo apt-get -y install libboost-all-dev libgtest-dev build-essential
-    - cd /usr/src/gtest
-    - sudo cmake -DCMAKE_INSTALL_PREFIX=/usr CMakeLists.txt
-    - sudo make
-
-script:
+    - cd /tmp
     - mkdir build
     - cd build
-    - cmake .. -DCMAKE_BUILD_TYPE=$BUILD_CONFIGURATION -DTARGET_CPU=$TARGET_CPU
-    - cmake --build .
-    - ctest --output-on-failure
-    
+    - cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release /usr/src/gtest/
+    - sudo make install
+
+script:
+  - mkdir build
+  - cd build
+  - cmake -DCMAKE_BUILD_TYPE=$BUILD_CONFIGURATION -DTARGET_CPU=$TARGET_CPU .. 
+  - cmake --build .
+  - ctest --output-on-failure
