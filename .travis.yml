@@ -46,15 +46,15 @@ addons:
 
 before_install:
     - sudo apt-get -y install libboost-all-dev libgtest-dev build-essential
-    - cd /tmp
-    - mkdir build
-    - cd build
+    - mkdir build-gtest
+    - cd build-gtest
     - cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release /usr/src/gtest/
     - sudo make install
+    - cd ..
 
 script:
   - mkdir build
   - cd build
   - cmake -DCMAKE_BUILD_TYPE=$BUILD_CONFIGURATION -DTARGET_CPU=$TARGET_CPU .. 
-  - cmake --build .
+  - make
   - ctest --output-on-failure
