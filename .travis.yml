@@ -1,0 +1,60 @@
+dist: bionic
+
+language: cpp
+
+os:
+  - linux
+
+compiler:
+  - clang
+  - gcc
+
+env:
+  - TARGET_CPU=amd64 BUILD_CONFIGURATION=Debug
+  - TARGET_CPU=amd64 BUILD_CONFIGURATION=Release
+  - TARGET_CPU=x86 BUILD_CONFIGURATION=Debug
+  - TARGET_CPU=x86 BUILD_CONFIGURATION=Release
+
+matrix:
+  include:
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-7
+      env:
+        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-trusty-7.0
+          packages:
+            - clang-7.0
+      env:
+        - MATRIX_EVAL="CC=clang-7.0 && CXX=clang++-7.0"
+
+addons:
+  apt:
+    update: true
+    packages:
+      - cmake-data
+      - cmake
+
+before_install:
+    - sudo apt-get -y install libboost-all-dev libgtest-dev build-essential
+    - mkdir build-gtest
+    - cd build-gtest
+    - cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release /usr/src/gtest/
+    - sudo make install
+    - cd ..
+
+script:
+  - mkdir build
+  - cd build
+  - cmake -DCMAKE_BUILD_TYPE=$BUILD_CONFIGURATION -DTARGET_CPU=$TARGET_CPU .. 
+  - make
+  - ctest --output-on-failure
