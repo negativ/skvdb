@@ -9,6 +9,7 @@
 
 #include "IndexRecord.hpp"
 #include "util/Serialization.hpp"
+#include "util/Unused.hpp"
 
 namespace skv::ondisk {
 
@@ -188,9 +189,7 @@ inline std::istream& operator>>(std::istream& _is, IndexTable<Key, BlockIndex, B
 
         ds >> idx;
 
-        auto ret = p.insert(idx);
-
-        assert(ret);
+        SKV_UNUSED(p.insert(idx));
 
         p.diskFootprint_ += idx.bytesCount();
 

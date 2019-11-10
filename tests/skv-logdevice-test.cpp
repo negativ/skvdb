@@ -65,7 +65,7 @@ protected:
             auto indexPair = indexTable_.try_emplace(i, i, bufferSize, blockIdx);
 
             ASSERT_TRUE(indexPair.second);
-            EXPECT_GT(blockCnt, 0);
+            EXPECT_GT(blockCnt, 0u);
         }
 
         EXPECT_EQ(indexTable_.size(), N_RECORDS);
