@@ -1,0 +1,24 @@
+shallow_clone: true
+
+image:
+    - Visual Studio 2019
+  
+platform:
+    - x86
+    - x64
+    
+configuration:
+    - Debug 
+    
+branches:
+    only:
+        - master
+        
+build_script:
+    - mkdir build
+    - cd build
+    - cmake -DBOOST_ROOT=C:\Libraries\boost_1_71_0 .. %CMAKE_CONFIGURE_FLAGS% 
+    - cmake --build . %CMAKE_BUILD_FLAGS%
+
+test_script:
+    - ctest -C %CONFIGURATION% --output-on-failure

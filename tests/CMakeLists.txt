@@ -92,3 +92,11 @@ add_test(skv-vfsstorage-test skv-vfsstorage-test)
 add_executable(skv-perfomance-test skv-perfomance-test.cpp)
 target_link_libraries(skv-perfomance-test ${LIBS} skv)
 add_test(skv-zperfomance-test skv-perfomance-test)
+
+add_custom_command(
+    TARGET skv-perfomance-test
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+        $<TARGET_FILE:skv>
+        $<TARGET_FILE_DIR:skv-perfomance-test>/$<TARGET_FILE_NAME:skv>
+)
