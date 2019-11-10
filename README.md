@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.com/negativ/skvdb.svg?branch=master)](https://travis-ci.com/negativ/skvdb)
+[![Build status](https://ci.appveyor.com/api/projects/status/github/negativ/skvdb?branch=master&svg=true)]
 [![License](https://img.shields.io/github/license/negativ/skvdb?style=round-square)](https://github.com/negativ/skvdb/blob/master/LICENSE)
 
 # SKVDB
