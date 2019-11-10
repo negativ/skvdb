@@ -150,7 +150,7 @@ public:
         if (!status.isOk())
             return status;
 
-        return insertIndexRecord(e.key(), index_record_type{e.key(), blockIndex, bytes_count_type(buffer.size())});
+        return insertIndexRecord(index_record_type{e.key(), blockIndex, bytes_count_type(buffer.size())});
     }
 
     [[nodiscard]] Status remove(const entry_type& e) {
@@ -260,10 +260,11 @@ private:
         return {Status::Ok(), it->second};
     }
 
-    [[nodiscard]] Status insertIndexRecord(key_type key, const index_record_type& index) {
-        indexTable_[key] = index;
+    [[nodiscard]] Status insertIndexRecord(const index_record_type& index) {
+        if (indexTable_.insert(index))
+            return Status::Ok();
 
-        return Status::Ok();
+        return Status::Fatal("Unknown error");
     }
 
     [[nodiscard]] Status openDevice(std::string_view path) {
@@ -385,7 +386,8 @@ private:
                 break;
             }
 
-            idxtCompacted[key] = index_record_type(key, blockIndex, bytes_count_type(buffer.size()));
+            auto inserted = idxtCompacted.insert(index_record_type{key, blockIndex, bytes_count_type(buffer.size())});
+            SKV_UNUSED(inserted);
         }
 
         if (!compStatus.isOk()) {

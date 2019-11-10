@@ -83,12 +83,10 @@ public:
         return begin() == end();
     }
 
-    [[nodiscard]] index_record_type& operator[](const key_type& k) {
-        return table_[k];
-    }
+    [[nodiscard]] bool insert(const index_record_type& idx) {
+        table_[idx.key()] = idx;
 
-    [[nodiscard]] const index_record_type& operator[](const key_type& k) const {
-        return table_[k];
+        return true;
     }
 
     [[nodiscard]] iterator erase(iterator it) {
@@ -96,8 +94,8 @@ public:
     }
 
     [[nodiscard]] iterator erase(const key_type& k) {
-        if (find(k) != end())
-            return table_.erase(k);
+        if (auto it = find(k); it != end())
+            return table_.erase(it);
 
         return end();
     }
@@ -136,6 +134,13 @@ public:
      */
     void setBlockSize(std::uint32_t bs) noexcept {
         blockSize_ = bs;
+    }
+
+    bool operator==(const IndexTable& other) const noexcept {
+        // disk & block footprint ignored when comparing index tables
+
+        return table_ == other.table_ &&
+               blockSize_ == other.blockSize_;
     }
 
 private:
@@ -180,9 +185,13 @@ inline std::istream& operator>>(std::istream& _is, IndexTable<Key, BlockIndex, B
 
     for (decltype(d) i = 0; i < d; ++i) {
         index_type idx;
+
         ds >> idx;
 
-        p[idx.key()] = idx;
+        auto ret = p.insert(idx);
+
+        assert(ret);
+
         p.diskFootprint_ += idx.bytesCount();
 
         if (p.blockSize() > 0) {

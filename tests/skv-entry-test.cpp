@@ -46,6 +46,9 @@ TEST(EntryTest, BasicTest) {
 
     ASSERT_EQ(root5.name(), "dev");
     ASSERT_EQ(root5.key(),  1);
+
+    ASSERT_LT(root1, root5);
+    ASSERT_GT(root5, root1);
 }
 
 TEST(EntryTest, ChildrenTest) {

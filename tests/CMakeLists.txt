@@ -65,9 +65,9 @@ add_executable(skv-indextable-test skv-indextable-test.cpp)
 target_link_libraries(skv-indextable-test ${LIBS} skv)
 add_test(skv-indextable-test skv-indextable-test)
 
-add_executable(skv-storage-test skv-storage-test.cpp)
-target_link_libraries(skv-storage-test ${LIBS} skv)
-add_test(skv-storage-test skv-storage-test)
+add_executable(skv-storage-engine-test skv-storage-engine-test.cpp)
+target_link_libraries(skv-storage-engine-test ${LIBS} skv)
+add_test(skv-storage-engine-test skv-storage-engine-test)
 
 add_executable(skv-property-test skv-property-test.cpp)
 target_link_libraries(skv-property-test ${LIBS} skv)
