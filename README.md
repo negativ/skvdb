@@ -5,6 +5,26 @@
 # SKVDB
 Embedded simple key-value database library written in C++17.
 
+# How to build
+
+On Ubuntu-like distro install C++17-compatible compiler (like G++ or Clang), CMake, Google Test and Boost libraries with command like:
+
+```bash
+$ sudo apt install g++ cmake cmake-data cmake-extras libgtest-dev googletest libboost1.65-dev
+```
+Note: check Boost library version in repository of your distro. Boost library version should be >= 1.60
+
+Now you should be able to build SKVDB:
+
+```bash
+$ cd /path/to/skvdb/sources
+$ mkdir build && cd build
+$ cmake -DCMAKE_BUILD_TYPE=Release ..
+$ make && make test
+```
+
+The simplest way to build library on Windows is to install Microsoft Visual Studio 2019 with C++ support, open SKVDB project with "Open folder" feature and update CMakeSettings.json file with actual values of BOOST_INCLUDEDIR and BOOST_LIBRARYDIR variables. If you dont have boost library installed on your system, you can download installer with pre-built library from [here](https://sourceforge.net/projects/boost/files/boost-binaries/1.71.0/) .
+
 # Storage format
 
 Each volume consists of two files: Index Table (.index) and Log Device (.logd). 
