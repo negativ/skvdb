@@ -28,6 +28,10 @@ The simplest way to build library on Windows is to install Microsoft Visual Stud
 # Usage example
 
 ```C++
+
+#include <ondisk/Volume.hpp>
+#include <vfs/Storage.hpp>
+
 int main() {
     vfs::Storage storage;
     IVolumePtr vol1 = skv::ondisk::make_ondisk_volume();
