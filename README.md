@@ -23,7 +23,86 @@ $ cmake -DCMAKE_BUILD_TYPE=Release ..
 $ make && make test
 ```
 
-The simplest way to build library on Windows is to install Microsoft Visual Studio 2019 with C++ support, open SKVDB project with "Open folder" feature and update CMakeSettings.json file with actual values of BOOST_INCLUDEDIR and BOOST_LIBRARYDIR variables. If you dont have boost library installed on your system, you can download installer with pre-built library from [here](https://sourceforge.net/projects/boost/files/boost-binaries/1.71.0/) .
+The simplest way to build library on Windows is to install Microsoft Visual Studio 2019 with C++ support, open SKVDB project with "Open folder" feature and update CMakeSettings.json file with actual values of BOOST_INCLUDEDIR and BOOST_LIBRARYDIR variables. If you dont have boost library installed on your system, you can download installer with pre-built library from [here](https://sourceforge.net/projects/boost/files/boost-binaries/1.71.0/).
+
+# Usage example
+
+```C++
+int main() {
+    vfs::Storage storage;
+    IVolumePtr vol1 = skv::ondisk::make_ondisk_volume();
+    IVolumePtr vol2 = skv::ondisk::make_ondisk_volume();
+
+    if (!(vol1->initialize("/tmp", "volume1").isOk() &&
+          vol2->initialize("/tmp", "volume2").isOk())) {
+        std::cerr << "Unable to initialize ondisk volumes!" << std::endl;
+        
+        return 1;
+    }
+
+    storage.mount(vol1,     "/",    "/");           // volume #1 become root item for VFS
+    storage.mount(vol1,     "/",    "/combined");   // volume #1 & #2 would be accessible via /combined path
+    storage.mount(vol2,     "/",    "/combined");   //
+
+    auto [status, handle] = storage.open("/combined");
+
+    if (status.isOk()) {
+        storage.setProperty(handle, "some_text_prop", vfs::Property{"Some text here"});
+        storage.setProperty(handle, "int_property", vfs::Property{123});
+
+        auto [status, properties] = storage.properties(handle);
+
+        if (status.isOk()) {
+            for (const auto& [name, value] : properties) {
+                // Do something with each property/value
+            }
+        }
+
+        if (auto [unused, exist] = storage.hasProperty(handle, "not_existing"); !exist) {
+            // do something if property doesn't exists
+        }
+
+        storage.close(handle);
+    }
+
+    {
+        auto [status, handle] = vol1->open("/");
+
+        auto [unused, properties] = vol1->properties(handle);
+
+        if (status.isOk()) {
+            for (const auto& [name, value] : properties) {
+                // Do something with each property/value
+            }
+        }
+
+        vol1->close(handle);
+    }
+
+    {
+        auto [status, handle] = vol2->open("/");
+
+        auto [unused, properties] = vol2->properties(handle);
+
+        if (status.isOk()) {
+            for (const auto& [name, value] : properties) {
+                // Do something with each property/value
+            }
+        }
+
+        vol2->close(handle);
+    }
+
+    storage.unmount(vol2,   "/",    "/combined");
+    storage.unmount(vol1,   "/",    "/combined");
+    storage.unmount(vol1,   "/",    "/");
+
+    vol2->deinitialize();
+    vol1->deinitialize();
+    
+    return 0;
+}
+```
 
 # Storage format
 
