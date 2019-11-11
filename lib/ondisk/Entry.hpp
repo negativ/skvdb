@@ -20,6 +20,7 @@
 #include "Property.hpp"
 #include "util/Status.hpp"
 #include "util/Serialization.hpp"
+#include "util/Unused.hpp"
 
 namespace skv::ondisk {
 
@@ -236,26 +237,24 @@ public:
         return ret;
     }
 
-    [[nodiscard]] bool operator!=(const Entry& other) const noexcept {
-        const_cast<Entry&>(*this).doPropertyCleanup();  // ¯\_(ツ)_/¯
-        const_cast<Entry&>(other).doPropertyCleanup();  //
-
-        return (*impl_ != *other.impl_);
+    [[nodiscard]] bool operator==(const Entry& other) const noexcept {
+        return key() == other.key() &&
+               parent() == other.parent() &&
+               name() == other.name() &&
+               children() == other.children() &&
+               properties() == other.properties(); // need better way to do this
     }
 
-    [[nodiscard]] bool operator==(const Entry& other) const noexcept {
-        const_cast<Entry&>(*this).doPropertyCleanup();  // ¯\_(ツ)_/¯
-        const_cast<Entry&>(other).doPropertyCleanup();  //
-
-        return (*impl_ == *other.impl_);
+    [[nodiscard]] bool operator!=(const Entry& other) const noexcept {
+        return !(*this == other);
     }
 
     [[nodiscard]] bool operator<(const Entry& other) const noexcept {
-        return (*impl_ < *other.impl_);
+        return key() < other.key();
     }
 
     [[nodiscard]] bool operator>(const Entry& other) const noexcept {
-        return (*impl_ > *other.impl_);
+        return key() > other.key();
     }
 
 private:
@@ -308,27 +307,6 @@ private:
         prop_name_type name_;
         child_container children_;
         std::map<prop_name_type, std::int64_t> propertyExpireMap_;
-
-        bool operator==(const Impl& other) const noexcept {
-            return key_ == other.key_ &&
-                   parent_ == other.parent_ &&
-                   properties_ == other.properties_ &&
-                   name_ == other.name_ &&
-                   children_ == other.children_ &&
-                   propertyExpireMap_ == other.propertyExpireMap_;
-        }
-
-        bool operator!=(const Impl& other) const noexcept {
-            return !(*this == other);
-        }
-
-        bool operator<(const Impl& other) const noexcept {
-            return key_ < other.key_;
-        }
-
-        bool operator>(const Impl& other) const noexcept {
-            return key_ > other.key_;
-        }
     };
 
     using ImplPtr = std::unique_ptr<Impl>;
