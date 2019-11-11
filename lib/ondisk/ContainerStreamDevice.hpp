@@ -12,6 +12,9 @@ namespace skv::ondisk {
 
 namespace io = boost::iostreams;
 
+/**
+ * @brief Streaming to STL-like containers
+ */
 template<typename Container = std::vector<char>>
 class ContainerStreamDevice final {
 public:

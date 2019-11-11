@@ -16,6 +16,9 @@ namespace skv::util {
 
 namespace bmi = boost::multi_index;
 
+/**
+ * @brief Most Recently Used cache implementation
+ */
 template <typename Key, typename Value, std::size_t Capacity = 512>
 class MRUCache final {
     struct ByKey{};

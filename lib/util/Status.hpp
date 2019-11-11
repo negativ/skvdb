@@ -5,6 +5,9 @@
 
 namespace skv::util {
 
+/**
+ * @brief Operation status indication
+ */
 class Status final {
     enum class Code {
         Ok,

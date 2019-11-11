@@ -28,6 +28,9 @@ template <typename Key,
           typename BytesCount>
 std::istream& operator>>(std::istream& _is, IndexTable<Key, BlockIndex, BytesCount>& p);
 
+/**
+ * @brief Index table
+ */
 template <typename Key          = std::uint64_t,
           typename BlockIndex   = std::uint32_t,
           typename BytesCount   = std::uint32_t> // in one record(!!!)

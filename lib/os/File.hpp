@@ -10,7 +10,7 @@
 namespace skv::os {
 
 /**
- * @brief OS-specific file low-level actions
+ * @brief OS-specific low-level actions with files
  */
 struct File {
     enum class Seek: int {

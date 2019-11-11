@@ -46,6 +46,9 @@ template <typename Key,
           Key      TInvalidKey>
 inline std::istream& operator>>(std::istream& _is, Entry<Key, PropertyContainer, ClockType,TInvalidKey > & p);
 
+/**
+ * @brief Volume entry
+ */
 template <typename Key,
           typename PropertyContainer = std::map<std::string, Property>, // maybe btree_map is better choice
           typename ClockType = chrono::system_clock,

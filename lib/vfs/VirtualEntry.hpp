@@ -9,6 +9,9 @@
 
 namespace skv::vfs {
 
+/**
+ * @brief VFS virtual entry
+ */
 class VirtualEntry final {
     struct Impl;
 

@@ -8,6 +8,9 @@
 
 namespace skv::ondisk {
 
+/**
+ * @brief Index table record
+ */
 template <typename Key          = std::uint64_t,
           typename BlockIndex   = std::uint32_t,
           typename BytesCount   = std::uint32_t>

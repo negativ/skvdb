@@ -18,6 +18,9 @@
 
 namespace skv::util {
 
+/**
+ * @brief Thread pool basic implementation.
+ */
 template <typename Backoff = FixedStepSleepBackoff<256, 50>> // try for 256 steps, 50ms sleep
 class ThreadPool final {
 public:

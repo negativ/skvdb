@@ -7,6 +7,9 @@
 
 namespace skv::ondisk {
 
+/**
+ * @brief Entry control block. Used by ondisk::Volume
+ */
 template <typename EntryType>
 class ControlBlock final {
 public:

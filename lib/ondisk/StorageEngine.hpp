@@ -27,6 +27,9 @@
 
 namespace skv::ondisk {
 
+/**
+ * @brief Storage engine
+ */
 template <typename KeyT          = std::uint64_t,
           typename BlockIndexT   = std::uint32_t,
           typename BytesCountT   = std::uint32_t,
