@@ -96,6 +96,62 @@ struct Storage::Impl {
         return  ret;
     }
 
+    template <typename Result, typename F, typename ... Args>
+    std::vector<Result> forEachEntry(const VirtualEntries& vs, F&& func, Args&& ... args) {
+        using namespace std::literals;
+        using future = std::future<Result>;
+
+        std::vector<Result> results;
+        std::vector<future> futures;
+
+        auto start = std::begin(vs),
+             stop  = std::end(vs);
+
+        auto callCount = std::abs(std::distance(start, stop));
+
+        results.reserve(vs.size());
+        futures.reserve(vs.size());
+
+        if (callCount > 1) {
+            auto ownCallIt = start;
+
+            std::advance(start, 1);// so, we do the first call in current thread context
+
+            try {
+                std::for_each(start, stop,
+                              [&](const auto& ventry) {
+                                  if (auto volume = ventry.volume().lock(); volume)
+                                      futures.emplace_back(threadPool_.schedule(std::forward<F>(func), volume.get(), ventry.handle(), std::forward<Args>(args)...));
+                              });
+            }
+            catch (const std::exception& e) {
+                Log::e("vfs::Storage", "Exception: ", e.what());
+            }
+
+            if (ownCallIt != stop) {
+                if (auto volume = ownCallIt->volume().lock(); volume)
+                    results.emplace_back(std::invoke(std::forward<F>(func), volume.get(), ownCallIt->handle(), std::forward<Args>(args)...));
+            }
+
+            while (!std::all_of(std::begin(futures),
+                                std::end(futures),
+                                [](auto& f) {
+                                    return (f.wait_for(0ms) == std::future_status::ready);
+                                }))
+                threadPool_.throttle(); // helping thread pool to do his work
+
+            std::transform(std::begin(futures), std::end(futures),
+                           std::back_inserter(results),
+                           [](auto& f) { return f.get(); });
+        }
+        else if (callCount == 1) {
+            if (auto volume = start->volume().lock(); volume)
+                results.emplace_back(std::invoke(std::forward<F>(func), volume.get(), start->handle(), std::forward<Args>(args)...));
+        }
+
+        return  results;
+    }
+
     Impl() = default;
     ~Impl() noexcept = default;
 
@@ -145,19 +201,11 @@ struct Storage::Impl {
         if (!status.isOk())
             return status;
 
-        auto results = spawnCall([](const auto& entry) {
-                                     auto volume = entry.volume();
-
-                                     if (auto volume = entry.volume().lock(); volume)
-                                         return volume->close(entry.handle()).isOk();
-
-                                     return false;
-                                 },
-                                 std::begin(ventries), std::end(ventries));
+        auto results = forEachEntry<Status>(ventries, &IVolume::close);
 
         removeVirtualEntries(handle);
 
-        auto ret = std::none_of(std::cbegin(results), std::cend(results), std::logical_not<bool>());
+        auto ret = std::all_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
 
         return ret? Status::Ok() : Status::InvalidOperation("Unable to close handle of all volumes");
     }
@@ -168,19 +216,11 @@ struct Storage::Impl {
         if (!status.isOk())
             return {status, {}};
 
-        auto results = spawnCall([](const auto& entry) -> std::tuple<Status, Storage::Properties> {
-                                     auto volume = entry.volume();
-
-                                     if (auto volume = entry.volume().lock(); volume)
-                                         return volume->properties(entry.handle());
-
-                                     return {Status::InvalidArgument("Invalid volume"), {}};
-                                 },
-                                 std::begin(ventries), std::end(ventries));
+        auto results = forEachEntry<std::tuple<Status, Storage::Properties>>(ventries, &IVolume::properties);
 
         if (std::any_of(std::cbegin(results), std::cend(results),
                         [](const auto& t) { const auto& [status, unused] = t; SKV_UNUSED(unused); return !status.isOk(); }))
-            return {Status::InvalidArgument("Unable to fetch links from all volumes"), {}};
+            return {Status::InvalidArgument("Unable to fetch properties from all volumes"), {}};
 
         Storage::Properties ret;
 
@@ -202,29 +242,14 @@ struct Storage::Impl {
         if (!status.isOk())
             return {status, {}};
 
-        auto spawnResults = spawnCall([name{to_string(name)}](const auto& entry) -> std::tuple<Status, Property> {
-                                          auto volume = entry.volume();
+        auto results = forEachEntry<std::tuple<Status, Property>>(ventries, &IVolume::property, to_string(name));
 
-                                          if (auto volume = entry.volume().lock(); volume)
-                                              return volume->property(entry.handle(), name);
+        for (const auto& [status, value] : results) {
+            if (status.isOk())
+                return {status, value};
+        }
 
-                                          return {Status::InvalidArgument("Invalid volume"), {}};
-                                      },
-                                      std::begin(ventries), std::end(ventries));
-
-        decltype(spawnResults) results;
-        std::copy_if(std::begin(spawnResults), std::end(spawnResults),
-                     std::back_inserter(results),
-                     [](const auto& t) { const auto& [status, unused] = t; SKV_UNUSED(unused); return status.isOk(); });
-
-        if (results.empty())
-            return {Status::InvalidArgument("No such property"), {}};
-
-        auto [unused, value] = results.front(); // property from volume with highest priority
-
-        SKV_UNUSED(unused);
-
-        return {Status::Ok(), value};
+        return {Status::InvalidArgument("No such property"), {}};
     }
 
     [[nodiscard]] Status setProperty(Storage::Handle handle, std::string_view name, const Property &value) {
@@ -233,18 +258,8 @@ struct Storage::Impl {
         if (!status.isOk())
             return status;
 
-        /* Setting property in all volumes */
-        auto results = spawnCall([name{to_string(name)}, value](const auto& entry) {
-                                     auto volume = entry.volume();
-
-                                     if (auto volume = entry.volume().lock(); volume)
-                                         return volume->setProperty(entry.handle(), name, value).isOk();
-
-                                     return false;
-                                 },
-                                 std::begin(ventries), std::end(ventries));
-
-        auto ret = std::none_of(std::cbegin(results), std::cend(results), std::logical_not<bool>());
+        auto results = forEachEntry<Status>(ventries, &IVolume::setProperty, name, std::cref(value));
+        auto ret = std::all_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
 
         return ret? Status::Ok() : Status::InvalidOperation("Unable to set property on all volumes");
     }
@@ -256,17 +271,8 @@ struct Storage::Impl {
             return status;
 
         /* Removing property in all entries */
-        auto results = spawnCall([name{to_string(name)}](const auto& entry) {
-                                     auto volume = entry.volume();
-
-                                     if (auto volume = entry.volume().lock(); volume)
-                                         return volume->removeProperty(entry.handle(), name).isOk();
-
-                                     return false;
-                                 },
-                                 std::begin(ventries), std::end(ventries));
-
-        auto ret = std::any_of(std::cbegin(results), std::cend(results), id<bool>);
+        auto results = forEachEntry<Status>(ventries, &IVolume::removeProperty, name);
+        auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
 
         return ret? Status::Ok() : Status::InvalidOperation("Unable to remove properties from all volumes");
     }
@@ -277,17 +283,8 @@ struct Storage::Impl {
         if (!status.isOk())
             return {status, {}};
 
-        auto results = spawnCall([name{to_string(name)}] (const auto& entry) -> std::tuple<Status, bool> {
-                                     auto volume = entry.volume();
-
-                                     if (auto volume = entry.volume().lock(); volume)
-                                         return volume->hasProperty(entry.handle(), name);
-
-                                     return {Status::InvalidArgument("Invalid volume"), {}};
-                                 },
-                                 std::begin(ventries), std::end(ventries));
-
-        bool hasProp = false;
+        auto results = forEachEntry<std::tuple<Status, bool>>(ventries, &IVolume::hasProperty, name);
+        auto hasProp = false;
 
         /* checking with side-effect */
         if (std::any_of(std::cbegin(results), std::cend(results),
@@ -312,17 +309,8 @@ struct Storage::Impl {
             return status;
 
         /* Expiring property in all entries */
-        auto results = spawnCall([name{to_string(name)}, tp](const auto& entry) {
-                                     auto volume = entry.volume();
-
-                                     if (auto volume = entry.volume().lock(); volume)
-                                         return volume->expireProperty(entry.handle(), name, tp).isOk();
-
-                                     return false;
-                                 },
-                                 std::begin(ventries), std::end(ventries));
-
-        auto ret = std::any_of(std::cbegin(results), std::cend(results), id<bool>);
+        auto results = forEachEntry<Status>(ventries, &IVolume::expireProperty, name, tp);
+        auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
 
         return ret? Status::Ok() : Status::InvalidOperation("Unable to expire property on all volumes");
     }
@@ -334,17 +322,8 @@ struct Storage::Impl {
             return status;
 
         /* Canceling property expiration in all entries */
-        auto results = spawnCall([name{to_string(name)}](const auto& entry) {
-                                     auto volume = entry.volume();
-
-                                     if (auto volume = entry.volume().lock(); volume)
-                                         return volume->cancelPropertyExpiration(entry.handle(), name).isOk();
-
-                                     return false;
-                                 },
-                                 std::begin(ventries), std::end(ventries));
-
-        auto ret = std::any_of(std::cbegin(results), std::cend(results), id<bool>);
+        auto results = forEachEntry<Status>(ventries, &IVolume::cancelPropertyExpiration, name);
+        auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
 
         return ret? Status::Ok() : Status::InvalidOperation("Unable to cancel property expiration on all volumes");
     }
@@ -355,15 +334,7 @@ struct Storage::Impl {
         if (!status.isOk())
             return {status, {}};
 
-        auto results = spawnCall([](const auto& entry) -> std::tuple<Status, Storage::Links> {
-                                     auto volume = entry.volume();
-
-                                     if (auto volume = entry.volume().lock(); volume)
-                                         return volume->links(entry.handle());
-
-                                     return {Status::InvalidArgument("Invalid volume"), {}};
-                                 },
-                                 std::begin(ventries), std::end(ventries));
+        auto results = forEachEntry<std::tuple<Status, Storage::Links>>(ventries, &IVolume::links);
 
         if (std::any_of(std::cbegin(results), std::cend(results),
                         [](const auto& t) { const auto& [status, unused] = t; SKV_UNUSED(unused); return !status.isOk(); }))
@@ -389,18 +360,8 @@ struct Storage::Impl {
         if (!status.isOk())
             return status;
 
-        /* Canceling property expiration in all entries */
-        auto results = spawnCall([name{to_string(name)}](const auto& entry) {
-                                     auto volume = entry.volume();
-
-                                     if (auto volume = entry.volume().lock(); volume)
-                                         return volume->link(entry.handle(), name).isOk();
-
-                                     return false;
-                                 },
-                                 std::begin(ventries), std::end(ventries));
-
-        auto ret = std::any_of(std::cbegin(results), std::cend(results), id<bool>);
+        auto results = forEachEntry<Status>(ventries, &IVolume::link, name);
+        auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
 
         return ret? Status::Ok() : Status::InvalidOperation("Unable to create link");
     }
@@ -411,18 +372,8 @@ struct Storage::Impl {
         if (!status.isOk())
             return status;
 
-        /* Canceling property expiration in all entries */
-        auto results = spawnCall([name{to_string(name)}](const auto& entry) {
-                                     auto volume = entry.volume();
-
-                                     if (auto volume = entry.volume().lock(); volume)
-                                         return volume->unlink(entry.handle(), name).isOk();
-
-                                     return false;
-                                 },
-                                 std::begin(ventries), std::end(ventries));
-
-        auto ret = std::any_of(std::cbegin(results), std::cend(results), id<bool>);
+        auto results = forEachEntry<Status>(ventries, &IVolume::unlink, name);
+        auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
 
         return ret? Status::Ok() : Status::InvalidOperation("Unable to remove link");
     }
