@@ -18,6 +18,7 @@
 #include "IndexTable.hpp"
 #include "LogDevice.hpp"
 #include "os/File.hpp"
+#include "util/Log.hpp"
 #include "util/Serialization.hpp"
 #include "util/SpinLock.hpp"
 #include "util/Status.hpp"
@@ -101,18 +102,25 @@ public:
         if (!istatus.isOk())
             return {Status::InvalidArgument("Key doesnt exist"), {}};
 
-        auto [status, buffer] = logDevice_.read(index.blockIndex(), index.bytesCount());
+        try {
+            auto [status, buffer] = logDevice_.read(index.blockIndex(), index.bytesCount());
 
-        if (!status.isOk())
-            return {status, {}};
+            if (!status.isOk())
+                return {status, {}};
 
-        io::stream<ContainerStreamDevice<buffer_type>> stream(buffer);
-        entry_type e;
+            io::stream<ContainerStreamDevice<buffer_type>> stream(buffer);
+            entry_type e;
 
-        stream.seekg(0, BOOST_IOS::beg);
-        stream >> e;
+            stream.seekg(0, BOOST_IOS::beg);
+            stream >> e;
 
-        return {Status::Ok(), e};
+            return {Status::Ok(), e};
+        }
+        catch (const std::exception& e) {
+            Log::e("StoreEngine", "Exception when loading entry: ", e.what());
+        }
+
+        return {Status::Fatal("Unknown error"), {}};
     }
 
     [[nodiscard]] Status save(const entry_type& e) {
@@ -124,17 +132,24 @@ public:
         buffer_type buffer;
         io::stream<ContainerStreamDevice<buffer_type>> stream(buffer);
 
-        stream << e;
-        stream.flush();
+        try {
+            stream << e;
+            stream.flush();
 
-        if (buffer.empty())
-            return Status::Fatal("Unable to serialize entry!");
+            if (buffer.empty())
+                return Status::Fatal("Unable to serialize entry!");
 
-        if (sizeof(bytes_count_type) < sizeof(std::uint64_t)) { // overflow check
-            constexpr std::uint64_t max_bytes_count = std::numeric_limits<bytes_count_type>::max();
+            if (sizeof(bytes_count_type) < sizeof(std::uint64_t)) { // overflow check
+                constexpr std::uint64_t max_bytes_count = std::numeric_limits<bytes_count_type>::max();
 
-            if (buffer.size() > max_bytes_count)
-                return  Status::IOError("Entry to big");
+                if (buffer.size() > max_bytes_count)
+                    return  Status::IOError("Entry to big");
+            }
+        }
+        catch (const std::exception& e) {
+            Log::e("StoreEngine", "Exception when saving entry: ", e.what());
+
+            return Status::Fatal(e.what());
         }
 
         std::unique_lock locker(xLock_);
