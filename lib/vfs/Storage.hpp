@@ -154,5 +154,9 @@ private:
     std::unique_ptr<Impl> impl_;
 };
 
+using StoragePtr = std::shared_ptr<Storage>;
+
+[[nodiscard]] StoragePtr make_storage();
+
 }
 

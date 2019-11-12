@@ -73,5 +73,9 @@ Status Storage::unmount(const IVolumePtr& volume, std::string_view entryPath, st
     return impl_->unmount(volume, entryPath, mountPath);
 }
 
+StoragePtr make_storage() {
+    return std::make_shared<Storage>();
+}
+
 }
 
