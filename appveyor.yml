@@ -18,8 +18,8 @@ branches:
 build_script:
     - mkdir build
     - cd build
-    - cmake -DBOOST_ROOT=C:\Libraries\boost_1_71_0 .. %CMAKE_CONFIGURE_FLAGS% 
-    - cmake --build . %CMAKE_BUILD_FLAGS%
+    - cmake -DBOOST_ROOT=C:\Libraries\boost_1_71_0 -DCMAKE_BUILD_TYPE=%CONFIGURATION% .. %CMAKE_CONFIGURE_FLAGS% 
+    - cmake --build --config %CONFIGURATION% . %CMAKE_BUILD_FLAGS%
 
 test_script:
     - ctest -C %CONFIGURATION% --output-on-failure
