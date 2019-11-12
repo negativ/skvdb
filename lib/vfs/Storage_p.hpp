@@ -214,7 +214,7 @@ struct Storage::Impl {
         if (!status.isOk())
             return status;
 
-        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::setProperty, name, std::cref(value));
+        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::setProperty, name, value);
         auto ret = std::all_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
 
         return ret? Status::Ok() : Status::InvalidOperation("Unable to set property on all volumes");
