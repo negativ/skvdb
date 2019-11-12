@@ -198,7 +198,7 @@ struct Storage::Impl {
         if (!status.isOk())
             return {status, {}};
 
-        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::property, to_string(name));
+        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::property, name);
 
         for (const auto& [status, value] : results) {
             if (status.isOk())
