@@ -184,7 +184,7 @@ Key         | 64-bit integer, LE | Id of index record
 Block index | 32-bit integer, LE | Index of record on Log Device
 Bytes count | 32-bit integer, LE | Length of record in bytes
 
-So every record in DB is described by Index Record. Each time you updating some record, it content would be appended to the end of Log Device, there is no way to overwrite old blocks - Log Device works only for read and append. When opening ondisk volume you can override some conditions when Log Device compaction would be started (compaction ratio & min.size of log device to start compaction, for more details see ondisk/Volume.hpp file header). For now SKVDB support only offline compaction of Log Device.
+So every record in DB is described by Index Record. Each time you updating some record, it content would be appended to the end of Log Device, there is no way to overwrite old blocks - Log Device works only for read and append. When opening ondisk volume you can override some conditions when Log Device compaction can be started (compaction ratio & min. size of Log Device file to start compaction, for more details see ondisk/Volume.hpp file header). For now SKVDB support only offline compaction of Log Device file.
 
 
 Each record stored in Log Device in following form:
@@ -260,13 +260,13 @@ Timestamp                   | 64-bit integer, LE | UNIX-timestamp, ms
   
 # Benchmark
 
-SKVDB was benchmarked on Ubuntu 19.04/18.04 with CPUs: AMD FX(tm)-8150 @ 3.6GHz @ 8 cores, Intel i7-4820K @ 3.7 GHz @ 8 cores (hyper-threading ON), ARM ThunderX CVM @ 2.0GHz @ 32 cores. 
+SKVDB was benchmarked on Ubuntu 19.04/18.04 with next CPUs: AMD FX(tm)-8150 @ 3.6GHz @ 8 cores, Intel i7-4820K @ 3.7 GHz @ 8 cores (hyper-threading ON), ARM ThunderX CVM @ 2.0GHz @ 32 cores (aarch64). Each machine has 16 - 32 GB of DDR3 RAM.
 
 All entry property names was up to 12 bytes length long, property types: uint8_t, uint32_t, uint64_t, float, double, string (256 bytes), BLOB (1024 bytes) in equal proportions.
 
-Each benchmark was run on one mount point of virtual storage 3 disk volume entries mounted to it.
+Each benchmark was run on one mount point of virtual storage with 3 disk volume entries mounted to it.
 
-To run benchmark on your own machine: run skv-perfomance-test binary in terminal window.
+To start benchmark on your own machine run *skv-perfomance-test* binary in terminal window.
 
 
 **Table 1**. One record, multiple threads writing properties to it. Properties/sec. per-thread
@@ -290,7 +290,7 @@ No. threads | FX-8150 @ 3.6GHz | i7-4820K @ 3.7 GHz | ARM ThunderX CVM @ 2.0GHz 
 16	        | 14000	           | 39000	            | 21000
 
 
-![One Record Multiple Threads Writing](/tests/images/one_recordkatek_multiple_threads_set_prop.png)
+![One Record Multiple Threads Writing](/tests/images/one_record_multiple_threads_set_prop.png)
 
 
 **Table 2**. One record, multiple threads reading properties from it. Properties/sec. per-thread
