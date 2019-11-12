@@ -28,11 +28,15 @@ The simplest way to build library on Windows is to install Microsoft Visual Stud
 # Usage example
 
 ```C++
+#include <chrono>
+#include <iostream>
 
 #include <ondisk/Volume.hpp>
 #include <vfs/Storage.hpp>
 
 int main() {
+    using namespace std::literals;
+
     vfs::Storage storage;
     IVolumePtr vol1 = skv::ondisk::make_ondisk_volume();
     IVolumePtr vol2 = skv::ondisk::make_ondisk_volume();
@@ -40,31 +44,85 @@ int main() {
     if (!(vol1->initialize("/tmp", "volume1").isOk() &&
           vol2->initialize("/tmp", "volume2").isOk())) {
         std::cerr << "Unable to initialize ondisk volumes!" << std::endl;
-        
-        return 1;
     }
 
-    storage.mount(vol1,     "/",    "/");           // volume #1 become root item for VFS
-    storage.mount(vol1,     "/",    "/combined");   // volume #1 & #2 would be accessible via /combined path
-    storage.mount(vol2,     "/",    "/combined");   //
+    storage.mount(vol1,     "/",    "/");                                      // volume #1 become root item for VFS
+    storage.mount(vol1,     "/",    "/combined",    Storage::DefaultPriority); // volume #1 & #2 would be accessible via /combined path
+    storage.mount(vol2,     "/",    "/combined",    Storage::MinPriority);     // volume 2 has minimal priority
+
+    {   // You can work directly with volume #1
+        auto [status, handle] = vol1->open("/");
+
+        vol1->setProperty(handle, "shared_property", vfs::Property{std::vector<char>(1024, 'A')});
+        vol1->setProperty(handle, "int_property", vfs::Property{123});
+        vol1->setProperty(handle, "dbl_property", vfs::Property{873.0});
+
+        vol1->link(handle, "volume1child"); // creating new child with name volume1child
+
+        vol1->close(handle);
+    }
+
+    {   // You can work directly with volume #2
+        auto [status, handle] = vol2->open("/");
+
+        vol2->setProperty(handle, "shared_property", vfs::Property{std::vector<char>(1024, 'B')}); // this property would be shadowed in VFS by volume #1
+                                                                                                   // as volume 2 has minimal priority
+        vol2->setProperty(handle, "int_property", vfs::Property{123});
+        vol2->setProperty(handle, "flt_property", vfs::Property{512.0F});
+
+        vol2->link(handle, "volume2child"); // creating new child with name volume2child
+
+        vol2->close(handle);
+    }
 
     auto [status, handle] = storage.open("/combined");
 
     if (status.isOk()) {
         storage.setProperty(handle, "some_text_prop", vfs::Property{"Some text here"});
-        storage.setProperty(handle, "int_property", vfs::Property{123});
+        storage.setProperty(handle, "int_property", vfs::Property{1000});
+        storage.setProperty(handle, "another_text_property", vfs::Property{"text from VFS"});
 
         auto [status, properties] = storage.properties(handle);
 
         if (status.isOk()) {
+            std::cout << "/combined has properties: " << std::endl;
+
             for (const auto& [name, value] : properties) {
+                std::cout << "\t> " << name << std::endl;
                 // Do something with each property/value
             }
         }
 
-        if (auto [unused, exist] = storage.hasProperty(handle, "not_existing"); !exist) {
-            // do something if property doesn't exists
+        if (auto [status, exist] = storage.hasProperty(handle, "not_existing"); status.isOk() && !exist) {
+            std::cout << "Property \"not_existing\" doesn\'t exists" << std::endl;
         }
+
+        if (auto [status, value] = storage.property(handle, "shared_property"); status.isOk()) {
+            if (value == vfs::Property{std::vector<char>(1024, 'A')})
+                std::cout << "Property \"shared_property\" full of 'A's" << std::endl;
+            else if (value == vfs::Property{std::vector<char>(1024, 'B')})
+                std::cout << "Property \"shared_property\" full of 'B's" << std::endl;
+            else
+                std::cout << "Hmmmm.... Impossible" << std::endl;
+        }
+        else {
+            std::cout << "Property \"shared_property\" doesn\'t exists" << std::endl;
+        }
+
+        if (auto [status, links] = storage.links(handle); status.isOk()) {
+            std::cout << "/combined has links: " << std::endl;
+
+            for (const auto& l : links) {
+                std::cout << "\t> " << l << std::endl;
+                // Do something with each property/value
+            }
+        }
+
+        storage.expireProperty(handle, "some_text_prop", Storage::Clock::now() + 100ms);
+
+        std::this_thread::sleep_for(200ms);
+
+        storage.removeProperty(handle, "int_property");
 
         storage.close(handle);
     }
@@ -72,10 +130,11 @@ int main() {
     {
         auto [status, handle] = vol1->open("/");
 
-        auto [unused, properties] = vol1->properties(handle);
+        if (auto [status, properties] = vol1->properties(handle); status.isOk()) {
+            std::cout << "volume's #1 '/' has properties: " << std::endl;
 
-        if (status.isOk()) {
             for (const auto& [name, value] : properties) {
+                std::cout << "\t> " << name << std::endl;
                 // Do something with each property/value
             }
         }
@@ -86,10 +145,13 @@ int main() {
     {
         auto [status, handle] = vol2->open("/");
 
-        auto [unused, properties] = vol2->properties(handle);
+        vol2->removeProperty(handle, "shared_property");
 
-        if (status.isOk()) {
+        if (auto [status, properties] =  vol2->properties(handle); status.isOk()) {
+            std::cout << "volume's #2 '/' has properties: " << std::endl;
+
             for (const auto& [name, value] : properties) {
+                std::cout << "\t> " << name << std::endl;
                 // Do something with each property/value
             }
         }
