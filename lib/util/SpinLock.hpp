@@ -32,25 +32,18 @@ struct FixedStepSleepBackoff {
 template <typename BackoffStrategy = FixedStepBackoff<>>
 class SpinLock final {
 public:
-
     void lock() noexcept {
         bool isLocked;
+        std::size_t step = 0;
 
-        if (!locked_.compare_exchange_weak(isLocked,
-                                           true,
-                                           std::memory_order_acquire,
-                                           std::memory_order_relaxed)) {
-            std::size_t step = 0;
+        do {
+            BackoffStrategy::backoff(++step);
 
-            do {
-                BackoffStrategy::backoff(++step);
-
-                isLocked = false;
-            } while (!locked_.compare_exchange_weak(isLocked,
-                                                    true,
-                                                    std::memory_order_acquire,
-                                                    std::memory_order_relaxed));
-        }
+            isLocked = false;
+        } while (!locked_.compare_exchange_weak(isLocked,
+                                                true,
+                                                std::memory_order_acquire,
+                                                std::memory_order_relaxed));
     }
 
     void unlock() noexcept {

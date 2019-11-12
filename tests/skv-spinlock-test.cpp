@@ -12,7 +12,7 @@ namespace {
     skv::util::SpinLock<skv::util::NoBackoff> lock_;
     std::atomic<bool> go{false};
     unsigned int value;
-    const auto TIMES = 10u;
+    const auto TIMES = 50u;
 }
 
 using namespace std::literals;
@@ -34,8 +34,6 @@ TEST(SpinLockTest, TwoThreadTest) {
     std::thread t1{&routine};
     std::thread t2{&routine};
 
-    std::this_thread::sleep_for(1ms);
-
     go.store(true, std::memory_order_release);
 
     t1.join();
@@ -46,6 +44,8 @@ TEST(SpinLockTest, TwoThreadTest) {
 
 TEST(SpinLockTest, MaxHWThreadTestNtimes) {
     for (auto t = 0u; t < TIMES; ++t) {
+        go.store(false);
+
         value = 0;
 
         std::vector<std::thread> threads;
@@ -59,12 +59,8 @@ TEST(SpinLockTest, MaxHWThreadTestNtimes) {
 
         go.store(true, std::memory_order_release);
 
-        std::this_thread::sleep_for(100ms);
-
         std::for_each(begin(threads), end(threads),
                       [](auto& t) { t.join(); });
-
-        go.store(false);
 
         ASSERT_EQ(value, threads.size());
     }
@@ -72,11 +68,13 @@ TEST(SpinLockTest, MaxHWThreadTestNtimes) {
 
 TEST(SpinLockTest, OverSubscribtionThreadTestNtimes) {
     for (auto t = 0u; t < TIMES; ++t) {
+        go.store(false);
+
         value = 0;
 
         std::vector<std::thread> threads;
 
-        const auto N = std::thread::hardware_concurrency() * 4;
+        const auto N = std::thread::hardware_concurrency() * 2;
 
         ASSERT_TRUE(N > 0);
 
@@ -85,12 +83,8 @@ TEST(SpinLockTest, OverSubscribtionThreadTestNtimes) {
 
         go.store(true, std::memory_order_release);
 
-        std::this_thread::sleep_for(500ms);
-
         std::for_each(begin(threads), end(threads),
                       [](auto& t) { t.join(); });
-
-        go.store(false);
 
         ASSERT_EQ(value, threads.size());
     }
