@@ -48,4 +48,10 @@ set_target_properties(skv PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 target_link_libraries(${PROJECT_NAME})
 
-install(TARGETS ${PROJECT_NAME} DESTINATION lib)
+install(TARGETS ${PROJECT_NAME}
+        LIBRARY DESTINATION lib)
+
+install(DIRECTORY ondisk os util vfs DESTINATION include/skvdb
+        FILES_MATCHING PATTERN "*.hpp"
+        PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
+                    GROUP_EXECUTE GROUP_READ)
