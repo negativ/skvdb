@@ -169,7 +169,9 @@ TEST_F(VFSStorageTest, PropertiesGetSetRemoveTest) {
 
     {
         auto [status, handle] = volume1_->open("/a/b/c/d");
+
         SKV_UNUSED(status);
+
         ASSERT_TRUE(volume1_->setProperty(handle, "test_int", Property{1024 * 1024}).isOk());
         ASSERT_TRUE(volume1_->setProperty(handle, "test_str", Property{"First test text"}).isOk());
         ASSERT_TRUE(volume1_->setProperty(handle, "test_flt", Property{1.0f}).isOk());
@@ -223,6 +225,37 @@ TEST_F(VFSStorageTest, PropertiesGetSetRemoveTest) {
             ASSERT_EQ(properties["test_dbl"], Property{0.123});
             ASSERT_EQ(properties["v1_test_dbl"], Property{128.32});
             ASSERT_EQ(properties["v2_test_dbl"], Property{64.1});
+
+            {
+                auto [status, value] = storage_.property(handle, "test_int");
+                ASSERT_TRUE(status.isOk());
+                ASSERT_EQ(value, Property{1024 * 1024 * 1024});
+            }
+            {
+                auto [status, value] = storage_.property(handle, "test_str");
+                ASSERT_TRUE(status.isOk());
+                ASSERT_EQ(value, Property{"Second test text"});
+            }
+            {
+                auto [status, value] = storage_.property(handle, "test_flt");
+                ASSERT_TRUE(status.isOk());
+                ASSERT_EQ(value, Property{100.0f});
+            }
+            {
+                auto [status, value] = storage_.property(handle, "test_dbl");
+                ASSERT_TRUE(status.isOk());
+                ASSERT_EQ(value, Property{0.123});
+            }
+            {
+                auto [status, value] = storage_.property(handle, "v1_test_dbl");
+                ASSERT_TRUE(status.isOk());
+                ASSERT_EQ(value, Property{128.32});
+            }
+            {
+                auto [status, value] = storage_.property(handle, "v2_test_dbl");
+                ASSERT_TRUE(status.isOk());
+                ASSERT_EQ(value, Property{64.1});
+            }
         }
 
         ASSERT_TRUE(storage_.setProperty(handle, "combined_property", Property{std::string(1024, 'a')}).isOk());
@@ -447,6 +480,3 @@ int main(int argc, char** argv) {
 
     return RUN_ALL_TESTS();
 }
-
-
-
