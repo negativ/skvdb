@@ -112,7 +112,7 @@ int main() {
 
 Each volume consists of two files: Index Table (.index) and Log Device (.logd). 
 Log Device format is very simple: just an array of blocks with fixed size (1024/2048/4096/etc., 2048 bytes by default).
-Index Table file contains array of Index Records (1 root index record with id #1 at least).
+Index Table file contains count of records (64-bit LE integer) and array of Index Records (1 root index record with id #1 at least).
 
 Index Record format is following:
 
@@ -122,7 +122,7 @@ Key         | 64-bit integer, LE | Id of index record
 Block index | 32-bit integer, LE | Index of record on Log Device
 Bytes count | 32-bit integer, LE | Length of record in bytes
 
-So every record in DB is described by Index Record. Each time you updating some record, it content would be written to the end of Log Device, there is no way to overwrite old blocks - Log Device working only for reading and appending of new data.
+So every record in DB is described by Index Record. Each time you updating some record, it content would be appended to the end of Log Device, there is no way to overwrite old blocks - Log Device works only for read and append. When opening ondisk volume you can override some conditions when Log Device compaction would be started (compaction ratio & min.size of log device to start compaction, for more details see ondisk/Volume.hpp file header). For now SKVDB support only offline compaction of Log Device.
 
 
 Each record stored in Log Device in following form:
@@ -132,7 +132,7 @@ Field                       | Type               | Description
 Key                         | 64-bit integer, LE | Id of record (eq. to id of corresponding index record)
 Parent                      | 64-bit integer, LE | Index of record on Log Device
 Name length                 | 64-bit integer, LE | 
-Name                        | String             | 
+Name                        | String             | Name of record
 Properties count            | 64-bit integer, LE | 
 Property #1                 | Property           | 
 ...........                 | Property           | 
