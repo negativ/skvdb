@@ -449,6 +449,13 @@ TEST_F(VFSStoragePerfomanceTest, RemovePropertyRecordTest) {
 
             ASSERT_TRUE(status.isOk());
 
+            {
+                const auto [status, propNames] = storage_.propertiesNames(handle);
+
+                ASSERT_TRUE(status.isOk());
+                ASSERT_TRUE(propNames.empty());
+            }
+
             for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
                 auto status = storage_.setProperty(handle, std::to_string(i), propsPool[i % propsPool.size()]);
                 ASSERT_TRUE(status.isOk());

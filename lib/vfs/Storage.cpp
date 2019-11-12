@@ -29,6 +29,10 @@ std::tuple<Status, Storage::Properties > Storage::properties(Storage::Handle han
     return impl_->properties(handle);
 }
 
+std::tuple<Status, Storage::PropertiesNames> Storage::propertiesNames(Handle handle) {
+    return impl_->propertiesNames(handle);
+}
+
 std::tuple<Status, Property> Storage::property(Storage::Handle handle, std::string_view name) {
     return impl_->property(handle, name);
 }

@@ -14,8 +14,9 @@ class Storage final {
     struct Impl;
 
 public:
-    using Handle     = IVolume::Handle;
-    using Properties = IVolume::Properties;
+    using Handle          = IVolume::Handle;
+    using Properties      = IVolume::Properties;
+    using PropertiesNames = IVolume::PropertiesNames;
     using Links      = IVolume::Links;
     using Clock      = IVolume::Clock;
     using Priority   = mount::Entry::Priority;
@@ -55,6 +56,13 @@ public:
      * @return {Status::Ok(), Properties} on success
      */
     [[nodiscard]] std::tuple<Status, Properties> properties(Handle handle);
+    
+    /**
+     * @brief Get names of all properties in entry
+     * @param handle - entry
+     * @return {Status::Ok(), PropertiesNames} on success
+     */
+    [[nodiscard]] virtual std::tuple<Status, PropertiesNames> propertiesNames(Handle handle);
 
     /**
      * @brief Get specified property

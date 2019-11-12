@@ -23,10 +23,11 @@ public:
     static constexpr Handle InvalidHandle = 0;
     static constexpr Handle RootHandle = 1;
 
-    using Token      = void*;
-    using Properties = std::unordered_map<std::string, vfs::Property>;
-    using Links      = std::set<std::string>;
-    using Clock      = chrono::system_clock;
+    using Token             = void*;
+    using Properties        = std::unordered_map<std::string, vfs::Property>;
+    using PropertiesNames   = std::set<std::string>;
+    using Links             = std::set<std::string>;
+    using Clock             = chrono::system_clock;
 
     IVolume() noexcept = default;
     virtual ~IVolume() noexcept = default;
@@ -79,6 +80,13 @@ public:
      * @return {Status::Ok(), Properties} on success
      */
     [[nodiscard]] virtual std::tuple<Status, Properties> properties(Handle handle) = 0;
+
+    /**
+     * @brief Get names of all properties in entry
+     * @param handle - entry
+     * @return {Status::Ok(), PropertiesNames} on success
+     */
+    [[nodiscard]] virtual std::tuple<Status, PropertiesNames> propertiesNames(Handle handle) = 0;
 
     /**
      * @brief Get specified property

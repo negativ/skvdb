@@ -192,6 +192,30 @@ struct Storage::Impl {
         return {Status::Ok(), ret};
     }
 
+    std::tuple<Status, Storage::PropertiesNames> propertiesNames(Handle handle) {
+        const auto& [status, ventries] = getVirtualEntries(handle);
+
+        if (!status.isOk())
+            return { status, {} };
+
+        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::propertiesNames);
+
+        if (std::any_of(std::cbegin(results), std::cend(results),
+            [](const auto& t) { const auto& [status, unused] = t; SKV_UNUSED(unused); return !status.isOk(); }))
+            return { Status::InvalidArgument("Unable to fetch properties names from all volumes"), {} };
+
+        Storage::PropertiesNames ret;
+
+        for (const auto& [status, propNames] : results) {
+            SKV_UNUSED(status);
+
+            std::copy(std::cbegin(propNames), std::cend(propNames),
+                      std::inserter(ret, std::begin(ret)));
+        }
+
+        return { Status::Ok(), ret };
+    }
+
     [[nodiscard]] std::tuple<Status, Property> property(Storage::Handle handle, std::string_view name) {
         const auto& [status, ventries] = getVirtualEntries(handle);
 

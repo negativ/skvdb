@@ -182,6 +182,17 @@ struct Volume::Impl {
         return {Status::Ok(), cb->entry().properties()};
     }
 
+    [[nodiscard]] std::tuple<Status, Volume::PropertiesNames> propertiesNames(Handle handle) {
+        auto cb = getControlBlock(handle);
+
+        if (!cb)
+            return { NoSuchEntryStatus, {} };
+
+        std::shared_lock locker(cb->xLock());
+
+        return { Status::Ok(), cb->entry().propertiesNames() };
+    }
+
     [[nodiscard]] std::tuple<Status, Property> property(Volume::Handle handle, std::string_view name) {
         auto cb = getControlBlock(handle);
 

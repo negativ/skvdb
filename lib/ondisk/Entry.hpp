@@ -63,6 +63,7 @@ public:
     using child_type            = std::pair<prop_name_type, key_type>;
     using children_type         = std::set<child_type>;
     using clock_type            = std::decay_t<ClockType>;
+    using prop_names_container_type = std::set<std::string>;
 
     static_assert (std::is_integral_v<key_type>, "Entry key should be an integral type");
 
@@ -190,9 +191,22 @@ public:
     [[nodiscard]] prop_container_type properties() const {
         prop_container_type ret;
 
-        for (const auto& [prop, value] : impl_->properties_) { // rewritten to cycle after profiling
+        for (const auto& [prop, value] : impl_->properties_) {
             if (!propertyExpired(prop))
                 ret[prop] = value;
+        }
+
+        return ret;
+    }
+
+    [[nodiscard]] prop_names_container_type propertiesNames() const {
+        prop_names_container_type ret;
+
+        for (const auto& [prop, value] : impl_->properties_) {
+            SKV_UNUSED(value);
+            
+            if (!propertyExpired(prop))
+                ret.insert(prop);
         }
 
         return ret;

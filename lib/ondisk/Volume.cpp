@@ -68,6 +68,12 @@ std::tuple<Status, Volume::Properties > Volume::properties(Volume::Handle handle
 
     return impl_->properties(handle);
 }
+std::tuple<Status, Volume::PropertiesNames> Volume::propertiesNames(Handle handle) {
+    if (!initialized())
+        return { VolumeNotOpenedStatus, {} };
+
+    return impl_->propertiesNames(handle);
+}
 
 std::tuple<Status, Property> Volume::property(Volume::Handle h, std::string_view name) {
     if (!initialized())

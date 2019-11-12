@@ -51,6 +51,7 @@ public:
     [[nodiscard]] Status close(Handle handle) override;
 
     [[nodiscard]] std::tuple<Status, Properties> properties(Handle handle) override;
+    [[nodiscard]] std::tuple<Status, PropertiesNames> propertiesNames(Handle handle) override;
     [[nodiscard]] std::tuple<Status, Property> property(Handle h, std::string_view name) override;
     [[nodiscard]] Status setProperty(Handle h, std::string_view name, const Property& value) override;
     [[nodiscard]] Status removeProperty(Handle h, std::string_view name) override;
