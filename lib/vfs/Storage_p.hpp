@@ -142,7 +142,7 @@ struct Storage::Impl {
 
         for (const auto& [status, entry] : results) {
             if (status.isOk())
-                openedEntries.emplace_back(std::move(entry));
+                openedEntries.emplace_back(entry);
         }
 
         if (openedEntries.empty())
@@ -446,7 +446,7 @@ struct Storage::Impl {
     [[nodiscard]] Storage::Handle addVirtualEntries(VirtualEntries&& ventries) {
         auto handle = newHandle();
 
-        std::sort(std::begin(ventries), std::end(ventries), std::greater<VirtualEntry>()); //sort from high priority to low
+        std::sort(std::begin(ventries), std::end(ventries), std::greater<>()); //sort from high priority to low
 
         std::unique_lock locker(ventriesLock_);
 

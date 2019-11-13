@@ -41,6 +41,12 @@ public:
         }
     }
 
+    ThreadPool(const ThreadPool&) = delete;
+    ThreadPool& operator=(const ThreadPool&) = delete;
+
+    ThreadPool(ThreadPool&&) = delete;
+    ThreadPool& operator=(ThreadPool&&) = delete;
+
     ~ThreadPool() noexcept {
         markDone();
     }
@@ -92,6 +98,12 @@ private:
                           [](auto& t) { if (t.joinable()) t.join(); });
         }
 
+        Joiner(const Joiner&) = delete;
+        Joiner& operator=(const Joiner&) = delete;
+
+        Joiner(Joiner&&) = delete;
+        Joiner& operator=(Joiner&&) = delete;
+
     private:
         std::reference_wrapper<container_type> threads_;
     };
@@ -139,11 +151,11 @@ private:
         }
     }
 
-    bool hasTasks() const noexcept {
+    [[nodiscard]] bool hasTasks() const noexcept {
         return !taskQueue_.empty();
     }
 
-    std::tuple<Status, CallWrapper> nextTask() {
+    [[nodiscard]] std::tuple<Status, CallWrapper> nextTask() {
         CallWrapper* cw;
 
         if (taskQueue_.pop(cw)) {
@@ -158,7 +170,7 @@ private:
     }
 
     template<typename F>
-    CallWrapper* createCallWrapper(F&& f) {
+    [[nodiscard]] CallWrapper* createCallWrapper(F&& f) {
         return new CallWrapper{std::forward<F>(f)};
     }
 
