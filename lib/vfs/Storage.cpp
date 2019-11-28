@@ -10,6 +10,10 @@ Storage::Storage():
 {
 }
 
+Storage::Storage(Storage &&other) noexcept {
+    std::swap(impl_, other.impl_);
+}
+
 Storage::~Storage() noexcept = default;
 
 std::tuple<Status, Storage::Handle> Storage::open(std::string_view path) {
@@ -70,10 +74,6 @@ Status Storage::mount(const IVolumePtr& volume, std::string_view entryPath, std:
 
 Status Storage::unmount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath) {
     return impl_->unmount(volume, entryPath, mountPath);
-}
-
-StoragePtr make_storage() {
-    return std::make_shared<Storage>();
 }
 
 }

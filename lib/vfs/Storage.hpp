@@ -32,7 +32,7 @@ public:
     Storage(const Storage&) = delete;
     Storage& operator=(const Storage&) = delete;
 
-    Storage(Storage&&) noexcept = delete;
+    Storage(Storage&&) noexcept;
     Storage& operator=(Storage&&) noexcept = delete;
 
     /**
@@ -161,10 +161,6 @@ public:
 private:
     std::unique_ptr<Impl> impl_;
 };
-
-using StoragePtr = std::shared_ptr<Storage>;
-
-[[nodiscard]] StoragePtr make_storage();
 
 }
 

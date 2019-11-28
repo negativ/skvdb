@@ -145,9 +145,4 @@ Status Volume::release(IVolume::Token token) noexcept {
     return impl_->release(token);
 }
 
-IVolumePtr make_ondisk_volume(Volume::OpenOptions opts) {
-    return std::static_pointer_cast<vfs::IVolume>(std::make_shared<ondisk::Volume>(opts));
-}
-
-
 }

@@ -70,6 +70,4 @@ private:
     std::unique_ptr<Impl> impl_;
 };
 
-[[nodiscard]] IVolumePtr make_ondisk_volume(Volume::OpenOptions opts = Volume::OpenOptions{});
-
 }

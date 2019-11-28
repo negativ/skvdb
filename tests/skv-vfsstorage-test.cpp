@@ -29,8 +29,8 @@ protected:
     void SetUp() override {
         removeFiles();
 
-        volume1_ = ondisk::make_ondisk_volume();
-        volume2_ = ondisk::make_ondisk_volume();
+        volume1_ = std::make_shared<ondisk::Volume>();
+        volume2_ = std::make_shared<ondisk::Volume>();
 
         ASSERT_NE(volume1_, nullptr);
         ASSERT_NE(volume2_, nullptr);
