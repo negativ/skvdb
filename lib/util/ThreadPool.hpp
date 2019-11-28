@@ -25,8 +25,7 @@ template <typename Backoff = FixedStepSleepBackoff<256, 50>> // try for 256 step
 class ThreadPool final {
 public:
     ThreadPool(std::size_t nThreads = std::thread::hardware_concurrency()):
-        done_{false},
-        joiner_{threadPool_}
+        done_{false}
     {
         if (nThreads == 0)
             nThreads = std::thread::hardware_concurrency();
@@ -37,7 +36,9 @@ public:
                             [this] { return std::thread(&ThreadPool::routine, this); });
         }
         catch (...) {
-            markDone();
+            stop();
+
+            throw;
         }
     }
 
@@ -48,7 +49,7 @@ public:
     ThreadPool& operator=(ThreadPool&&) = delete;
 
     ~ThreadPool() noexcept {
-        markDone();
+        stop();
     }
 
     template <typename F, typename ... Args, std::enable_if_t<std::is_invocable_v<F, Args...>, int> = 0>
@@ -62,7 +63,7 @@ public:
 
         packaged_task_ptr task = std::make_shared<packaged_task>(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
         auto future = task->get_future();
-        auto cw = createCallWrapper([task{std::move(task)}] { (*task)(); });
+        auto cw = new function{[task{std::move(task)}] { (*task)(); }};
 
         while (!taskQueue_.push(cw));
 
@@ -77,8 +78,14 @@ public:
         if (!done()) {
             auto [status, task] = nextTask();
 
-            if (status.isOk())
-                task();
+            if (status.isOk() && task) {
+                try {
+                    (*task)();
+                }
+                catch(...) {}
+
+                delete task;
+            }
             else
                 std::this_thread::yield();
         }
@@ -86,47 +93,14 @@ public:
 
 private:
     using container_type = std::vector<std::thread>;
+    using function = std::function<void()>;
 
-    class Joiner final {
-    public:
-        Joiner(container_type& threads):
-            threads_{std::ref(threads)}
-        {}
+    void stop() {
+        markDone();
 
-        ~Joiner() {
-            std::for_each(std::begin(threads_.get()), std::end(threads_.get()),
-                          [](auto& t) { if (t.joinable()) t.join(); });
-        }
-
-        Joiner(const Joiner&) = delete;
-        Joiner& operator=(const Joiner&) = delete;
-
-        Joiner(Joiner&&) = delete;
-        Joiner& operator=(Joiner&&) = delete;
-
-    private:
-        std::reference_wrapper<container_type> threads_;
-    };
-
-    class CallWrapper {
-    public:
-        using function = std::function<void()>;
-
-        CallWrapper() = default;
-        CallWrapper(function&& f):
-            call{std::move(f)}
-        {}
-
-
-        ~CallWrapper() noexcept = default;
-
-        void operator()() {
-            call();
-        }
-
-    private:
-        function call{[]() {}};
-    };
+        std::for_each(std::begin(threadPool_), std::end(threadPool_),
+                      [](auto& t) { if (t.joinable()) t.join(); });
+    }
 
     void markDone() {
         done_.store(true, std::memory_order_release);
@@ -144,7 +118,14 @@ private:
                 Backoff::backoff(step);
             }
             else {
-                task();
+                if (task) {
+                    try {
+                        (*task)();
+                    }
+                    catch(...) {}
+
+                    delete task;
+                }
 
                 step = 0;
             }
@@ -155,33 +136,18 @@ private:
         return !taskQueue_.empty();
     }
 
-    [[nodiscard]] std::tuple<Status, CallWrapper> nextTask() {
-        CallWrapper* cw;
+    [[nodiscard]] std::tuple<Status, function*> nextTask() {
+        function* cw;
 
-        if (taskQueue_.pop(cw)) {
-            CallWrapper ret = std::move(*cw);
+        if (taskQueue_.pop(cw))
+            return {Status::Ok(), cw};
 
-            destroyCallWrapper(cw);
-
-            return {Status::Ok(), ret};
-        }
-
-        return {Status::InvalidOperation("Task queue empty"), CallWrapper{}};
-    }
-
-    template<typename F>
-    [[nodiscard]] CallWrapper* createCallWrapper(F&& f) {
-        return new CallWrapper{std::forward<F>(f)};
-    }
-
-    void destroyCallWrapper(CallWrapper* cw) {
-        delete cw;
+        return {Status::InvalidOperation("Task queue empty"), nullptr};
     }
 
     std::atomic<bool> done_;
     std::vector<std::thread> threadPool_;
-    Joiner joiner_;
-    boost::lockfree::queue<CallWrapper*,
+    boost::lockfree::queue<function*,
                            boost::lockfree::fixed_sized<true>,
                            boost::lockfree::capacity<2048>> taskQueue_;
 };

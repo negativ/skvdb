@@ -8,11 +8,6 @@ namespace skv::vfs {
 Storage::Storage():
     impl_{std::make_unique<Impl>()}
 {
-    if (impl_->threadPool_.done()) {
-        impl_.reset();
-
-        throw std::runtime_error("Unable to start worker threads");
-    }
 }
 
 Storage::~Storage() noexcept = default;
