@@ -33,17 +33,17 @@ template <typename BackoffStrategy = FixedStepBackoff<>>
 class SpinLock final {
 public:
     void lock() noexcept {
-        bool isLocked;
-        std::size_t step = 0;
+        bool isLocked{false};
+        std::size_t step{0};
 
-        do {
+        while (!locked_.compare_exchange_weak(isLocked,
+                                              true,
+                                              std::memory_order_acquire,
+                                              std::memory_order_relaxed)) {
             BackoffStrategy::backoff(++step);
 
             isLocked = false;
-        } while (!locked_.compare_exchange_weak(isLocked,
-                                                true,
-                                                std::memory_order_acquire,
-                                                std::memory_order_relaxed));
+        }
     }
 
     void unlock() noexcept {
