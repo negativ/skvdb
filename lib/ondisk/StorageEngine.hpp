@@ -379,7 +379,7 @@ private:
         log_device_type device;
 
         if (!device.open(path, opts).isOk())
-            return Status::IOError("Unable to open: " + path);
+            return Status::IOError("Unable to open device");
 
         Status compStatus = Status::Ok();
 

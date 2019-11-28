@@ -80,7 +80,7 @@ public:
         fillbuffer.resize(options.BlockSize);
 
         if (!exists && !createNew())
-            return Status::IOError(std::string{"Unable to create block device at: "} + std::string{path});
+            return Status::IOError("Unable to create block device");
 
         auto file = os::File::open(path_, "rb+");
         writeHandle_.swap(file);

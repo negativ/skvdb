@@ -1,4 +1,4 @@
- #include "Status.hpp"
+#include "Status.hpp"
 
 namespace skv::util {
 
@@ -6,35 +6,35 @@ Status Status::Ok() {
     return Status{Status::Code::Ok, ""};
 }
 
-Status Status::IOError(std::string message) {
-    return Status{Status::Code::IOError, std::move(message)};
+Status Status::IOError(const char* message) {
+    return Status{Status::Code::IOError, message};
 }
 
-Status Status::InvalidArgument(std::string message) {
-    return Status{Status::Code::InvalidArgument, std::move(message)};
+Status Status::InvalidArgument(const char* message) {
+    return Status{Status::Code::InvalidArgument, message};
 }
 
-Status Status::NotFound(std::string message) {
-    return Status{Status::Code::NotFound, std::move(message)};
+Status Status::NotFound(const char* message) {
+    return Status{Status::Code::NotFound, message};
 }
 
-Status Status::Fatal(std::string message) {
-    return Status{Status::Code::Fatal, std::move(message)};
+Status Status::Fatal(const char* message) {
+    return Status{Status::Code::Fatal, message};
 }
 
-Status Status::InvalidOperation(std::string message) {
-    return Status{Status::Code::InvalidOp, std::move(message)};
+Status Status::InvalidOperation(const char* message) {
+    return Status{Status::Code::InvalidOp, message};
 }
 
 
-Status::Status(Status::Code code, std::string message) noexcept(noexcept_move_constructible):
+Status::Status(Status::Code code, const char* message) noexcept:
     code_{code},
-    message_{std::move(message)}
+    message_{message}
 {
     // Do nothing
 }
 
-std::string Status::message() const noexcept(std::is_nothrow_copy_constructible_v<decltype(message_)>) {
+const char* Status::message() const noexcept {
     return message_;
 }
 
