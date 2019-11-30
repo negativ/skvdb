@@ -47,6 +47,7 @@ public:
     [[nodiscard]] Status deinitialize() override;
     [[nodiscard]] bool initialized() const noexcept override;
 
+    std::shared_ptr<IEntry> entry(const std::string& path) override;
     [[nodiscard]] std::tuple<Status, Handle> open(std::string_view path) override;
     [[nodiscard]] Status close(Handle handle) override;
 

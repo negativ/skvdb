@@ -52,7 +52,7 @@ public:
     using index_record_type = typename index_table_type::index_record_type;
     using buffer_type       = std::vector<char>;
     using log_device_type   = LogDevice<block_index_type, block_index_type, buffer_type>;
-    using entry_type        = Entry<key_type, PropContainerT, ClockT, InvalidEntryId>;
+    using entry_type        = Entry;
 
     static_assert (std::is_integral_v<key_type>,            "Key type should be integral");
     static_assert (std::is_unsigned_v<block_index_type>,    "Block index type should be unsigned");
@@ -84,7 +84,7 @@ public:
     StorageEngine& operator=(StorageEngine&&) = delete;
 
     [[nodiscard]] std::tuple<Status, entry_type> load(const entry_type& e) {
-        return load(e.key());
+        return load(e.handle());
     }
 
     [[nodiscard]] std::tuple<Status, entry_type> load(const key_type& key) {
@@ -129,7 +129,7 @@ public:
     [[nodiscard]] Status save(const entry_type& e) {
         namespace io = boost::iostreams;
 
-        if (e.key() == InvalidEntryId)
+        if (e.handle() == InvalidEntryId)
             return Status::InvalidArgument("Invalid entry id");
 
         buffer_type buffer;
@@ -152,7 +152,7 @@ public:
         catch (const std::exception& e) {
             Log::e("StoreEngine", "Exception when saving entry: ", e.what());
 
-            return Status::Fatal(e.what());
+            return Status::Fatal("Exception");
         }
 
         std::unique_lock locker(xLock_);
@@ -168,11 +168,11 @@ public:
         if (!status.isOk())
             return status;
 
-        return insertIndexRecord(index_record_type{e.key(), blockIndex, bytes_count_type(buffer.size())});
+        return insertIndexRecord(index_record_type{e.handle(), blockIndex, bytes_count_type(buffer.size())});
     }
 
     [[nodiscard]] Status remove(const entry_type& e) {
-        return remove(e.key());
+        return remove(e.handle());
     }
 
     [[nodiscard]] Status remove(const key_type& key) {

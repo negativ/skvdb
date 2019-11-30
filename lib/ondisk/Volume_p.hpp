@@ -97,7 +97,7 @@ struct Volume::Impl {
 
         for (const auto& t : tokens) {
             auto cb = getControlBlock(handle);
-            entry_type::children_type children;
+            Entry::Children children;
 
             auto fetchChildren = [&children](auto&& e) {
                 children = e.children();
@@ -115,14 +115,7 @@ struct Volume::Impl {
                 fetchChildren(handleEntry);
             }
 
-            auto it =std::find_if(std::cbegin(children), std::cend(children),
-                                  [&](auto&& p) {
-                                      auto&& [name, id] = p;
-
-                                      SKV_UNUSED(id);
-
-                                      return (name == t);
-                                  });
+            auto it = children.find(t);
 
             if (it == std::cend(children))
                 return {NoSuchEntryStatus, Volume::InvalidHandle};
@@ -258,7 +251,7 @@ struct Volume::Impl {
 
         std::unique_lock locker(cb->xLock());
 
-        auto status = cb->entry().expireProperty(util::to_string(name), tp);
+        auto status = cb->entry().expireProperty(util::to_string(name), chrono::duration_cast<chrono::milliseconds>(tp - chrono::system_clock::now()));
 
         if (status.isOk())
             cb->setDirty(true);
@@ -287,7 +280,7 @@ struct Volume::Impl {
                             StringPathIterator::separator);
 
         if (it != std::cend(name) || name.empty())
-            return Status::InvalidArgument("Invalid name (empty or contains restricted chracters)");
+            return Status::InvalidArgument("Invalid name");
 
         auto cb = getControlBlock(handle);
 
@@ -315,7 +308,7 @@ struct Volume::Impl {
         auto status = entry.addChild(child);
 
         if (!status.isOk()) {
-            storage_->reuseKey(child.key());
+            storage_->reuseKey(child.handle());
 
             return status;
         }
@@ -360,7 +353,7 @@ struct Volume::Impl {
         auto cid = it->second;
 
         if (getControlBlock(cid))
-            return Status::InvalidOperation("Child entry shouldn't be opened");
+            return Status::InvalidOperation("Child entry opened");
 
         {
             const auto& [status, child] = storage_->load(cid);

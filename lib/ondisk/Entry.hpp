@@ -6,7 +6,6 @@
 #include <iostream>
 #include <map>
 #include <memory>
-#include <numeric>
 #include <set>
 #include <string>
 #include <type_traits>
@@ -18,6 +17,8 @@
 #include <boost/multi_index/tag.hpp>
 
 #include "Property.hpp"
+#include "vfs/IEntry.hpp"
+#include "vfs/IVolume.hpp"
 #include "util/Status.hpp"
 #include "util/Serialization.hpp"
 #include "util/Unused.hpp"
@@ -28,46 +29,15 @@ namespace bmi = boost::multi_index;
 namespace chrono = std::chrono;
 
 using namespace skv::util;
-
-template <typename Key,
-          typename PropertyContainer,
-          typename ClockType,
-          Key      TInvalidKey>
-class Entry;
-
-template <typename Key,
-          typename PropertyContainer,
-          typename ClockType,
-          Key      TInvalidKey>
-inline std::ostream& operator<<(std::ostream& _os, const Entry<Key, PropertyContainer, ClockType,TInvalidKey > & p);
-
-template <typename Key,
-          typename PropertyContainer,
-          typename ClockType,
-          Key      TInvalidKey>
-inline std::istream& operator>>(std::istream& _is, Entry<Key, PropertyContainer, ClockType,TInvalidKey > & p);
+using namespace skv::vfs;
 
 /**
  * @brief Volume entry
  */
-template <typename Key,
-          typename PropertyContainer = std::map<std::string, Property>, // maybe btree_map is better choice
-          typename ClockType = chrono::system_clock,
-          Key      TInvalidKey = 0>
 class Entry final {
 public:
-    using key_type              = std::decay_t<Key>;
-    using prop_container_type   = std::decay_t<PropertyContainer>;
-    using prop_name_type        = std::decay_t<typename prop_container_type::key_type>;
-    using prop_value_type       = std::decay_t<typename prop_container_type::mapped_type>;
-    using child_type            = std::pair<prop_name_type, key_type>;
-    using children_type         = std::set<child_type>;
-    using clock_type            = std::decay_t<ClockType>;
-    using prop_names_container_type = std::set<std::string>;
-
-    static_assert (std::is_integral_v<key_type>, "Entry key should be an integral type");
-
-    static constexpr key_type InvalidKey = TInvalidKey;
+    using Child = std::pair<std::string, IEntry::Handle>;
+    using Children = std::map<std::string, IEntry::Handle>;
 
     Entry():
         impl_{std::make_unique<Impl>()}
@@ -75,13 +45,13 @@ public:
 
     }
 
-    ~Entry() noexcept = default;
+    ~Entry() noexcept  = default;
 
-    Entry(key_type key, prop_name_type name):
+    Entry(IEntry::Handle handle, std::string name):
         Entry()
     {
-        impl_->key_ = key;
-        impl_->name_ = name;
+        impl_->key_ = handle;
+        impl_->name_ = std::move(name);
     }
 
     Entry(const Entry& other) {
@@ -118,26 +88,26 @@ public:
         return *this;
     }
 
-    [[nodiscard]] key_type key() const noexcept {
+    [[nodiscard]] IEntry::Handle handle() const noexcept  {
         return impl_->key_;
     }
 
-    [[nodiscard]] key_type parent() const noexcept {
+    [[nodiscard]] IEntry::Handle parent() const noexcept {
         return impl_->parent_;
     }
 
-    [[nodiscard]] prop_name_type name() const noexcept(std::is_nothrow_copy_constructible_v<prop_name_type>) {
+    [[nodiscard]] std::string name() const  {
         return impl_->name_;
     }
 
-    [[nodiscard]] bool hasProperty(const prop_name_type& prop) const noexcept {
+    [[nodiscard]] bool hasProperty(const std::string& prop) const noexcept  {
         if (propertyExpired(prop))
             return false;
 
         return impl_->properties_.find(prop) != std::cend(impl_->properties_);
     }
 
-    Status setProperty(const prop_name_type& prop, const prop_value_type& value) {
+    Status setProperty(const std::string& prop, const Property& value)  {
         if (propertyExpired(prop))
             static_cast<void>(cancelPropertyExpiration(prop).isOk()); // undo expiration
 
@@ -146,7 +116,7 @@ public:
         return Status::Ok();
     }
 
-    [[nodiscard]] std::tuple<Status, prop_value_type> property(const prop_name_type& prop) const {
+    [[nodiscard]] std::tuple<Status, Property> property(const std::string& prop) const  {
         if (propertyExpired(prop))
             return {Status::InvalidArgument("No such property"), {}};
 
@@ -158,7 +128,7 @@ public:
         return {Status::InvalidArgument("No such property"), {}};
     }
 
-    [[nodiscard]] Status removeProperty(const prop_name_type& prop) {
+    [[nodiscard]] Status removeProperty(const std::string& prop)  {
         static_cast<void>(cancelPropertyExpiration(prop).isOk());
 
         if  (impl_->properties_.erase(prop) > 0)
@@ -167,29 +137,25 @@ public:
         return Status::InvalidArgument("No such property");
     }
 
-    [[nodiscard]] Status expireProperty(const prop_name_type& prop, typename clock_type::time_point tp) {
+    [[nodiscard]] Status expireProperty(const std::string& prop, chrono::milliseconds tp)  {
         if (!hasProperty(prop))
             return Status::InvalidArgument("No such property");
 
-        auto nowms = chrono::duration_cast<chrono::milliseconds>(clock_type::now().time_since_epoch()).count();
-        auto expirationms = chrono::duration_cast<chrono::milliseconds>(tp.time_since_epoch()).count();
+        auto nowms = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch());
 
-        if (nowms >= expirationms)
-            return Status::InvalidArgument("Invalid timepoint");
-
-        impl_->propertyExpireMap_[prop] = expirationms;
+        impl_->propertyExpireMap_[prop] = (nowms + tp).count();
 
         return Status::Ok();
     }
 
-    [[nodiscard]] Status cancelPropertyExpiration(const prop_name_type& prop) {
+    [[nodiscard]] Status cancelPropertyExpiration(const std::string& prop)  {
         impl_->propertyExpireMap_.erase(prop);
 
         return  Status::Ok();
     }
 
-    [[nodiscard]] prop_container_type properties() const {
-        prop_container_type ret;
+    [[nodiscard]] IEntry::Properties properties() const  {
+        IEntry::Properties ret;
 
         for (const auto& [prop, value] : impl_->properties_) {
             if (!propertyExpired(prop))
@@ -199,8 +165,8 @@ public:
         return ret;
     }
 
-    [[nodiscard]] prop_names_container_type propertiesNames() const {
-        prop_names_container_type ret;
+    [[nodiscard]] std::set<std::string> propertiesNames() const  {
+        std::set<std::string> ret;
 
         for (const auto& [prop, value] : impl_->properties_) {
             SKV_UNUSED(value);
@@ -213,13 +179,13 @@ public:
     }
 
     [[nodiscard]] Status addChild(Entry& e) {
-        if (e.parent() != InvalidKey)
+        if (e.parent() != IVolume::InvalidHandle)
             return Status::InvalidArgument("Entry already has a parent");
 
-        child_type c{e.name(), e.key()};
+        Child c{e.name(), e.handle()};
 
         if (impl_->children_.insert(c).second) {
-            e.setParent(key());
+            e.setParent(handle());
 
             return Status::Ok();
         }
@@ -229,30 +195,30 @@ public:
 
     [[nodiscard]] Status removeChild(Entry& e) {
         auto& index = impl_->children_.template get<typename Impl::ChildByKey>();
-        auto it = index.find(e.key());
+
+        auto it = index.find(e.handle());
 
         if (it == std::end(index))
             return Status::InvalidArgument("No such child entry");
 
         index.erase(it);
-        e.setParent(InvalidKey);
+        e.setParent(IVolume::InvalidHandle);
 
         return Status::Ok();
     }
 
-    [[nodiscard]] children_type children() const {
+    [[nodiscard]] Children children() const {
         auto& index = impl_->children_.template get<typename Impl::ChildByKey>();
-        children_type ret;
+        Children ret;
 
-        std::transform(std::cbegin(index), std::cend(index),
-                       std::inserter(ret, std::begin(ret)),
-                       [](auto&& p) { return p; } );
+        for (const auto& [name, handle] : index)
+            ret[name] = handle;
 
         return ret;
     }
 
     [[nodiscard]] bool operator==(const Entry& other) const noexcept {
-        return key() == other.key() &&
+        return handle() == other.handle() &&
                parent() == other.parent() &&
                name() == other.name() &&
                children() == other.children() &&
@@ -264,42 +230,43 @@ public:
     }
 
     [[nodiscard]] bool operator<(const Entry& other) const noexcept {
-        return key() < other.key();
+        return handle() < other.handle();
     }
 
     [[nodiscard]] bool operator>(const Entry& other) const noexcept {
-        return key() > other.key();
+        return handle() > other.handle();
     }
 
 private:
-    friend std::ostream& operator<< <Key, PropertyContainer, ClockType,TInvalidKey>(std::ostream& _os, const Entry& p);
-    friend std::istream& operator>> <Key, PropertyContainer, ClockType,TInvalidKey>(std::istream& _is, Entry& p);
+    friend std::ostream& operator<<(std::ostream& _os, const Entry& p);
+    friend std::istream& operator>>(std::istream& _is, Entry& p);
 
-    void setParent(key_type p) noexcept {
+    void setParent(IEntry::Handle p) noexcept {
         impl_->parent_ = p;
     }
 
     /* Removing all expired properties */
     void doPropertyCleanup() {
-        auto expired = std::accumulate(std::cbegin(impl_->propertyExpireMap_), std::cend(impl_->propertyExpireMap_),
-                                       std::set<prop_name_type>{},
-                                       [this](auto&& acc, auto&& p) {
-                                            if (propertyExpired(p.first))
-                                                acc.insert(p.first);
-                                            return acc;
-                                       });
+        std::set<std::string> expired;
 
-        std::for_each(std::cbegin(expired), std::cend(expired),
-                      [this](auto&& prop) { static_cast<void>(removeProperty(prop).isOk()); });
+        for (const auto& [prop, tp] : impl_->propertyExpireMap_) {
+            SKV_UNUSED(tp);
+
+            if (propertyExpired(prop))
+                expired.insert(prop);
+        }
+
+        for (const auto& prop : expired)
+            SKV_UNUSED(removeProperty(prop));
     }
 
-    [[nodiscard]] bool propertyExpired(const prop_name_type& prop) const noexcept {
+    [[nodiscard]] bool propertyExpired(const std::string& prop) const noexcept {
         auto it = impl_->propertyExpireMap_.find(prop);
 
         if (it == std::cend(impl_->propertyExpireMap_))
             return false;
 
-        auto now = chrono::duration_cast<chrono::milliseconds>(clock_type::now().time_since_epoch()).count();
+        auto now = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count();
         auto exp = it->second;
 
         return (now >= exp);
@@ -308,54 +275,51 @@ private:
     struct Impl {
         struct ChildByName{}; struct ChildByKey {};
 
-        using child_container = boost::multi_index_container<child_type,
-                                                             bmi::indexed_by<
-                                                                bmi::ordered_unique<bmi::tag<ChildByName>,
-                                                                                    bmi::member<child_type, typename child_type::first_type,  &child_type::first>>,
-                                                                bmi::ordered_unique<bmi::tag<ChildByKey>,
-                                                                                    bmi::member<child_type, typename child_type::second_type, &child_type::second>>>>;
 
-        key_type key_{ InvalidKey };
-        key_type parent_{InvalidKey};
-        prop_container_type properties_;
-        prop_name_type name_;
-        child_container children_;
-        std::map<prop_name_type, std::int64_t> propertyExpireMap_;
+        using Children = boost::multi_index_container<Child,
+                                                      bmi::indexed_by<
+                                                        bmi::ordered_unique<bmi::tag<ChildByName>,
+                                                                            bmi::member<Child, Child::first_type,  &Child::first>>,
+                                                        bmi::ordered_unique<bmi::tag<ChildByKey>,
+                                                                            bmi::member<Child, Child::second_type, &Child::second>>>>;
+
+        IEntry::Handle key_{ IVolume::InvalidHandle };
+        IEntry::Handle parent_{ IVolume::InvalidHandle };
+        IEntry::Properties properties_;
+        std::string name_;
+        Impl::Children children_;
+        std::map<std::string, std::int64_t> propertyExpireMap_;
     };
 
     using ImplPtr = std::unique_ptr<Impl>;
 
     ImplPtr impl_;
+
+
 };
 
-template <typename Key,
-          typename PropertyContainer,
-          typename ClockType,
-          Key      TInvalidKey>
-inline std::istream& operator>>(std::istream& _is, Entry<Key, PropertyContainer, ClockType, TInvalidKey> & p) {
+inline std::istream& operator>>(std::istream& _is, Entry& p) {
     namespace be = boost::endian;
-
-    using E = Entry<Key, PropertyContainer, ClockType, TInvalidKey>;
 
     Deserializer ds{_is};
 
-    decltype (p.key()) key;
+    decltype (p.handle()) handle;
     decltype (p.parent()) parent;
     decltype (p.name()) name;
 
-    ds >> key
+    ds >> handle
        >> parent
        >> name;
 
-    E ret = E{key, name};
+    Entry ret{handle, name};
     ret.setParent(parent);
 
     std::uint64_t propertiesCount;
     ds >> propertiesCount;
 
     for (decltype (propertiesCount) i = 0; i < propertiesCount; ++i) {
-        typename E::prop_name_type prop;
-        typename E::prop_value_type value;
+        std::string prop;
+        Property value;
 
         ds >> prop
            >> value;
@@ -368,13 +332,13 @@ inline std::istream& operator>>(std::istream& _is, Entry<Key, PropertyContainer,
     ds >> childrenCount;
 
     for (decltype (childrenCount) i = 0; i < childrenCount; ++i) {
-        typename E::child_type::first_type cname;
-        typename E::child_type::second_type ckey;
+        std::string cname;
+        decltype (p.handle()) chandle;
 
         ds >> cname
-           >> ckey;
+           >> chandle;
 
-        E child(ckey, cname);
+        Entry child(chandle, cname);
 
         [[maybe_unused]] auto status = ret.addChild(child);
 
@@ -387,7 +351,7 @@ inline std::istream& operator>>(std::istream& _is, Entry<Key, PropertyContainer,
     auto& propertyExpire = ret.impl_->propertyExpireMap_;
 
     for (decltype (expirePropertyCount) i = 0; i < expirePropertyCount; ++i) {
-        typename E::prop_name_type pname;
+        typename std::string pname;
         std::int64_t ts;
 
         ds >> pname
@@ -403,18 +367,12 @@ inline std::istream& operator>>(std::istream& _is, Entry<Key, PropertyContainer,
     return _is;
 }
 
-template <typename Key,
-          typename PropertyContainer,
-          typename ClockType,
-          Key      TInvalidKey>
-inline std::ostream& operator<<(std::ostream& _os, const Entry<Key, PropertyContainer, ClockType,TInvalidKey> & p) {
-    using E = Entry<Key, PropertyContainer, ClockType, TInvalidKey>;
-
-    const_cast<E&>(p).doPropertyCleanup();
+inline std::ostream& operator<<(std::ostream& _os, const Entry& p) {
+    const_cast<Entry&>(p).doPropertyCleanup();
 
     Serializer s{_os};
 
-    s << p.key()
+    s << p.handle()
       << p.parent()
       << p.name();
 
@@ -428,28 +386,28 @@ inline std::ostream& operator<<(std::ostream& _os, const Entry<Key, PropertyCont
           << value;
     }
 
-    auto children = p.children();
+    const auto& children = p.children();
     std::uint64_t childrenCount = children.size();
 
     s << childrenCount;
 
     for (const auto& c : children) {
-        const auto& [name, key] = c;
+        const auto& [name, handle] = c;
 
         s << name
-          << key;
+          << handle;
     }
 
-    auto propertyExpire = p.impl_->propertyExpireMap_;
+    const auto& propertyExpire = p.impl_->propertyExpireMap_;
     std::uint64_t expirePropertyCount = propertyExpire.size();
 
     s << expirePropertyCount;
 
     for (const auto& c : propertyExpire) {
-        const auto& [name, key] = c;
+        const auto& [name, tp] = c;
 
         s << name
-          << key;
+          << tp;
     }
 
     return _os;

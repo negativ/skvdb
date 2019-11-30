@@ -12,7 +12,7 @@
 
 using namespace skv::ondisk;
 
-using E = Entry<std::uint64_t>;
+using E = Entry;
 
 TEST(EntryTest, BasicTest) {
     E root1{0, ""};
@@ -36,7 +36,7 @@ TEST(EntryTest, BasicTest) {
     ASSERT_EQ(root3, root4);
 
     ASSERT_EQ(root1.name(), "");
-    ASSERT_EQ(root1.key(),  0);
+    ASSERT_EQ(root1.handle(),  0);
 
     E root5{1, "dev"};
     root3 = root5;
@@ -45,7 +45,7 @@ TEST(EntryTest, BasicTest) {
     ASSERT_NE(root1, root5);
 
     ASSERT_EQ(root5.name(), "dev");
-    ASSERT_EQ(root5.key(),  1);
+    ASSERT_EQ(root5.handle(),  1);
 
     ASSERT_LT(root1, root5);
     ASSERT_GT(root5, root1);
@@ -53,8 +53,8 @@ TEST(EntryTest, BasicTest) {
 
 TEST(EntryTest, ChildrenTest) {
     E root{1, ""};
-    E dev{root.key() + 1, "dev"};
-    E proc{dev.key() + 1, "proc"};
+    E dev{root.handle() + 1, "dev"};
+    E proc{dev.handle() + 1, "proc"};
 
     ASSERT_TRUE(root.addChild(dev).isOk());
     ASSERT_TRUE(root.addChild(proc).isOk());
@@ -62,17 +62,17 @@ TEST(EntryTest, ChildrenTest) {
     auto rootChildren = root.children();
 
     ASSERT_EQ(rootChildren.size(), 2);
-    ASSERT_EQ(dev.parent(), root.key());
-    ASSERT_EQ(proc.parent(), root.key());
+    ASSERT_EQ(dev.parent(), root.handle());
+    ASSERT_EQ(proc.parent(), root.handle());
 
     ASSERT_TRUE(root.removeChild(dev).isOk());
 
     rootChildren = root.children();
     ASSERT_EQ(rootChildren.size(), 1);
-    ASSERT_EQ(dev.parent(), E::InvalidKey);
+    ASSERT_EQ(dev.parent(), IVolume::InvalidHandle);
 
     ASSERT_TRUE(root.removeChild(proc).isOk());
-    ASSERT_EQ(proc.parent(), E::InvalidKey);
+    ASSERT_EQ(proc.parent(), IVolume::InvalidHandle);
 
     rootChildren = root.children();
     ASSERT_TRUE(rootChildren.empty());
@@ -84,8 +84,8 @@ TEST(EntryTest, ReadWriteTest) {
     namespace io = boost::iostreams;
 
     E root{1, ""};
-    E dev{root.key() + 1, "dev"};
-    E proc{dev.key() + 1, "proc"};
+    E dev{root.handle() + 1, "dev"};
+    E proc{dev.handle() + 1, "proc"};
 
     ASSERT_TRUE(root.addChild(dev).isOk());
     ASSERT_TRUE(root.addChild(proc).isOk());
@@ -96,8 +96,8 @@ TEST(EntryTest, ReadWriteTest) {
 
     ASSERT_TRUE((system_clock::now() + 100ms) < (system_clock::now() + 500ms));
 
-    ASSERT_TRUE(root.expireProperty("test_str_prop", system_clock::now() + 100ms).isOk());
-    ASSERT_TRUE(root.expireProperty("test_int_prop", system_clock::now() + 500ms).isOk());
+    ASSERT_TRUE(root.expireProperty("test_str_prop", 100ms).isOk());
+    ASSERT_TRUE(root.expireProperty("test_int_prop", 500ms).isOk());
 
     std::vector<char> buffer;
     io::stream<ContainerStreamDevice<std::vector<char>>> stream(buffer);
@@ -135,9 +135,9 @@ TEST(EntryTest, PropertyExpireTest) {
     root.setProperty("test_int_prop", Property{123});
     root.setProperty("test_double_prop", Property{8090.0});
 
-    ASSERT_TRUE(root.expireProperty("test_str_prop", system_clock::now() + 100ms).isOk());
-    ASSERT_TRUE(root.expireProperty("test_int_prop", system_clock::now() + 200ms).isOk());
-    ASSERT_TRUE(root.expireProperty("test_double_prop", system_clock::now() + 300ms).isOk());
+    ASSERT_TRUE(root.expireProperty("test_str_prop", 100ms).isOk());
+    ASSERT_TRUE(root.expireProperty("test_int_prop", 200ms).isOk());
+    ASSERT_TRUE(root.expireProperty("test_double_prop", 300ms).isOk());
 
     ASSERT_TRUE(root.hasProperty("test_str_prop"));
     ASSERT_TRUE(root.hasProperty("test_int_prop"));

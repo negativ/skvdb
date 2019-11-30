@@ -33,7 +33,7 @@ TEST(StorageTest, OpenClose) {
         auto [status, entry] = storage.load(StorageEngine<>::RootEntryId);
 
         ASSERT_TRUE(status.isOk());
-        ASSERT_EQ(entry.key(), StorageEngine<>::RootEntryId);
+        ASSERT_EQ(entry.handle(), StorageEngine<>::RootEntryId);
 
         ASSERT_TRUE(storage.save(entry).isOk());
     }
@@ -67,7 +67,7 @@ TEST(StorageTest, Compaction) {
             entry.setProperty("some_property", Property{std::string(4096, 'a')});
 
             ASSERT_TRUE(status.isOk());
-            ASSERT_EQ(entry.key(), StorageEngine<>::RootEntryId);
+            ASSERT_EQ(entry.handle(), StorageEngine<>::RootEntryId);
 
             for (std::size_t i = 0; i < 1024; ++i)
                 ASSERT_TRUE(storage.save(entry).isOk());
@@ -92,7 +92,7 @@ TEST(StorageTest, Compaction) {
             }
 
             ASSERT_TRUE(status.isOk());
-            ASSERT_EQ(entry.key(), StorageEngine<>::RootEntryId);
+            ASSERT_EQ(entry.handle(), StorageEngine<>::RootEntryId);
         }
 
         ASSERT_TRUE(storage.close().isOk());

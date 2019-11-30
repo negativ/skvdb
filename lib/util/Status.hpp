@@ -1,12 +1,14 @@
 #pragma once
 
+#include <array>
+
 namespace skv::util {
 
 /**
  * @brief Operation status indication
  */
 class Status final {
-    enum class Code {
+    enum class Code: unsigned {
         Ok,
         IOError,
         InvalidArgument,
@@ -16,16 +18,37 @@ class Status final {
         Undefined
     };
 
+    static constexpr std::size_t MAX_MESSAGE_LEN = 36;
 
 public:
     [[nodiscard]] static Status Ok();
-    [[nodiscard]] static Status IOError(const char* message);
-    [[nodiscard]] static Status InvalidArgument(const char* message);
-    [[nodiscard]] static Status NotFound(const char* message);
-    [[nodiscard]] static Status Fatal(const char* message);
-    [[nodiscard]] static Status InvalidOperation(const char* message);
 
-    Status() = default;
+    template<typename T>
+    [[nodiscard]] static constexpr Status IOError(T&& m) {
+        return create(Code::IOError, std::forward<T>(m));
+    }
+
+    template<typename T>
+    [[nodiscard]] static constexpr Status InvalidArgument(T&& m) {
+        return create(Code::InvalidArgument, std::forward<T>(m));
+    }
+
+    template<typename T>
+    [[nodiscard]] static constexpr Status NotFound(T&& m) {
+        return create(Code::NotFound, std::forward<T>(m));
+    }
+
+    template<typename T>
+    [[nodiscard]] static constexpr Status Fatal(T&& m) {
+        return create(Code::Fatal, std::forward<T>(m));
+    }
+
+    template<typename T>
+    [[nodiscard]] static constexpr Status InvalidOperation(T&& m) {
+        return create(Code::InvalidOp, std::forward<T>(m));
+    }
+
+    constexpr Status() = default;
     ~Status() = default;
 
     Status(const Status&) = default;
@@ -46,10 +69,28 @@ public:
     [[nodiscard]] bool isInvalidOperation() const noexcept;
 
 private:
-    Status(Code code, const char* msg = nullptr) noexcept;
+    template<std::size_t N>
+    [[nodiscard]] static inline constexpr Status create(Code code, const char (&m)[N]) {
+        static_assert(N < MAX_MESSAGE_LEN, "Message too long. Max length is 36 chars");
+
+        return Status{code, m};
+    }
+
+    template<typename Array, typename String, std::size_t... I>
+    constexpr void str2array(Array& a, const String& s, std::index_sequence<I...>)
+    {
+        ((a[I] = s[I]), ...);
+    }
+
+    template<std::size_t N, typename Indices = std::make_index_sequence<N>>
+    constexpr Status(Code code, const char (&m)[N]) noexcept:
+        code_(code)
+    {
+        str2array(message_, m, Indices{});
+    }
 
     Code code_{Code::Undefined};
-    const char* message_{nullptr};
+    std::array<char, MAX_MESSAGE_LEN> message_{0};
 };
 
 }

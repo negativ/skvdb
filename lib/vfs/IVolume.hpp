@@ -9,6 +9,7 @@
 #include <unordered_map>
 
 #include "Property.hpp"
+#include "vfs/IEntry.hpp"
 #include "util/Status.hpp"
 
 namespace skv::vfs {
@@ -58,6 +59,13 @@ public:
      */
     [[nodiscard]] virtual bool initialized() const noexcept  = 0;
 
+
+    /**
+     * @brief open
+     * @param path
+     * @return
+     */
+    virtual std::shared_ptr<IEntry> entry(const std::string& path) = 0;
 
     /**
      * @brief Open volume entry

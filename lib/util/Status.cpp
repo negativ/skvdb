@@ -2,40 +2,12 @@
 
 namespace skv::util {
 
-Status Status::Ok() {
-    return Status{Status::Code::Ok, ""};
-}
-
-Status Status::IOError(const char* message) {
-    return Status{Status::Code::IOError, message};
-}
-
-Status Status::InvalidArgument(const char* message) {
-    return Status{Status::Code::InvalidArgument, message};
-}
-
-Status Status::NotFound(const char* message) {
-    return Status{Status::Code::NotFound, message};
-}
-
-Status Status::Fatal(const char* message) {
-    return Status{Status::Code::Fatal, message};
-}
-
-Status Status::InvalidOperation(const char* message) {
-    return Status{Status::Code::InvalidOp, message};
-}
-
-
-Status::Status(Status::Code code, const char* message) noexcept:
-    code_{code},
-    message_{message}
-{
-    // Do nothing
-}
-
 const char* Status::message() const noexcept {
-    return message_;
+    return message_.data();
+}
+
+Status Status::Ok() {
+    return Status{Code::Ok, ""};
 }
 
 Status::Code Status::code() const noexcept {
