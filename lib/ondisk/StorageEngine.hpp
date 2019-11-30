@@ -152,7 +152,7 @@ public:
         catch (const std::exception& e) {
             Log::e("StoreEngine", "Exception when saving entry: ", e.what());
 
-            return Status::Fatal(e.what());
+            return Status::Fatal("Exception");
         }
 
         std::unique_lock locker(xLock_);

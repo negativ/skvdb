@@ -127,7 +127,7 @@ struct Storage::Impl {
                            });
         }
         catch (const std::exception &e) {
-            return {Status::Fatal(e.what()), Storage::InvalidHandle};
+            return {Status::Fatal("Exception"), Storage::InvalidHandle};
         }
 
         waitAllFutures(std::begin(futures), std::end(futures));
@@ -398,7 +398,7 @@ struct Storage::Impl {
         if (!entry.open()) {
             SKV_UNUSED(volume->release(this));
 
-            return Status::InvalidArgument("Unable to create mount point entry. Check volume is properly initialized and entry path exists.");
+            return Status::InvalidArgument("Unable to create mount point entry.");
         }
 
         std::unique_lock locker(mpointsLock_);
