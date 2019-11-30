@@ -97,7 +97,7 @@ struct Volume::Impl {
 
         for (const auto& t : tokens) {
             auto cb = getControlBlock(handle);
-            entry_type::children_type children;
+            Entry::Children children;
 
             auto fetchChildren = [&children](auto&& e) {
                 children = e.children();
@@ -115,14 +115,7 @@ struct Volume::Impl {
                 fetchChildren(handleEntry);
             }
 
-            auto it =std::find_if(std::cbegin(children), std::cend(children),
-                                  [&](auto&& p) {
-                                      auto&& [name, id] = p;
-
-                                      SKV_UNUSED(id);
-
-                                      return (name == t);
-                                  });
+            auto it = children.find(t);
 
             if (it == std::cend(children))
                 return {NoSuchEntryStatus, Volume::InvalidHandle};
@@ -251,19 +244,19 @@ struct Volume::Impl {
     }
 
     [[nodiscard]] Status expireProperty(Volume::Handle handle, std::string_view name, chrono::system_clock::time_point tp) {
-        auto cb = getControlBlock(handle);
+//        auto cb = getControlBlock(handle);
 
-        if (!cb)
-            return NoSuchEntryStatus;
+//        if (!cb)
+//            return NoSuchEntryStatus;
 
-        std::unique_lock locker(cb->xLock());
+//        std::unique_lock locker(cb->xLock());
 
-        auto status = cb->entry().expireProperty(util::to_string(name), tp);
+//        auto status = cb->entry().expireProperty(util::to_string(name), tp);
 
-        if (status.isOk())
-            cb->setDirty(true);
+//        if (status.isOk())
+//            cb->setDirty(true);
 
-        return status;
+//        return status;
     }
 
     [[nodiscard]] Status cancelPropertyExpiration(Volume::Handle handle, std::string_view name) {
@@ -315,7 +308,7 @@ struct Volume::Impl {
         auto status = entry.addChild(child);
 
         if (!status.isOk()) {
-            storage_->reuseKey(child.key());
+            storage_->reuseKey(child.handle());
 
             return status;
         }

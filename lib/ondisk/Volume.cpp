@@ -41,6 +41,12 @@ bool Volume::initialized() const noexcept {
     return impl_->initialized();
 }
 
+std::shared_ptr<IEntry> Volume::entry(const std::string& path) {
+    SKV_UNUSED(path);
+
+    return {};
+}
+
 std::tuple<Status, Volume::Handle> Volume::open(std::string_view path) {
     if (!initialized())
         return {VolumeNotOpenedStatus, Volume::InvalidHandle};
