@@ -163,7 +163,7 @@ struct Storage::Impl {
 
         auto ret = std::all_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
 
-        return ret? Status::Ok() : Status::InvalidOperation("Unable to close handle of all volumes");
+        return ret? Status::Ok() : Status::InvalidOperation("Unable to close handle");
     }
 
     [[nodiscard]] std::tuple<Status, Storage::Properties> properties(Storage::Handle handle) {
@@ -176,7 +176,7 @@ struct Storage::Impl {
 
         if (std::any_of(std::cbegin(results), std::cend(results),
                         [](const auto& t) { const auto& [status, unused] = t; SKV_UNUSED(unused); return !status.isOk(); }))
-            return {Status::InvalidArgument("Unable to fetch properties from all volumes"), {}};
+            return {Status::InvalidArgument("Unable to fetch properties"), {}};
 
         Storage::Properties ret;
 
@@ -202,7 +202,7 @@ struct Storage::Impl {
 
         if (std::any_of(std::cbegin(results), std::cend(results),
             [](const auto& t) { const auto& [status, unused] = t; SKV_UNUSED(unused); return !status.isOk(); }))
-            return { Status::InvalidArgument("Unable to fetch properties names from all volumes"), {} };
+            return { Status::InvalidArgument("Unable to fetch properties names"), {} };
 
         Storage::PropertiesNames ret;
 
@@ -241,7 +241,7 @@ struct Storage::Impl {
         auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::setProperty, name, value);
         auto ret = std::all_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
 
-        return ret? Status::Ok() : Status::InvalidOperation("Unable to set property on all volumes");
+        return ret? Status::Ok() : Status::InvalidOperation("Unable to set property");
     }
 
     [[nodiscard]] Status removeProperty(Storage::Handle handle, std::string_view name) {
@@ -254,7 +254,7 @@ struct Storage::Impl {
         auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::removeProperty, name);
         auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
 
-        return ret? Status::Ok() : Status::InvalidOperation("Unable to remove properties from all volumes");
+        return ret? Status::Ok() : Status::InvalidOperation("Unable to remove properties");
     }
 
     [[nodiscard]] std::tuple<Status, bool> hasProperty(Storage::Handle handle, std::string_view name) {
@@ -274,7 +274,7 @@ struct Storage::Impl {
 
                             return !status.isOk();
                         }))
-            return {Status::InvalidArgument("Unable to check property on all volumes"), {}};
+            return {Status::InvalidArgument("Unable to check property"), {}};
 
         if (results.empty())
             return {Status::InvalidArgument("Unknown error"), {}};
@@ -292,7 +292,7 @@ struct Storage::Impl {
         auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::expireProperty, name, tp);
         auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
 
-        return ret? Status::Ok() : Status::InvalidOperation("Unable to expire property on all volumes");
+        return ret? Status::Ok() : Status::InvalidOperation("Unable to expire property");
     }
 
     [[nodiscard]] Status cancelPropertyExpiration(Storage::Handle handle, std::string_view name) {
@@ -305,7 +305,7 @@ struct Storage::Impl {
         auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::cancelPropertyExpiration, name);
         auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
 
-        return ret? Status::Ok() : Status::InvalidOperation("Unable to cancel property expiration on all volumes");
+        return ret? Status::Ok() : Status::InvalidOperation("Unable to cancel property exp.");
     }
 
     [[nodiscard]] std::tuple<Status, Storage::Links> links(Storage::Handle handle) {
@@ -318,7 +318,7 @@ struct Storage::Impl {
 
         if (std::any_of(std::cbegin(results), std::cend(results),
                         [](const auto& t) { const auto& [status, unused] = t; SKV_UNUSED(unused); return !status.isOk(); }))
-            return {Status::InvalidArgument("Unable to fetch links from all volumes"), {}};
+            return {Status::InvalidArgument("Unable to fetch links"), {}};
 
         Storage::Links ret;
 
@@ -391,14 +391,14 @@ struct Storage::Impl {
             return InvalidVolumeArgumentStatus;
 
         if (!volume->claim(this).isOk())
-            return Status::InvalidOperation("Volume claimed by another instance of VFS storage");
+            return Status::InvalidOperation("Volume already claimed");
 
         mount::Entry entry(mountPath, entryPath, volume, prio);
 
         if (!entry.open()) {
             SKV_UNUSED(volume->release(this));
 
-            return Status::InvalidArgument("Unable to create mount point entry.");
+            return Status::InvalidArgument("Unable to create mount point");
         }
 
         std::unique_lock locker(mpointsLock_);

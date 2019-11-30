@@ -18,7 +18,7 @@ class Status final {
         Undefined
     };
 
-    static constexpr std::size_t MAX_MESSAGE_LEN = 60;
+    static constexpr std::size_t MAX_MESSAGE_LEN = 36;
 
 public:
     [[nodiscard]] static constexpr Status Ok() {
@@ -73,7 +73,7 @@ public:
 private:
     template<std::size_t N>
     [[nodiscard]] static constexpr Status create(Code code, const char (&m)[N]) {
-        static_assert(N < MAX_MESSAGE_LEN, "Message too long. Max length is 60 chars");
+        static_assert(N < MAX_MESSAGE_LEN, "Message too long. Max length is 36 chars");
 
         return Status{code, m};
     }

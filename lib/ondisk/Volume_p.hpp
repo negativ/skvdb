@@ -244,19 +244,19 @@ struct Volume::Impl {
     }
 
     [[nodiscard]] Status expireProperty(Volume::Handle handle, std::string_view name, chrono::system_clock::time_point tp) {
-//        auto cb = getControlBlock(handle);
+        auto cb = getControlBlock(handle);
 
-//        if (!cb)
-//            return NoSuchEntryStatus;
+        if (!cb)
+            return NoSuchEntryStatus;
 
-//        std::unique_lock locker(cb->xLock());
+        std::unique_lock locker(cb->xLock());
 
-//        auto status = cb->entry().expireProperty(util::to_string(name), tp);
+        auto status = cb->entry().expireProperty(util::to_string(name), chrono::duration_cast<chrono::milliseconds>(tp - chrono::system_clock::now()));
 
-//        if (status.isOk())
-//            cb->setDirty(true);
+        if (status.isOk())
+            cb->setDirty(true);
 
-//        return status;
+        return status;
     }
 
     [[nodiscard]] Status cancelPropertyExpiration(Volume::Handle handle, std::string_view name) {
@@ -280,7 +280,7 @@ struct Volume::Impl {
                             StringPathIterator::separator);
 
         if (it != std::cend(name) || name.empty())
-            return Status::InvalidArgument("Invalid name (empty or contains restricted chracters)");
+            return Status::InvalidArgument("Invalid name");
 
         auto cb = getControlBlock(handle);
 
@@ -353,7 +353,7 @@ struct Volume::Impl {
         auto cid = it->second;
 
         if (getControlBlock(cid))
-            return Status::InvalidOperation("Child entry shouldn't be opened");
+            return Status::InvalidOperation("Child entry opened");
 
         {
             const auto& [status, child] = storage_->load(cid);

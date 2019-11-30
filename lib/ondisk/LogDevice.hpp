@@ -63,7 +63,7 @@ public:
      */
     [[nodiscard]] Status open(std::string_view path, OpenOption options) {
         if (options.BlockSize % MIN_BLOCK_SIZE != 0)
-            return Status::InvalidArgument("Block size should be a multiple of 2048 (e.g. 4096)");
+            return Status::InvalidArgument("Invalid block size");
 
         std::unique_lock lock(lock_);
 
@@ -86,7 +86,7 @@ public:
         writeHandle_.swap(file);
 
         if (!writeHandle_)
-            return Status::IOError("Unable top open device for writing");
+            return Status::IOError("Unable to open device");
 
         opened_ = true;
 
@@ -99,7 +99,7 @@ public:
 
             static_cast<void>(close().isOk());
 
-            return Status::IOError("Unable top open device for reading");
+            return Status::IOError("Unable to open device");
         }
 
         return Status::Ok();
@@ -161,10 +161,10 @@ public:
             return {Status::IOError("Device not opened"), {}};
 
         if (!os::File::seek(fhandle, std::int64_t(n) * std::int64_t(blockSize()), os::File::Seek::Set))
-            return {Status::IOError("Unable to seek to specified position"), {}};
+            return {Status::IOError("Unable to seek"), {}};
 
         if (!os::File::read(data.data(), sizeof(buffer_value_type), cnt, fhandle))
-            return {Status::IOError("Unable to seek to specified position"), {}};
+            return {Status::IOError("Unable to seek"), {}};
 
         return {Status::Ok(), data};
     }
@@ -188,13 +188,13 @@ public:
         const auto bufferSize = buffer.size();
 
         if (os::File::write(buffer.data(), sizeof(buffer_value_type), bufferSize, fhandle) != bufferSize)
-            return {Status::Fatal("Unable to write. Maybe disk is full."), 0, 0};
+            return {Status::Fatal("Unable to write."), 0, 0};
 
         if ((bufferSize % blockSize()) != 0) {
             auto n = blockSize() - (bufferSize % blockSize());
 
             if (os::File::write(fillbuffer.data(), sizeof(buffer_value_type), n, fhandle) != n)
-                return {Status::Fatal("Unable to write. Maybe disk is full."), 0, 0};
+                return {Status::Fatal("Unable to write."), 0, 0};
         }
 
         os::File::flush(writeHandle_);
