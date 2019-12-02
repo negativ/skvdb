@@ -10,7 +10,6 @@
 #include <thread>
 #include <unordered_map>
 
-#include "ControlBlock.hpp"
 #include "Property.hpp"
 #include "StorageEngine.hpp"
 #include "vfs/IEntry.hpp"
@@ -25,10 +24,8 @@ namespace skv::ondisk {
 
 class EntryImpl final: public vfs::IEntry {
 public:
-    EntryImpl(ControlBlock<Record>::ptr cb):
-        cb_{cb},
-        record_{cb->record()},
-        xLock_{cb->xLock()}
+    EntryImpl(ondisk::Record&& record):
+        record_{record}
     {
 
     }
@@ -48,7 +45,7 @@ public:
     }
 
     virtual bool hasProperty(const std::string &prop) const noexcept override {
-        std::shared_lock locker(cb_->xLock());
+        std::shared_lock locker(xLock_);
 
         return record_.hasProperty(prop);
     }
@@ -59,7 +56,7 @@ public:
         auto status = record_.setProperty(prop, value);
 
         if (status.isOk())
-            cb_->setDirty(true);
+            setDirty(true);
 
         return status;
     }
@@ -76,7 +73,7 @@ public:
         auto status = record_.removeProperty(prop);
 
         if (status.isOk())
-            cb_->setDirty(true);
+            setDirty(true);
 
         return status;
     }
@@ -99,7 +96,7 @@ public:
         auto status = record_.expireProperty(prop, ms);
 
         if (status.isOk())
-            cb_->setDirty(true);
+            setDirty(true);
 
         return status;
     }
@@ -110,7 +107,7 @@ public:
         auto status = record_.cancelPropertyExpiration(prop);
 
         if (status.isOk())
-            cb_->setDirty(true);
+            setDirty(true);
 
         return status;
     }
@@ -133,9 +130,25 @@ public:
         return ret;
     }
 
-    ControlBlock<Record>::ptr cb_;
-    Record& record_;
-    std::shared_mutex& xLock_;
+    void setDirty(bool dirty) {
+        dirty_ = dirty;
+    }
+
+    [[nodiscard]] bool dirty() const noexcept {
+        return dirty_;
+    }
+
+    [[nodiscard]] Record& record() const noexcept {
+        return record_;
+    }
+
+    [[nodiscard]] std::shared_mutex& xLock() const noexcept {
+        return xLock_;
+    }
+
+    mutable Record record_;
+    mutable std::shared_mutex xLock_;
+    bool dirty_{false};
 };
 
 struct Volume::Impl {
@@ -144,16 +157,15 @@ struct Volume::Impl {
 
     static constexpr std::size_t PATH_MRU_CACHE_SIZE = 1024;
 
+    using EntryImplPtr  = std::shared_ptr<EntryImpl>;
+    using EntryImplWPtr = std::weak_ptr<EntryImpl>;
     using storage_type       = StorageEngine<IVolume::Handle,          // key type
                                              std::uint32_t,            // block index type
                                              std::uint32_t,            // bytes count in one record (4GB now)
-                                             Volume::Properties,       // type of properties container
-                                             Volume::Clock,            // type of used clock (system/steady,etc.)
+                                             IEntry::Properties,       // type of properties container
+                                             std::chrono::system_clock,// type of used clock (system/steady,etc.)
                                              Volume::InvalidHandle,    // key value of invalid entry
                                              Volume::RootHandle>;      // key value of root entry
-    using entry_type         = storage_type::record_type;
-    using cb_type            = ControlBlock<entry_type>;
-    using cb_ptr_type        = cb_type::ptr;
 
     Impl(Volume::OpenOptions opts):
         storage_{std::make_unique<storage_type>()},
@@ -170,7 +182,7 @@ struct Volume::Impl {
     Impl(Impl&&) noexcept = delete;
     Impl& operator=(Impl&&) noexcept = delete;
 
-    [[nodiscard]] Status initialize(std::string_view directory, std::string_view volumeName) {
+    [[nodiscard]] Status initialize(const std::string& directory, const std::string& volumeName) {
         storage_type::OpenOptions storageOpts;
 
         storageOpts.CompactionRatio = opts_.CompactionRatio;
@@ -185,7 +197,7 @@ struct Volume::Impl {
         if (claimed())
             return Status::InvalidOperation("Storage claimed");
 
-        flushControlBlocks();
+        flushEntries();
         invalidatePathCache();
 
         return storage_->close();
@@ -214,7 +226,7 @@ struct Volume::Impl {
         std::string trackPath = foundPath;
 
         for (const auto& t : tokens) {
-            auto cb = getControlBlock(handle);
+            auto cb = getEntry(handle);
             Record::Children children;
 
             auto fetchChildren = [&children](auto&& e) {
@@ -248,27 +260,30 @@ struct Volume::Impl {
         return std::static_pointer_cast<vfs::IEntry>(createEntryForHandle(handle));
     }
 
-    [[nodiscard]] Status createChild(Volume::Handle handle, std::string_view name) {
+    [[nodiscard]] Status createChild(IEntry& e, std::string_view name) {
         auto it = std::find(std::cbegin(name), std::cend(name),
                             StringPathIterator::separator);
 
         if (it != std::cend(name) || name.empty())
             return Status::InvalidArgument("Invalid name");
 
-        auto cb = getControlBlock(handle);
+        auto entry = getEntry(e.handle());
 
-        if (!cb)
+        if (!entry)
             return NoSuchEntryStatus;
 
-        std::unique_lock locker(cb->xLock());
+        if (std::addressof(e) != static_cast<IEntry*>(entry.get()))
+            return Status::InvalidArgument("Invalid entry");
 
-        auto& entry = cb->record();
-        const auto& children = entry.children();
+        std::unique_lock locker(entry->xLock());
+
+        auto& record = entry->record();
+        const auto& children = record.children();
 
         auto cit = std::find_if(std::cbegin(children), std::cend(children),
                                 [&name](auto&& p) {
                                     const auto& [cname, cid] = p;
-                                    static_cast<void>(cid);
+                                    SKV_UNUSED(cid);
 
                                     return (cname == name);
                                 });
@@ -276,9 +291,9 @@ struct Volume::Impl {
         if (cit != std::cend(children))
             return Status::InvalidArgument("Entry already exists");
 
-        entry_type child{storage_->newKey(), util::to_string(name)};
+        Record child{storage_->newKey(), util::to_string(name)};
 
-        auto status = entry.addChild(child);
+        auto status = record.addChild(child);
 
         if (!status.isOk()) {
             storage_->reuseKey(child.handle());
@@ -289,28 +304,31 @@ struct Volume::Impl {
         status = storage_->save(child);
 
         if (!status.isOk()) {
-            [[maybe_unused]] auto r = entry.removeChild(child);
+            [[maybe_unused]] auto r = record.removeChild(child);
 
             assert(r.isOk());
 
             return status;
         }
 
-        cb->setDirty(true);
+        entry->setDirty(true);
 
         return Status::Ok();
     }
 
-    [[nodiscard]] Status removeChild(Handle handle, std::string_view name) {
-        auto cb = getControlBlock(handle);
+    [[nodiscard]] Status removeChild(IEntry& e, std::string_view name) {
+        auto entry = getEntry(e.handle());
 
-        if (!cb)
+        if (!entry)
             return NoSuchEntryStatus;
 
-        std::unique_lock locker(cb->xLock());
+        if (std::addressof(e) != static_cast<IEntry*>(entry.get()))
+            return Status::InvalidArgument("Invalid entry");
 
-        auto& entry = cb->record();
-        const auto& children = entry.children();
+        std::unique_lock locker(entry->xLock());
+
+        auto& record = entry->record();
+        const auto& children = record.children();
 
         auto it = std::find_if(std::cbegin(children), std::cend(children),
                                [&name](auto&& p) {
@@ -325,7 +343,7 @@ struct Volume::Impl {
 
         auto cid = it->second;
 
-        if (getControlBlock(cid))
+        if (getEntry(cid))
             return Status::InvalidOperation("Child entry opened");
 
         {
@@ -338,13 +356,13 @@ struct Volume::Impl {
                 return Status::InvalidArgument("Child entry not empty");
         }
 
-        entry_type child{cid, util::to_string(name)};
-        auto status = entry.removeChild(child);
+        Record child{cid, util::to_string(name)};
+        auto status = record.removeChild(child);
 
         if (!status.isOk())
             return status;
 
-        cb->setDirty(true);
+        entry->setDirty(true);
 
         return storage_->remove(child);
     }
@@ -378,17 +396,12 @@ struct Volume::Impl {
     }
 
     [[nodiscard]] std::shared_ptr<EntryImpl> createEntryForHandle(Volume::Handle handle) {
-        //TODO: implement caching
-        std::unique_lock locker(controlBlocksLock_);
+        std::unique_lock locker{openedEntriesLock_};
 
-        auto it = controlBlocks_.find(handle);
+        auto it = openedEntries_.find(handle);
 
-        if (it != std::end(controlBlocks_)) { // ok, someone already opened this handle
-            it->second->claim();              // just increase usage counter
-
-            return std::shared_ptr<EntryImpl>{new EntryImpl(it->second),
-                                             [this](EntryImpl *e) { releaseEntry(e); }};
-        }
+        if (it != std::end(openedEntries_)) // ok, someone already opened this handle
+            return it->second.lock();
 
         locker.unlock();
 
@@ -400,26 +413,21 @@ struct Volume::Impl {
         return createEntryForHandle(handle, std::move(entry));
     }
 
-    [[nodiscard]] std::shared_ptr<EntryImpl> createEntryForHandle(Volume::Handle handle, entry_type&& e) {
-        //TODO: implement caching
-        std::unique_lock locker(controlBlocksLock_);
+    [[nodiscard]] std::shared_ptr<EntryImpl> createEntryForHandle(Volume::Handle handle, Record&& record) {
+        std::unique_lock locker{openedEntriesLock_};
 
-        auto it = controlBlocks_.find(handle);
+        auto it = openedEntries_.find(handle);
 
-        if (it != std::end(controlBlocks_)) { // ok, someone already opened this handle
-            it->second->claim();              // just increase usage counter of cb
+        if (it != std::end(openedEntries_)) // ok, someone already opened this handle
+            return it->second.lock();
 
-            return std::shared_ptr<EntryImpl>{new EntryImpl(it->second),
-                                              [this](EntryImpl *e) { releaseEntry(e); }};
-        }
+        auto ptr = std::make_unique<EntryImpl>(std::move(record));
+        auto deleter = [this](EntryImpl *e) { releaseEntry(e); };
+        auto entry = std::shared_ptr<EntryImpl>{ptr.release(), deleter};
 
-        auto cb = cb_type::create(std::move(e));
-        cb->claim();
+        openedEntries_[handle] = EntryImplWPtr{entry};
 
-        controlBlocks_[handle] = cb;
-
-        return std::shared_ptr<EntryImpl>{new EntryImpl(cb),
-                                          [this](EntryImpl *e) { releaseEntry(e); }};
+        return entry;
     }
 
     void releaseEntry(EntryImpl* entry) {
@@ -428,66 +436,46 @@ struct Volume::Impl {
         if (!entry)
             return;
 
-        auto r = releaseControlBlock(entry->record_.handle());
-        SKV_UNUSED(r);
+        {
+            std::unique_lock locker{openedEntriesLock_};
+
+            openedEntries_.erase(entry->record().handle());
+        }
+
+        if (entry->dirty()) {
+            auto r = syncRecord(entry->record());
+            SKV_UNUSED(r);
+        }
 
         delete entry;
     }
 
-    [[nodiscard]] Status releaseControlBlock(Volume::Handle handle) {
-        std::unique_lock locker(controlBlocksLock_);
+    [[nodiscard]] EntryImplPtr getEntry(Volume::Handle handle) {
+        std::shared_lock locker{openedEntriesLock_};
 
-        auto it = controlBlocks_.find(handle);
+        auto it = openedEntries_.find(handle);
 
-        if (it != std::end(controlBlocks_)) {
-            auto ptr = it->second;
-
-            ptr->release();
-
-            if (ptr->free()) {    // entry can be synchronyzed with storage
-                controlBlocks_.erase(it);
-
-                if (ptr->dirty()) // entry was changed
-                    return scheduleControlBlockSync(ptr);
-            }
-
-            return Status::Ok();
-        }
-
-        return NoSuchEntryStatus;
-    }
-
-    [[nodiscard]] cb_ptr_type getControlBlock(Volume::Handle handle) {
-        std::shared_lock locker(controlBlocksLock_);
-
-        auto it = controlBlocks_.find(handle);
-
-        if (it != std::end(controlBlocks_))
-            return it->second;
+        if (it != std::end(openedEntries_))
+            return it->second.lock();
 
         return {};
     }
 
-    [[nodiscard]] Status scheduleControlBlockSync(const cb_ptr_type& cb) {
-        if (!cb || !cb->dirty())
-            return Status::InvalidArgument("Invalid or clean CB");
-
-        // TODO: implement SYNC queue
-
-        return storage_->save(cb->record());
+    [[nodiscard]] Status syncRecord(Record& r) {
+        return storage_->save(r);
     }
 
-    void flushControlBlocks() {
-        std::unique_lock locker(controlBlocksLock_);
+    void flushEntries() {
+        std::unique_lock locker{openedEntriesLock_};
 
-        for (const auto& [handle, cb] : controlBlocks_) {
+        for (const auto& [handle, ewptr] : openedEntries_) {
             SKV_UNUSED(handle);
 
-            if (cb->dirty())
-                SKV_UNUSED(scheduleControlBlockSync(cb));
+            if (auto e = ewptr.lock(); e && e->dirty())
+                SKV_UNUSED(syncRecord(e->record()));
         }
 
-        controlBlocks_.clear();
+        openedEntries_.clear();
     }
 
     [[nodiscard]] Status claim(Volume::Token token) noexcept {
@@ -533,9 +521,9 @@ struct Volume::Impl {
 
     std::unique_ptr<storage_type> storage_;
     Volume::OpenOptions opts_;
-    std::shared_mutex controlBlocksLock_;
-    std::unordered_map<Volume::Handle, cb_ptr_type> controlBlocks_;
-    MRUCache<std::string,Volume::Handle, PATH_MRU_CACHE_SIZE> pathCache_;
+    std::shared_mutex openedEntriesLock_;
+    std::unordered_map<Volume::Handle, std::weak_ptr<EntryImpl>> openedEntries_;
+    MRUCache<std::string, Volume::Handle, PATH_MRU_CACHE_SIZE> pathCache_;
     mutable SpinLock<> claimLock_;
     Volume::Token claimToken_{};
     std::size_t claimCount_{0};

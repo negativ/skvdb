@@ -23,7 +23,7 @@ Volume::Volume(OpenOptions opts):
 
 Volume::~Volume() noexcept = default;
 
-Status Volume::initialize(std::string_view directory, std::string_view volumeName) {
+Status Volume::initialize(const std::string &directory, const std::string &volumeName) {
     if (initialized())
         return Status::InvalidOperation("Volume already opened");
 
@@ -48,18 +48,18 @@ std::shared_ptr<IEntry> Volume::entry(const std::string& path) {
     return impl_->entry(path);
 }
 
-Status Volume::link(Volume::Handle handle, std::string_view name) {
+Status Volume::link(IEntry &entry, std::string_view name) {
     if (!initialized())
         return VolumeNotOpenedStatus;
 
-    return impl_->createChild(handle, name);
+    return impl_->createChild(entry, name);
 }
 
-Status Volume::unlink(Handle h, std::string_view name) {
+Status Volume::unlink(IEntry& entry, std::string_view name) {
     if (!initialized())
         return VolumeNotOpenedStatus;
 
-    return impl_->removeChild(h, name);
+    return impl_->removeChild(entry, name);
 }
 
 Status Volume::claim(IVolume::Token token) noexcept {

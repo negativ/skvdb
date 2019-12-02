@@ -43,14 +43,14 @@ public:
     Volume& operator=(Volume&&) = delete;
 
     // vfs::IVolume interface
-    [[nodiscard]] Status initialize(std::string_view directory, std::string_view volumeName) override;
+    [[nodiscard]] Status initialize(const std::string& directory, const std::string& volumeName) override;
     [[nodiscard]] Status deinitialize() override;
     [[nodiscard]] bool initialized() const noexcept override;
 
     std::shared_ptr<IEntry> entry(const std::string& path) override;
 
-    [[nodiscard]] Status link(Handle handle, std::string_view name) override;
-    [[nodiscard]] Status unlink(Handle handle, std::string_view name) override;
+    [[nodiscard]] Status link(IEntry& entry, std::string_view name) override;
+    [[nodiscard]] Status unlink(IEntry& entry, std::string_view name) override;
 
     [[nodiscard]] Status claim(Token token) noexcept override;
     [[nodiscard]] Status release(Token token) noexcept override;

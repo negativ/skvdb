@@ -14,12 +14,8 @@ class Storage final {
     struct Impl;
 
 public:
-    using Handle          = IVolume::Handle;
-    using Properties      = IVolume::Properties;
-    using PropertiesNames = IVolume::PropertiesNames;
-    using Links      = IVolume::Links;
-    using Clock      = IVolume::Clock;
-    using Priority   = mount::Entry::Priority;
+    using Handle   = IVolume::Handle;
+    using Priority  = mount::Entry::Priority;
 
     static constexpr Handle   InvalidHandle     = IVolume::InvalidHandle;
     static constexpr Priority MaxPriority       = mount::Entry::MaxPriority;

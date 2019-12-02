@@ -1,14 +1,9 @@
 #pragma once
 
-#include <chrono>
-#include <cstdint>
 #include <memory>
-#include <set>
 #include <string>
-#include <tuple>
-#include <unordered_map>
+#include <string_view>
 
-#include "Property.hpp"
 #include "vfs/IEntry.hpp"
 #include "util/Status.hpp"
 
@@ -25,10 +20,6 @@ public:
     static constexpr Handle RootHandle = 1;
 
     using Token             = void*;
-    using Properties        = std::unordered_map<std::string, vfs::Property>;
-    using PropertiesNames   = std::set<std::string>;
-    using Links             = std::set<std::string>;
-    using Clock             = chrono::system_clock;
 
     IVolume() noexcept = default;
     virtual ~IVolume() noexcept = default;
@@ -45,7 +36,7 @@ public:
      * @param volumeName - volume name
      * @return Status::Ok() on success
      */
-    [[nodiscard]] virtual Status initialize(std::string_view directory, std::string_view volumeName) = 0;
+    [[nodiscard]] virtual Status initialize(const std::string& directory, const std::string& volumeName) = 0;
 
     /**
      * @brief Deinitialize volume
@@ -60,27 +51,27 @@ public:
     [[nodiscard]] virtual bool initialized() const noexcept  = 0;
 
     /**
-     * @brief open
-     * @param path
+     * @brief Get entry at specified path
+     * @param path - path to the entry
      * @return
      */
     virtual std::shared_ptr<IEntry> entry(const std::string& path) = 0;
 
     /**
      * @brief Create new link
-     * @param handle - entry in which link will be created
+     * @param entry - entry in which link will be created
      * @param name - name of created link
      * @return Status::Ok() on success
      */
-    [[nodiscard]] virtual Status link(Handle h, std::string_view name) = 0;
+    [[nodiscard]] virtual Status link(IEntry& entry, std::string_view name) = 0;
 
     /**
      * @brief Remove specified link
-     * @param handle - entry
+     * @param entry - parent entry
      * @param name - name of link to remove
      * @return Status::Ok() on success
      */
-    [[nodiscard]] virtual Status unlink(Handle h, std::string_view name) = 0;
+    [[nodiscard]] virtual Status unlink(IEntry& entry, std::string_view name) = 0;
 
 
     /**
@@ -98,7 +89,7 @@ public:
     [[nodiscard]] virtual Status release(Token token) noexcept = 0;
 };
 
-using IVolumePtr    = std::shared_ptr<IVolume>;
-using IVolumeWPtr   = std::weak_ptr<IVolume>;
+using IVolumePtr = std::shared_ptr<IVolume>;
+using IVolumeWPtr = std::weak_ptr<IVolume>;
 
 }
