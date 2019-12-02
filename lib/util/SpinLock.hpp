@@ -19,16 +19,6 @@ struct FixedStepBackoff {
     }
 };
 
-template <std::size_t Steps = 10000, std::size_t SleepMs = 50>
-struct FixedStepSleepBackoff {
-    static void backoff(std::size_t step) {
-        if (step % Steps == 0)
-            std::this_thread::sleep_for(std::chrono::milliseconds{SleepMs});
-        else
-            std::this_thread::yield();
-    }
-};
-
 template <typename BackoffStrategy = FixedStepBackoff<>>
 class SpinLock final {
 public:
