@@ -13,8 +13,8 @@ namespace skv::ondisk {
 template <typename EntryType>
 class ControlBlock final {
 public:
-    using entry_type = std::decay_t<EntryType>;
-    using ptr        = std::shared_ptr<ControlBlock<entry_type>>;
+    using record_type = std::decay_t<EntryType>;
+    using ptr        = std::shared_ptr<ControlBlock<record_type>>;
 
     template <typename ... Ts>
     static ptr create(Ts&& ... args) {
@@ -28,7 +28,7 @@ public:
     ControlBlock(ControlBlock&&) = delete;
     ControlBlock& operator=(ControlBlock&&) = delete;
 
-    [[nodiscard]] entry_type& entry() const noexcept {
+    [[nodiscard]] record_type& record() const noexcept {
         return entry_;
     }
 
@@ -58,7 +58,7 @@ public:
 
 private:
     ControlBlock() = default;
-    ControlBlock(entry_type&& e):
+    ControlBlock(record_type&& e):
         usageCounter_{0},
         entry_{e},
         dirty_{false}
@@ -66,7 +66,7 @@ private:
 
     mutable std::shared_mutex xLock_;
     std::uint64_t usageCounter_{0};
-    mutable entry_type entry_;
+    mutable record_type entry_;
     bool dirty_{false};
 };
 

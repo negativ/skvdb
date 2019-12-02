@@ -59,100 +59,12 @@ public:
      */
     [[nodiscard]] virtual bool initialized() const noexcept  = 0;
 
-
     /**
      * @brief open
      * @param path
      * @return
      */
     virtual std::shared_ptr<IEntry> entry(const std::string& path) = 0;
-
-    /**
-     * @brief Open volume entry
-     * @param path - virtual path
-     * @return {Status::Ok(), handle} on success
-     */
-    [[nodiscard]] virtual std::tuple<Status, Handle> open(std::string_view path) = 0;
-
-    /**
-     * @brief Close opened volume entry
-     * @param handle - entry
-     * @return Status::Ok() on success
-     */
-    [[nodiscard]] virtual Status close(Handle handle) = 0;
-
-
-    /**
-     * @brief Get all entry properties
-     * @param handle - entry
-     * @return {Status::Ok(), Properties} on success
-     */
-    [[nodiscard]] virtual std::tuple<Status, Properties> properties(Handle handle) = 0;
-
-    /**
-     * @brief Get names of all properties in entry
-     * @param handle - entry
-     * @return {Status::Ok(), PropertiesNames} on success
-     */
-    [[nodiscard]] virtual std::tuple<Status, PropertiesNames> propertiesNames(Handle handle) = 0;
-
-    /**
-     * @brief Get specified property
-     * @param handle - entry
-     * @param propName - property name
-     * @return {Status::Ok(), property} on success
-     */
-    [[nodiscard]] virtual std::tuple<Status, Property> property(Handle handle, std::string_view propName) = 0;
-
-    /**
-     * @brief Set specified property
-     * @param handle - entry
-     * @param propName - property name
-     * @param value - property value
-     * @return Status::Ok() on success
-     */
-    [[nodiscard]] virtual Status setProperty(Handle handle, std::string_view propName, const Property& value) = 0;
-
-    /**
-     * @brief Remove specified property
-     * @param handle - entry
-     * @param propName - property name
-     * @return Status::Ok() on success
-     */
-    [[nodiscard]] virtual Status removeProperty(Handle handle, std::string_view propName) = 0;
-
-    /**
-     * @brief Remove specified property exists
-     * @param handle - entry
-     * @param propName - property name
-     * @return {Status::Ok(), exists flag} on success
-     */
-    [[nodiscard]] virtual std::tuple<Status, bool> hasProperty(Handle handle, std::string_view propName) = 0;
-
-    /**
-     * @brief Remove property at specified time point
-     * @param handle - entry
-     * @param propName - property name
-     * @param tp - time point
-     * @return Status::Ok() on success
-     */
-    [[nodiscard]] virtual Status expireProperty(Handle handle, std::string_view propName, Clock::time_point tp) = 0;
-
-    /**
-     * @brief Cancel property expiration
-     * @param handle - entry
-     * @param propName - property name
-     * @return Status::Ok() on success
-     */
-    [[nodiscard]] virtual Status cancelPropertyExpiration(Handle handle, std::string_view propName) = 0;
-
-
-    /**
-     * @brief Get linked entries names
-     * @param handle - entry
-     * @return {Status::Ok(), links} on success
-     */
-    [[nodiscard]] virtual std::tuple<Status, Links> links(Handle handle) = 0;
 
     /**
      * @brief Create new link

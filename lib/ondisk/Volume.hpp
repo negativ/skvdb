@@ -48,19 +48,7 @@ public:
     [[nodiscard]] bool initialized() const noexcept override;
 
     std::shared_ptr<IEntry> entry(const std::string& path) override;
-    [[nodiscard]] std::tuple<Status, Handle> open(std::string_view path) override;
-    [[nodiscard]] Status close(Handle handle) override;
 
-    [[nodiscard]] std::tuple<Status, Properties> properties(Handle handle) override;
-    [[nodiscard]] std::tuple<Status, PropertiesNames> propertiesNames(Handle handle) override;
-    [[nodiscard]] std::tuple<Status, Property> property(Handle h, std::string_view name) override;
-    [[nodiscard]] Status setProperty(Handle h, std::string_view name, const Property& value) override;
-    [[nodiscard]] Status removeProperty(Handle h, std::string_view name) override;
-    [[nodiscard]] std::tuple<Status, bool> hasProperty(Handle h, std::string_view name) override;
-    [[nodiscard]] Status expireProperty(Handle h, std::string_view name, chrono::system_clock::time_point tp) override;
-    [[nodiscard]] Status cancelPropertyExpiration(Handle h, std::string_view name) override;
-
-    [[nodiscard]] std::tuple<Status, Links> links(Handle handle) override;
     [[nodiscard]] Status link(Handle handle, std::string_view name) override;
     [[nodiscard]] Status unlink(Handle handle, std::string_view name) override;
 

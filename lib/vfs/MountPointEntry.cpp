@@ -97,21 +97,21 @@ Entry::Priority Entry::priority() const noexcept {
 }
 
 bool Entry::open() {
-    if (impl_->volume_) {
-        auto [status, handle] = impl_->volume_->open(impl_->entryPath_);
+//    if (impl_->volume_) {
+//        auto [status, handle] = impl_->volume_->open(impl_->entryPath_);
 
-        if (status.isOk())
-            impl_->handle_ = handle;
+//        if (status.isOk())
+//            impl_->handle_ = handle;
 
-        return status.isOk();
-    }
+//        return status.isOk();
+//    }
 
     return false;
 }
 
 void Entry::close() {
-    if (opened())
-        SKV_UNUSED(impl_->volume_->close(impl_->handle_));
+//    if (opened())
+//        SKV_UNUSED(impl_->volume_->close(impl_->handle_));
 }
 
 bool Entry::opened() const noexcept {
