@@ -14,7 +14,7 @@
 #include <boost/iostreams/stream.hpp>
 
 #include "ContainerStreamDevice.hpp"
-#include "Entry.hpp"
+#include "Record.hpp"
 #include "IndexTable.hpp"
 #include "LogDevice.hpp"
 #include "os/File.hpp"
@@ -52,7 +52,7 @@ public:
     using index_record_type = typename index_table_type::index_record_type;
     using buffer_type       = std::vector<char>;
     using log_device_type   = LogDevice<block_index_type, block_index_type, buffer_type>;
-    using entry_type        = Entry;
+    using entry_type        = Record;
 
     static_assert (std::is_integral_v<key_type>,            "Key type should be integral");
     static_assert (std::is_unsigned_v<block_index_type>,    "Block index type should be unsigned");

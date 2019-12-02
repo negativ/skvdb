@@ -97,7 +97,7 @@ struct Volume::Impl {
 
         for (const auto& t : tokens) {
             auto cb = getControlBlock(handle);
-            Entry::Children children;
+            Record::Children children;
 
             auto fetchChildren = [&children](auto&& e) {
                 children = e.children();
