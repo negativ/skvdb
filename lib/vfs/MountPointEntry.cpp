@@ -113,4 +113,12 @@ bool Entry::opened() const noexcept {
     return impl_->entry_ != nullptr;
 }
 
+bool Entry::operator<(const Entry& other) const noexcept {
+	return priority() < other.priority();
+}
+
+bool Entry::operator>(const Entry& other) const noexcept {
+	return priority() > other.priority();
+}
+
 }

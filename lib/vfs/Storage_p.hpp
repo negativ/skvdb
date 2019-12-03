@@ -11,9 +11,9 @@
 #include <type_traits>
 #include <unordered_map>
 
+#include "IVolume.hpp"
 #include "Storage.hpp"
 #include "MountPoint.hpp"
-#include "VirtualEntry.hpp"
 #include "util/Log.hpp"
 #include "util/Status.hpp"
 #include "util/String.hpp"
@@ -26,65 +26,145 @@ namespace skv::vfs {
 
 using namespace skv::util;
 
-using VirtualEntries = std::vector<VirtualEntry>;
+using ThreadPool = util::ThreadPool<>;
+
+class EntryImpl final : public vfs::IEntry {
+public:
+	using Entries = std::vector<std::shared_ptr<IEntry>>;
+	using Volumes = std::vector<IVolumePtr>;
+
+	EntryImpl(Handle handle, Entries&& entries, Volumes&& volumes, ThreadPool& threadPool):
+		handle_{handle},
+		entries_{entries},
+		volumes_{volumes},
+		threadPool_{std::ref(threadPool)}
+	{
+
+	}
+
+	~EntryImpl() noexcept override = default;
+
+	Handle handle() const noexcept override {
+		return handle_;
+	}
+
+	std::string name() const override {
+		return ""; // TODO: implement
+	}
+
+	bool hasProperty(const std::string& prop) const noexcept override {
+		return false; // TODO: implement
+	}
+
+	Status setProperty(const std::string& prop, const Property& value) override {
+		return Status::IOError(""); // TODO: implement
+	}
+
+	std::tuple<Status, Property> property(const std::string& prop) const override {
+		return { Status::IOError(""), {} }; // TODO: implement
+	}
+
+	Status removeProperty(const std::string& prop) override {
+		return Status::IOError(""); // TODO: implement
+	}
+
+	Properties properties() const override {
+		return {}; // TODO: implement
+	}
+
+	std::set<std::string> propertiesNames() const override {
+		return {}; // TODO: implement
+	}
+
+	Status expireProperty(const std::string& prop, chrono::milliseconds ms) override {
+		return Status::IOError(""); // TODO: implement
+	}
+
+	Status cancelPropertyExpiration(const std::string& prop) override {
+		return Status::IOError(""); // TODO: implement
+	}
+
+	std::set<std::string> children() const override {
+		return {}; // TODO: implement
+	}
+
+private:
+	template <typename Iterator>
+	void waitAllFutures(Iterator start, Iterator stop) {
+		using namespace std::literals;
+
+		while (!std::all_of(start, stop,
+			[](auto& f) { return (f.wait_for(0ms) == std::future_status::ready); }))
+			threadPool_.throttle(); // helping thread pool to do his work
+	}
+
+	template <typename Iterator, typename F, typename ... Args>
+    auto forEachEntry(F&& func, Args&& ... args) {
+        using namespace std::literals;
+        using result      = std::invoke_result_t<F, IEntry*, Args...>;
+        using future      = std::future<result>;
+        using future_list = std::vector<future>;
+        using result_list = std::vector<result>;
+
+		auto start = std::begin(entries_),
+			 stop  = std::end(entries_);
+        
+		if (start == stop)
+			return result_list{};
+
+		result_list results;
+		future_list futures;
+
+		auto it = start;
+
+		std::advance(start, 1); // first call in current thread context
+
+		while (start != stop) {
+			auto& entry = (*start);
+
+			try {
+				futures.emplace_back(threadPool_.schedule(std::forward<F>(func), entry.get(), std::forward<Args>(args)...));
+			}
+			catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); } 
+
+			++start;
+		}
+
+		try {
+			results.emplace_back(std::invoke(std::forward<F>(func), (*it).get(), std::forward<Args>(args)...));
+		}
+		catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); }
+
+		waitAllFutures(std::begin(futures), std::end(futures));
+
+		for (auto& f : futures) {
+			try {
+				results.emplace_back(f.get());
+			}
+			catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); }
+		}
+
+        return  results;
+    }
+
+	Handle handle_;
+	Entries entries_;
+	Volumes volumes_;
+	std::reference_wrapper<ThreadPool> threadPool_;
+};
 
 struct Storage::Impl {
     static constexpr Status InvalidVolumeArgumentStatus = Status::InvalidArgument("Invalid volume");
+	static constexpr const char* const TAG = "vfs::Storage";
 
-//    template <typename Iterator, typename F, typename ... Args>
-//    auto forEachEntry(Iterator start, Iterator stop, F&& func, Args&& ... args) {
-//        using namespace std::literals;
-//        using result      = std::invoke_result_t<F, IVolume*, IVolume::Handle, Args...>;
-//        using future      = std::future<result>;
-//        using future_list = std::vector<future>;
-//        using result_list = std::vector<result>;
+    template <typename Iterator>
+    void waitAllFutures(Iterator start, Iterator stop) {
+        using namespace std::literals;
 
-//        result_list results;
-//        future_list futures;
-
-//        auto dist = std::distance(start, stop);
-
-//        if (dist > 1) {
-//            auto it = start;
-
-//            std::advance(start, 1);// we will do the first call in current thread context
-
-//            try {
-//                std::for_each(start, stop,
-//                              [&](const auto& ventry) {
-//                                  if (auto volume = ventry.volume().lock(); volume)
-//                                      futures.emplace_back(threadPool_.schedule(std::forward<F>(func), volume.get(), ventry.handle(), std::forward<Args>(args)...));
-//                              });
-//            }
-//            catch (const std::exception& e) {
-//                Log::e("vfs::Storage", "Exception: ", e.what());
-//            }
-
-//            if (auto volume = it->volume().lock(); volume)
-//                results.emplace_back(std::invoke(std::forward<F>(func), volume.get(), it->handle(), std::forward<Args>(args)...));
-
-//            waitAllFutures(std::begin(futures), std::end(futures));
-
-//            std::transform(std::begin(futures), std::end(futures),
-//                           std::back_inserter(results),
-//                           [](auto& f) { return f.get(); });
-//        }
-//        else if (dist == 1) {
-//            if (auto volume = start->volume().lock(); volume)
-//                results.emplace_back(std::invoke(std::forward<F>(func), volume.get(), start->handle(), std::forward<Args>(args)...));
-//        }
-
-//        return  results;
-//    }
-
-//    template <typename Iterator>
-//    void waitAllFutures(Iterator start, Iterator stop) {
-//        using namespace std::literals;
-
-//        while (!std::all_of(start, stop,
-//                            [](auto& f) { return (f.wait_for(0ms) == std::future_status::ready); }))
-//            threadPool_.throttle(); // helping thread pool to do his work
-//    }
+        while (!std::all_of(start, stop,
+                            [](auto& f) { return (f.wait_for(0ms) == std::future_status::ready); }))
+            threadPool_.throttle(); // helping thread pool to do his work
+    }
 
     Impl() = default;
     ~Impl() noexcept = default;
@@ -95,61 +175,58 @@ struct Storage::Impl {
     Impl(Impl&&) noexcept = delete;
     Impl& operator=(Impl&&) noexcept = delete;
 
-//    [[nodiscard]] std::tuple<Status, Storage::Handle> open(std::string_view path) {
-//        using result      = std::tuple<Status, VirtualEntry>;
-//        using future      = std::future<result>;
-//        using future_list = std::vector<future>;
-//        using result_list = std::vector<result>;
+    [[nodiscard]] std::shared_ptr<IEntry> entry(std::string_view path) {
+        using result      = std::shared_ptr<IEntry>;
+        using future      = std::future<result>;
+        using future_list = std::vector<future>;
+        using result_list = std::vector<result>;
 
-//        std::string vpath = simplifyPath(path);
-//        auto [status, mountPath, mountEntries] = searchMountPathFor(vpath);
+        std::string vpath = simplifyPath(path);
+        auto [status, mountPath, mountEntries] = searchMountPathFor(vpath);
 
-//        if (!status.isOk())
-//            return {status, Storage::InvalidHandle};
+        if (!status.isOk())
+            return {};
 
-//        auto subvpath = vpath.substr(mountPath.size(), vpath.size() - mountPath.size()); // extracting subpath from vpath
-//        future_list futures;
+		std::sort(std::begin(mountEntries), std::end(mountEntries), std::greater<>{}); //sort from high priority to low
 
-//        try {
-//            std::transform(std::begin(mountEntries), std::end(mountEntries),
-//                           std::back_inserter(futures),
-//                           [&](auto&& entry) {
-//                               return threadPool_.schedule([&]() -> std::tuple<Status, VirtualEntry> {
-//                                   auto volume  = entry.volume();
-//                                   auto subpath = simplifyPath(entry.entryPath() + "/" + subvpath);
-//                                   auto [status, handle] = volume->open(subpath);
+        auto subvpath = vpath.substr(mountPath.size(), vpath.size() - mountPath.size()); // extracting subpath from vpath
+        future_list futures;
+		EntryImpl::Volumes volumes;
 
-//                                   if (status.isOk())
-//                                       return {status, VirtualEntry(subpath, volume, handle, entry.priority())};
+        try {
+			for (auto& mentry : mountEntries) {
+				futures.emplace_back(threadPool_.schedule([&]() -> result {
+															auto volume = mentry.volume();
+															auto subpath = simplifyPath(mentry.entryPath() + "/" + subvpath);
+															return volume->entry(subpath);
+														 }));
+				volumes.emplace_back(mentry.volume());
+			}
+        }
+        catch (const std::exception &e) {
+			Log::e(TAG, e.what());
 
-//                                   return {Status::InvalidArgument("Invalid volume"), VirtualEntry{}};
-//                               });
-//                           });
-//        }
-//        catch (const std::exception &e) {
-//            return {Status::Fatal("Exception"), Storage::InvalidHandle};
-//        }
+            return {};
+        }
 
-//        waitAllFutures(std::begin(futures), std::end(futures));
+        waitAllFutures(std::begin(futures), std::end(futures));
 
-//        result_list results;
+        result_list results;
 
-//        std::transform(std::begin(futures), std::end(futures),
-//                       std::back_inserter(results),
-//                       [](auto& f) { return f.get(); });
+		for (auto& f : futures) {
+			try {
+				results.emplace_back(f.get());
+			}
+			catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); }
+		}
 
-//        VirtualEntries openedEntries;
+		if (results.empty())
+			return {};
 
-//        for (const auto& [status, entry] : results) {
-//            if (status.isOk())
-//                openedEntries.emplace_back(entry);
-//        }
+		auto ptr = std::make_shared<EntryImpl>(newHandle(), std::move(results), std::move(volumes), threadPool_);
 
-//        if (openedEntries.empty())
-//            return {Status::InvalidArgument("No such path"), Storage::InvalidHandle};
-
-//        return {Status::Ok(), addVirtualEntries(std::move(openedEntries))};
-//    }
+		return std::static_pointer_cast<vfs::IEntry>(ptr);
+    }
 
     [[nodiscard]] std::tuple<Status, std::string, std::vector<mount::Entry>> searchMountPathFor(std::string_view path) const {
         auto searchPath = simplifyPath(path);
@@ -243,7 +320,7 @@ struct Storage::Impl {
     mount::Points mpoints_{};
     std::atomic<Storage::Handle> currentHandle_{IVolume::RootHandle + 1};
     mutable std::shared_mutex mpointsLock_;
-    ThreadPool<> threadPool_;
+    ThreadPool threadPool_;
 };
 
 }

@@ -75,6 +75,9 @@ public:
      */
     [[nodiscard]] bool opened() const noexcept;
 
+	[[nodiscard]] bool operator<(const Entry& other) const noexcept;
+	[[nodiscard]] bool operator>(const Entry& other) const noexcept;
+
 private:
     std::unique_ptr<Impl> impl_;
 };
