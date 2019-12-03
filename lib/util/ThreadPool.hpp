@@ -2,21 +2,27 @@
 
 #include <algorithm>
 #include <atomic>
-#include <chrono>
 #include <functional>
 #include <future>
 #include <memory>
-#include <stdexcept>
 #include <thread>
-#include <type_traits>
 #include <vector>
 
 #include <boost/lockfree/queue.hpp>
 
-#include "util/SpinLock.hpp"
 #include "util/Status.hpp"
 
 namespace skv::util {
+
+template <std::size_t Steps = 10000, std::size_t SleepMs = 50>
+struct FixedStepSleepBackoff {
+    static void backoff(std::size_t step) {
+        if (step % Steps == 0)
+            std::this_thread::sleep_for(std::chrono::milliseconds{SleepMs});
+        else
+            std::this_thread::yield(); // reduces concurency for taskQueue_
+    }
+};
 
 /**
  * @brief Thread pool basic implementation.
@@ -54,16 +60,12 @@ public:
 
     template <typename F, typename ... Args, std::enable_if_t<std::is_invocable_v<F, Args...>, int> = 0>
     [[nodiscard]] auto schedule(F&& f, Args&& ... args) {
-        if (done())
-            throw std::runtime_error{"Thread pool has stopped his work"};
-
-        using result= std::invoke_result_t<F, Args...>;
+        using result = std::invoke_result_t<F, Args...>;
         using packaged_task = std::packaged_task<result()>;
-        using packaged_task_ptr = std::shared_ptr<packaged_task>;
 
-        packaged_task_ptr task = std::make_shared<packaged_task>(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+        auto task = std::make_shared<packaged_task>(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
         auto future = task->get_future();
-        auto cw = new function{[task{std::move(task)}] { (*task)(); }};
+        auto cw = createFunction([task{std::move(task)}] { (*task)(); });
 
         while (!taskQueue_.push(cw));
 
@@ -75,31 +77,28 @@ public:
     }
 
     void throttle() {
-        if (!done()) {
-            auto [status, task] = nextTask();
+        auto [status, task] = nextTask();
 
-            if (status.isOk() && task) {
-                try {
-                    (*task)();
-                }
-                catch(...) {}
-
-                delete task;
-            }
-            else
-                std::this_thread::yield();
+        if (status.isOk() && task) {
+            invokeFunction(task);
+            destroyFunction(task);
         }
+        else
+            std::this_thread::yield();
     }
 
 private:
     using container_type = std::vector<std::thread>;
     using function = std::function<void()>;
+    using function_ptr = function*;
 
     void stop() {
         markDone();
 
-        std::for_each(std::begin(threadPool_), std::end(threadPool_),
-                      [](auto& t) { if (t.joinable()) t.join(); });
+        for (auto &t : threadPool_) {
+            if (t.joinable())
+                t.join();
+        }
     }
 
     void markDone() {
@@ -114,18 +113,11 @@ private:
 
             auto [status, task] = nextTask();
 
-            if (!status.isOk()) {
+            if (!status.isOk())
                 Backoff::backoff(step);
-            }
             else {
-                if (task) {
-                    try {
-                        (*task)();
-                    }
-                    catch(...) {}
-
-                    delete task;
-                }
+                invokeFunction(task);
+                destroyFunction(task);
 
                 step = 0;
             }
@@ -137,12 +129,31 @@ private:
     }
 
     [[nodiscard]] std::tuple<Status, function*> nextTask() {
-        function* cw;
+        function_ptr cw;
 
         if (taskQueue_.pop(cw))
             return {Status::Ok(), cw};
 
-        return {Status::InvalidOperation("Task queue empty"), nullptr};
+        return {Status::InvalidOperation("Queue empty"), nullptr};
+    }
+
+    template <typename F>
+    function_ptr createFunction(F&& f) {
+        return new function{std::forward<F>(f)};
+    }
+
+    void destroyFunction(function_ptr fptr) noexcept {
+        delete fptr;
+    }
+
+    void invokeFunction(function_ptr fptr) {
+        if (!fptr)
+            return;
+
+        try {
+            (*fptr)();
+        }
+        catch(...) {} // for now just ignoring exceptions
     }
 
     std::atomic<bool> done_;

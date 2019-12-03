@@ -22,8 +22,15 @@ public:
     using Handle        = std::uint64_t;
     using Properties    = std::unordered_map<std::string, Property>;
 
-    virtual ~IEntry() noexcept = default;
+    IEntry() noexcept = default;
 
+    IEntry(const IEntry&) = delete;
+    IEntry(IEntry&&) = delete;
+
+    IEntry& operator=(const IEntry&) = delete;
+    IEntry& operator=(IEntry&&) = delete;
+
+    virtual ~IEntry() noexcept = default;
 
     virtual Handle handle() const noexcept = 0;
 

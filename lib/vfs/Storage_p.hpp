@@ -11,9 +11,9 @@
 #include <type_traits>
 #include <unordered_map>
 
+#include "IVolume.hpp"
 #include "Storage.hpp"
 #include "MountPoint.hpp"
-#include "VirtualEntry.hpp"
 #include "util/Log.hpp"
 #include "util/Status.hpp"
 #include "util/String.hpp"
@@ -26,56 +26,220 @@ namespace skv::vfs {
 
 using namespace skv::util;
 
-using VirtualEntries = std::vector<VirtualEntry>;
+using ThreadPool = util::ThreadPool<>;
 
-struct Storage::Impl {
-    const Status InvalidVolumeArgumentStatus = Status::InvalidArgument("Invalid volume");
+class EntryImpl final : public vfs::IEntry {
+    static constexpr const char* const TAG = "vfs::Storage";
 
-    template <typename Iterator, typename F, typename ... Args>
-    auto forEachEntry(Iterator start, Iterator stop, F&& func, Args&& ... args) {
+    template <typename Iterator>
+    void waitAllFutures(Iterator start, Iterator stop) const  {
         using namespace std::literals;
-        using result      = std::invoke_result_t<F, IVolume*, IVolume::Handle, Args...>;
+
+        while (!std::all_of(start, stop,
+                            [](auto& f) { return (f.wait_for(0ms) == std::future_status::ready); }))
+            threadPool_.get().throttle(); // helping thread pool to do his work
+    }
+
+    template <typename F, typename ... Args>
+    auto forEachEntry(F&& func, Args&& ... args) const {
+        using namespace std::literals;
+        using result      = std::invoke_result_t<F, IEntry*, Args...>;
         using future      = std::future<result>;
         using future_list = std::vector<future>;
         using result_list = std::vector<result>;
 
+        auto start = std::begin(entries_),
+             stop  = std::end(entries_);
+
+        if (start == stop)
+            return result_list{};
+
         result_list results;
         future_list futures;
 
-        auto dist = std::distance(start, stop);
+        auto it = start;
 
-        if (dist > 1) {
-            auto it = start;
+        std::advance(start, 1); // first call in current thread context
 
-            std::advance(start, 1);// we will do the first call in current thread context
+        while (start != stop) {
+            auto& entry = (*start);
 
             try {
-                std::for_each(start, stop,
-                              [&](const auto& ventry) {
-                                  if (auto volume = ventry.volume().lock(); volume)
-                                      futures.emplace_back(threadPool_.schedule(std::forward<F>(func), volume.get(), ventry.handle(), std::forward<Args>(args)...));
-                              });
+                futures.emplace_back(threadPool_.get().schedule(std::forward<F>(func), entry.get(), std::forward<Args>(args)...));
             }
-            catch (const std::exception& e) {
-                Log::e("vfs::Storage", "Exception: ", e.what());
-            }
+            catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); }
 
-            if (auto volume = it->volume().lock(); volume)
-                results.emplace_back(std::invoke(std::forward<F>(func), volume.get(), it->handle(), std::forward<Args>(args)...));
-
-            waitAllFutures(std::begin(futures), std::end(futures));
-
-            std::transform(std::begin(futures), std::end(futures),
-                           std::back_inserter(results),
-                           [](auto& f) { return f.get(); });
+            ++start;
         }
-        else if (dist == 1) {
-            if (auto volume = start->volume().lock(); volume)
-                results.emplace_back(std::invoke(std::forward<F>(func), volume.get(), start->handle(), std::forward<Args>(args)...));
+
+        try {
+            results.emplace_back(std::invoke(std::forward<F>(func), (*it).get(), std::forward<Args>(args)...));
+        }
+        catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); }
+
+        waitAllFutures(std::begin(futures), std::end(futures));
+
+        for (auto& f : futures) {
+            try {
+                results.emplace_back(f.get());
+            }
+            catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); }
         }
 
         return  results;
     }
+
+public:
+	using Entries = std::vector<std::shared_ptr<IEntry>>;
+	using Volumes = std::vector<IVolumePtr>;
+
+	EntryImpl(Handle handle, Entries&& entries, Volumes&& volumes, ThreadPool& threadPool):
+		handle_{handle},
+		entries_{entries},
+		volumes_{volumes},
+		threadPool_{std::ref(threadPool)}
+	{
+
+	}
+
+	~EntryImpl() noexcept override = default;
+
+	Handle handle() const noexcept override {
+		return handle_;
+	}
+
+	std::string name() const override {
+		return ""; // TODO: implement
+	}
+
+    bool hasProperty(const std::string& prop) const noexcept override {
+        auto results = forEachEntry(&IEntry::hasProperty, prop);
+
+        return std::any_of(std::cbegin(results), std::cend(results),
+                           [](auto v) { return v; });
+	}
+
+    Status setProperty(const std::string& prop, const Property& value) override {
+        auto results = forEachEntry(&IEntry::setProperty, prop, value);
+
+        auto ok = std::all_of(std::cbegin(results), std::cend(results),
+                              [](auto&& status) { return status.isOk(); });
+
+        return ok? Status::Ok() : Status::InvalidOperation("Unknown error");
+	}
+
+	std::tuple<Status, Property> property(const std::string& prop) const override {
+        auto results = forEachEntry(&IEntry::property, prop);
+
+        for (const auto& [status, value] : results) {
+            if (status.isOk())
+                return {status, value};
+        }
+
+        return {Status::InvalidArgument("No such property"), {}};
+	}
+
+	Status removeProperty(const std::string& prop) override {
+        auto results = forEachEntry(&IEntry::removeProperty, prop);
+
+        auto ok = std::any_of(std::cbegin(results), std::cend(results),
+                              [](auto&& status) { return status.isOk(); });
+
+        return ok? Status::Ok() : Status::InvalidArgument("No such property");
+	}
+
+	Properties properties() const override {
+        auto results = forEachEntry(&IEntry::properties);
+
+        if (results.empty())
+            return {};
+
+        Properties ret = std::move(results[0]); // just moving first result to result (properties from entry with highest priority)
+
+        for (std::size_t i = 1; i < results.size(); ++i) {
+            auto& props = results[i];
+
+            for (const auto& [key, value] : props) {
+                if (auto it = ret.find(key); it != std::cend(ret))
+                    ret[key] = value;
+            }
+        }
+
+        return ret;
+	}
+
+	std::set<std::string> propertiesNames() const override {
+        auto results = forEachEntry(&IEntry::propertiesNames);
+
+        if (results.empty())
+            return {};
+
+        std::set<std::string> ret = std::move(results[0]); // just moving first result to result (properties from entry with highest priority)
+
+        for (std::size_t i = 1; i < results.size(); ++i) {
+            auto& props = results[i];
+
+            for (auto& name : props) {
+                if (auto it = ret.find(name); it != std::cend(ret))
+                    ret.insert(name);
+            }
+        }
+
+        return ret;
+	}
+
+	Status expireProperty(const std::string& prop, chrono::milliseconds ms) override {
+        auto results = forEachEntry(&IEntry::expireProperty, prop, ms);
+
+        auto ok = std::any_of(std::cbegin(results), std::cend(results),
+                              [](auto&& status) { return status.isOk(); });
+
+        return ok? Status::Ok() : Status::InvalidArgument("No such property");
+	}
+
+	Status cancelPropertyExpiration(const std::string& prop) override {
+        auto results = forEachEntry(&IEntry::cancelPropertyExpiration, prop);
+
+        auto ok = std::any_of(std::cbegin(results), std::cend(results),
+                              [](auto&& status) { return status.isOk(); });
+
+        return ok? Status::Ok() : Status::InvalidArgument("No such property");
+	}
+
+	std::set<std::string> children() const override {
+        auto results = forEachEntry(&IEntry::children);
+
+        if (results.empty())
+            return {};
+
+        std::set<std::string> ret = std::move(results[0]); // just moving first result to result (properties from entry with highest priority)
+
+        for (std::size_t i = 1; i < results.size(); ++i) {
+            auto& props = results[i];
+
+            for (auto& name : props) {
+                if (auto it = ret.find(name); it != std::cend(ret))
+                    ret.insert(name);
+            }
+        }
+
+        return ret;
+	}
+
+    Volumes& volumes() const noexcept {
+        return volumes_;
+    }
+
+private:
+	Handle handle_;
+    mutable Entries entries_;
+    mutable Volumes volumes_;
+    mutable std::reference_wrapper<ThreadPool> threadPool_;
+};
+
+struct Storage::Impl {
+    static constexpr Status InvalidVolumeArgumentStatus = Status::InvalidArgument("Invalid volume");
+	static constexpr const char* const TAG = "vfs::Storage";
 
     template <typename Iterator>
     void waitAllFutures(Iterator start, Iterator stop) {
@@ -95,9 +259,9 @@ struct Storage::Impl {
     Impl(Impl&&) noexcept = delete;
     Impl& operator=(Impl&&) noexcept = delete;
 
-    [[nodiscard]] std::tuple<Status, Storage::Handle> open(std::string_view path) {
-        using result      = std::tuple<Status, VirtualEntry>;
-        using future      = std::future<result>;
+    [[nodiscard]] std::shared_ptr<IEntry> entry(std::string_view path) {
+        using result      = std::shared_ptr<IEntry>;
+        using future      = std::future<std::pair<IVolumePtr, result>>;
         using future_list = std::vector<future>;
         using result_list = std::vector<result>;
 
@@ -105,257 +269,49 @@ struct Storage::Impl {
         auto [status, mountPath, mountEntries] = searchMountPathFor(vpath);
 
         if (!status.isOk())
-            return {status, Storage::InvalidHandle};
+            return {};
+
+		std::sort(std::begin(mountEntries), std::end(mountEntries), std::greater<>{}); //sort from high priority to low
 
         auto subvpath = vpath.substr(mountPath.size(), vpath.size() - mountPath.size()); // extracting subpath from vpath
         future_list futures;
 
         try {
-            std::transform(std::begin(mountEntries), std::end(mountEntries),
-                           std::back_inserter(futures),
-                           [&](auto&& entry) {
-                               return threadPool_.schedule([&]() -> std::tuple<Status, VirtualEntry> {
-                                   auto volume  = entry.volume();
-                                   auto subpath = simplifyPath(entry.entryPath() + "/" + subvpath);
-                                   auto [status, handle] = volume->open(subpath);
-
-                                   if (status.isOk())
-                                       return {status, VirtualEntry(subpath, volume, handle, entry.priority())};
-
-                                   return {Status::InvalidArgument("Invalid volume"), VirtualEntry{}};
-                               });
-                           });
+			for (auto& mentry : mountEntries) {
+                futures.emplace_back(threadPool_.schedule([&]() -> std::pair<IVolumePtr, result> {
+															auto volume = mentry.volume();
+                                                            auto subpath = simplifyPath(mentry.entryPath() + "/" + subvpath);
+                                                            return {volume, volume->entry(subpath)};
+														 }));
+			}
         }
         catch (const std::exception &e) {
-            return {Status::Fatal("Exception"), Storage::InvalidHandle};
+			Log::e(TAG, e.what());
+
+            return {};
         }
 
         waitAllFutures(std::begin(futures), std::end(futures));
 
         result_list results;
+        EntryImpl::Volumes volumes;
 
-        std::transform(std::begin(futures), std::end(futures),
-                       std::back_inserter(results),
-                       [](auto& f) { return f.get(); });
+		for (auto& f : futures) {
+			try {
+                auto [volume, entry] = f.get();
 
-        VirtualEntries openedEntries;
+                volumes.emplace_back(std::move(volume));
+                results.emplace_back(std::move(entry));
+			}
+			catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); }
+		}
 
-        for (const auto& [status, entry] : results) {
-            if (status.isOk())
-                openedEntries.emplace_back(entry);
-        }
+        if (results.empty() || (volumes.size() != results.size()))
+			return {};
 
-        if (openedEntries.empty())
-            return {Status::InvalidArgument("No such path"), Storage::InvalidHandle};
+		auto ptr = std::make_shared<EntryImpl>(newHandle(), std::move(results), std::move(volumes), threadPool_);
 
-        return {Status::Ok(), addVirtualEntries(std::move(openedEntries))};
-    }
-
-    [[nodiscard]] Status close(Storage::Handle handle) {
-        const auto& [status, ventries] = getVirtualEntries(handle);
-
-        if (!status.isOk())
-            return status;
-
-        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::close);
-
-        removeVirtualEntries(handle);
-
-        auto ret = std::all_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
-
-        return ret? Status::Ok() : Status::InvalidOperation("Unable to close handle");
-    }
-
-    [[nodiscard]] std::tuple<Status, Storage::Properties> properties(Storage::Handle handle) {
-        const auto& [status, ventries] = getVirtualEntries(handle);
-
-        if (!status.isOk())
-            return {status, {}};
-
-        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::properties);
-
-        if (std::any_of(std::cbegin(results), std::cend(results),
-                        [](const auto& t) { const auto& [status, unused] = t; SKV_UNUSED(unused); return !status.isOk(); }))
-            return {Status::InvalidArgument("Unable to fetch properties"), {}};
-
-        Storage::Properties ret;
-
-        for (auto&& [status, props] : results) {
-            SKV_UNUSED(status);
-
-            for (auto&& [prop, value] : props) {
-                if (auto it = ret.find(prop); it == std::cend(ret))
-                    ret.emplace(prop, value);
-            }
-        }
-
-        return {Status::Ok(), ret};
-    }
-
-    std::tuple<Status, Storage::PropertiesNames> propertiesNames(Handle handle) {
-        const auto& [status, ventries] = getVirtualEntries(handle);
-
-        if (!status.isOk())
-            return { status, {} };
-
-        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::propertiesNames);
-
-        if (std::any_of(std::cbegin(results), std::cend(results),
-            [](const auto& t) { const auto& [status, unused] = t; SKV_UNUSED(unused); return !status.isOk(); }))
-            return { Status::InvalidArgument("Unable to fetch properties names"), {} };
-
-        Storage::PropertiesNames ret;
-
-        for (const auto& [status, propNames] : results) {
-            SKV_UNUSED(status);
-
-            std::copy(std::cbegin(propNames), std::cend(propNames),
-                      std::inserter(ret, std::begin(ret)));
-        }
-
-        return { Status::Ok(), ret };
-    }
-
-    [[nodiscard]] std::tuple<Status, Property> property(Storage::Handle handle, std::string_view name) {
-        const auto& [status, ventries] = getVirtualEntries(handle);
-
-        if (!status.isOk())
-            return {status, {}};
-
-        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::property, name);
-
-        for (const auto& [status, value] : results) {
-            if (status.isOk())
-                return {status, value};
-        }
-
-        return {Status::InvalidArgument("No such property"), {}};
-    }
-
-    [[nodiscard]] Status setProperty(Storage::Handle handle, std::string_view name, const Property &value) {
-        const auto& [status, ventries] = getVirtualEntries(handle);
-
-        if (!status.isOk())
-            return status;
-
-        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::setProperty, name, value);
-        auto ret = std::all_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
-
-        return ret? Status::Ok() : Status::InvalidOperation("Unable to set property");
-    }
-
-    [[nodiscard]] Status removeProperty(Storage::Handle handle, std::string_view name) {
-        const auto& [status, ventries] = getVirtualEntries(handle);
-
-        if (!status.isOk())
-            return status;
-
-        /* Removing property in all entries */
-        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::removeProperty, name);
-        auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
-
-        return ret? Status::Ok() : Status::InvalidOperation("Unable to remove properties");
-    }
-
-    [[nodiscard]] std::tuple<Status, bool> hasProperty(Storage::Handle handle, std::string_view name) {
-        const auto& [status, ventries] = getVirtualEntries(handle);
-
-        if (!status.isOk())
-            return {status, {}};
-
-        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::hasProperty, name);
-        auto hasProp = false;
-
-        /* checking with side-effect */
-        if (std::any_of(std::cbegin(results), std::cend(results),
-                        [&hasProp](const auto& t) {
-                            const auto& [status, v] = t;
-                            hasProp = hasProp || v;
-
-                            return !status.isOk();
-                        }))
-            return {Status::InvalidArgument("Unable to check property"), {}};
-
-        if (results.empty())
-            return {Status::InvalidArgument("Unknown error"), {}};
-
-        return {Status::Ok(), hasProp};
-    }
-
-    [[nodiscard]] Status expireProperty(Storage::Handle handle, std::string_view name, chrono::system_clock::time_point tp) {
-        const auto& [status, ventries] = getVirtualEntries(handle);
-
-        if (!status.isOk())
-            return status;
-
-        /* Expiring property in all entries */
-        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::expireProperty, name, tp);
-        auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
-
-        return ret? Status::Ok() : Status::InvalidOperation("Unable to expire property");
-    }
-
-    [[nodiscard]] Status cancelPropertyExpiration(Storage::Handle handle, std::string_view name) {
-        const auto& [status, ventries] = getVirtualEntries(handle);
-
-        if (!status.isOk())
-            return status;
-
-        /* Canceling property expiration in all entries */
-        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::cancelPropertyExpiration, name);
-        auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
-
-        return ret? Status::Ok() : Status::InvalidOperation("Unable to cancel property exp.");
-    }
-
-    [[nodiscard]] std::tuple<Status, Storage::Links> links(Storage::Handle handle) {
-        const auto& [status, ventries] = getVirtualEntries(handle);
-
-        if (!status.isOk())
-            return {status, {}};
-
-        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::links);
-
-        if (std::any_of(std::cbegin(results), std::cend(results),
-                        [](const auto& t) { const auto& [status, unused] = t; SKV_UNUSED(unused); return !status.isOk(); }))
-            return {Status::InvalidArgument("Unable to fetch links"), {}};
-
-        Storage::Links ret;
-
-        for (auto&& [status, ls] : results) {
-            SKV_UNUSED(status);
-
-            for (auto&& l : ls) {
-                if (auto it = ret.find(l); it == std::cend(ret))
-                    ret.insert(l);
-            }
-        }
-
-        return {Status::Ok(), ret};
-    }
-
-    [[nodiscard]] Status link(Storage::Handle handle, std::string_view name) {
-        const auto& [status, ventries] = getVirtualEntries(handle);
-
-        if (!status.isOk())
-            return status;
-
-        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::link, name);
-        auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
-
-        return ret? Status::Ok() : Status::InvalidOperation("Unable to create link");
-    }
-
-    [[nodiscard]] Status unlink(Handle handle, std::string_view name) {
-        const auto& [status, ventries] = getVirtualEntries(handle);
-
-        if (!status.isOk())
-            return status;
-
-        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::unlink, name);
-        auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
-
-        return ret? Status::Ok() : Status::InvalidOperation("Unable to remove link");
+		return std::static_pointer_cast<vfs::IEntry>(ptr);
     }
 
     [[nodiscard]] std::tuple<Status, std::string, std::vector<mount::Entry>> searchMountPathFor(std::string_view path) const {
@@ -443,48 +399,14 @@ struct Storage::Impl {
         return Status::Ok();
     }
 
-    [[nodiscard]] Storage::Handle addVirtualEntries(VirtualEntries&& ventries) {
-        auto handle = newHandle();
-
-        std::sort(std::begin(ventries), std::end(ventries), std::greater<>()); //sort from high priority to low
-
-        std::unique_lock locker(ventriesLock_);
-
-        ventries_.emplace(handle, ventries);
-
-        return handle;
-    }
-
-    [[nodiscard]] std::tuple<Status, VirtualEntries> getVirtualEntries(Storage::Handle handle) const {
-        std::shared_lock locker(ventriesLock_);
-
-        auto it = ventries_.find(handle);
-
-        if (it == std::cend(ventries_))
-            return {Status::InvalidArgument("No such handle"), {}};
-
-        return {Status::Ok(), it->second};
-    }
-
-    void removeVirtualEntries(Storage::Handle handle) {
-        std::unique_lock locker(ventriesLock_);
-
-        auto it = ventries_.find(handle);
-
-        if (it != std::end(ventries_))
-            ventries_.erase(it);
-    }
-
     [[nodiscard]] Storage::Handle newHandle() noexcept {
         return currentHandle_.fetch_add(1);
     }
 
     mount::Points mpoints_{};
-    std::unordered_map<Storage::Handle, VirtualEntries> ventries_;
     std::atomic<Storage::Handle> currentHandle_{IVolume::RootHandle + 1};
     mutable std::shared_mutex mpointsLock_;
-    mutable std::shared_mutex ventriesLock_;
-    ThreadPool<> threadPool_;
+    ThreadPool threadPool_;
 };
 
 }

@@ -7,12 +7,12 @@
 #include <gtest/gtest.h>
 
 #include <ondisk/ContainerStreamDevice.hpp>
-#include <ondisk/Entry.hpp>
+#include <ondisk/Record.hpp>
 #include <util/Unused.hpp>
 
 using namespace skv::ondisk;
 
-using E = Entry;
+using E = Record;
 
 TEST(EntryTest, BasicTest) {
     E root1{0, ""};

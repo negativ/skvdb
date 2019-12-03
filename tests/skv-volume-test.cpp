@@ -36,40 +36,34 @@ void mtTestRoutineN1(std::reference_wrapper<Volume> v) {
 
     Volume &volume = v;
 
-    auto [status, rootHandle] = volume.open("/");
+	auto root = volume.entry("/");
 
-    if (!status.isOk())
+    if (!root) {
         return;
-
-    {
-        auto id = std::to_string(hasher(std::this_thread::get_id()));
-        
-        SKV_UNUSED(volume.link(rootHandle, id).isOk());
-
-        auto path = "/" + id;
-
-        auto [status, self] = volume.open(path);
-
-        if (!status.isOk()) {
-            return;
-        }
-
-        for (size_t i = 0; i < NRUNS; ++i) {
-            if (i % 7 == 0)
-                SKV_UNUSED(volume.setProperty(self, std::to_string(i), Property{ double(i) }));
-            else if (i % 5 == 0) {
-                SKV_UNUSED(volume.setProperty(self, std::to_string(i), Property{ std::to_string(i) }));
-            }
-            else if (i % 3 == 0) {
-                SKV_UNUSED(volume.setProperty(self, std::to_string(i), Property{ float(i) }));
-            }
-            else
-                SKV_UNUSED(volume.setProperty(self, std::to_string(i), Property{ "fizz buzz" }));
-        }
-
-        SKV_UNUSED(volume.close(self));
-        SKV_UNUSED(volume.close(rootHandle));
     }
+
+	auto id = std::to_string(hasher(std::this_thread::get_id()));
+
+	SKV_UNUSED(volume.link(*root, id).isOk());
+
+	auto path = "/" + id;
+	auto handle = volume.entry(path);
+
+	if (!handle)
+		return;
+
+	for (size_t i = 0; i < NRUNS; ++i) {
+		if (i % 7 == 0)
+			SKV_UNUSED(handle->setProperty(std::to_string(i), Property{ double(i) }));
+		else if (i % 5 == 0) {
+			SKV_UNUSED(handle->setProperty(std::to_string(i), Property{ std::to_string(i) }));
+		}
+		else if (i % 3 == 0) {
+			SKV_UNUSED(handle->setProperty(std::to_string(i), Property{ float(i) }));
+		}
+		else
+			SKV_UNUSED(handle->setProperty(std::to_string(i), Property{ "fizz buzz" }));
+	}
 }
 
 TEST(VolumeTest, MTTestN1) {
@@ -124,37 +118,30 @@ void mtTestRoutineN2(std::reference_wrapper<Volume> v) {
 
     Volume &volume = v;
 
-    auto [status, rootHandle] = volume.open("/");
+	auto root = volume.entry("/");
 
-    if (!status.isOk())
-        return;
+	if (!root)
+		return;
 
-    {
-        auto id = std::to_string(hasher(std::this_thread::get_id()));
-        auto path = "/test";
+	auto id = std::to_string(hasher(std::this_thread::get_id()));
+	auto path = "/test";
+	auto handle = volume.entry(path);
 
-        auto [status, self] = volume.open(path);
+	if (!handle)
+		return;
 
-        if (!status.isOk()) {
-            return;
-        }
-
-        for (size_t i = 0; i < NRUNS; ++i) {
-            if (i % 7 == 0)
-                SKV_UNUSED(volume.setProperty(self, id + std::to_string(i), Property{double(i)}));
-            else if (i % 5 == 0) {
-                SKV_UNUSED(volume.setProperty(self, id + std::to_string(i), Property{std::to_string(i)}));
-            }
-            else if (i % 3 == 0) {
-                SKV_UNUSED(volume.setProperty(self, id + std::to_string(i), Property{float(i)}));
-            }
-            else
-                SKV_UNUSED(volume.setProperty(self, id + std::to_string(i), Property{"fizz buzz"}));
-        }
-
-        SKV_UNUSED(volume.close(self));
-        SKV_UNUSED(volume.close(rootHandle));
-    }
+	for (size_t i = 0; i < NRUNS; ++i) {
+		if (i % 7 == 0)
+			SKV_UNUSED(handle->setProperty(id + std::to_string(i), Property{ double(i) }));
+		else if (i % 5 == 0) {
+			SKV_UNUSED(handle->setProperty(id + std::to_string(i), Property{ std::to_string(i) }));
+		}
+		else if (i % 3 == 0) {
+			SKV_UNUSED(handle->setProperty(id + std::to_string(i), Property{ float(i) }));
+		}
+		else
+			SKV_UNUSED(handle->setProperty(id + std::to_string(i), Property{ "fizz buzz" }));
+	}
 }
 
 TEST(VolumeTest, MTTestN2) {
@@ -171,11 +158,11 @@ TEST(VolumeTest, MTTestN2) {
     ASSERT_TRUE(opened.isOk());
     ASSERT_TRUE(volume.initialized());
 
-    auto [status, rootHandle] = volume.open("/");
+	auto root = volume.entry("/");
 
-    ASSERT_TRUE(status.isOk());
+    ASSERT_TRUE(root != nullptr);
 
-    ASSERT_TRUE(volume.link(rootHandle, "test").isOk());
+    ASSERT_TRUE(volume.link(*root, "test").isOk());
 
     std::vector<std::thread> threads;
     std::generate_n(std::back_inserter(threads),
@@ -198,18 +185,11 @@ TEST(VolumeTest, MTTestN2) {
 
     Log::i("MTTest", "Test #2 has took ", duration_cast<milliseconds>(endTime - startTime).count(), " ms");
 
-    {
-        auto [status, self] = volume.open("/test");
-        ASSERT_TRUE(status.isOk());
+	auto handle = volume.entry("/test");
+	ASSERT_TRUE(handle != nullptr);
 
-        {
-            const auto& [status, properties] = volume.properties(self);
-            SKV_UNUSED(status);
-            ASSERT_EQ(properties.size(), NRUNS * threads.size());
-        }
-
-        ASSERT_TRUE(volume.close(self).isOk());
-    }
+	const auto& properties = handle->properties();
+	ASSERT_EQ(properties.size(), NRUNS * threads.size());
 
     ASSERT_TRUE(volume.deinitialize().isOk());
     ASSERT_FALSE(volume.initialized());
@@ -242,119 +222,95 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
     ASSERT_FALSE(volume.release(Volume::Token{}).isOk());
 
     {
-        auto [status, rootHandle] = volume.open("/");
+        auto root = volume.entry("/");
 
+        ASSERT_TRUE(root != nullptr);
+
+        status = volume.link(*root, "dev");
         ASSERT_TRUE(status.isOk());
 
-        status = volume.link(rootHandle, "dev");
+        status = volume.link(*root, "proc");
         ASSERT_TRUE(status.isOk());
 
-        status = volume.link(rootHandle, "proc");
+        status = volume.link(*root, "usr");
         ASSERT_TRUE(status.isOk());
 
-        status = volume.link(rootHandle, "usr");
-        ASSERT_TRUE(status.isOk());
-
-        {
-            auto [status, children] = volume.links(rootHandle);
-            SKV_UNUSED(status);
-            ASSERT_EQ(children.size(), 3);
-        }
-
-        SKV_UNUSED(volume.close(rootHandle));
+		auto children = root->children();
+		ASSERT_EQ(children.size(), 3);
     }
 
     {
-        auto [status, procHandle] = volume.open("/proc");
+        auto proc = volume.entry("/proc");
 
+        ASSERT_TRUE(proc != nullptr);
+
+        status = volume.link(*proc, "1");
         ASSERT_TRUE(status.isOk());
 
-        status = volume.link(procHandle, "1");
+        status = volume.link(*proc, "2");
         ASSERT_TRUE(status.isOk());
 
-        status = volume.link(procHandle, "2");
-        ASSERT_TRUE(status.isOk());
-
-        {
-            auto [status, children] = volume.links(procHandle);
-            SKV_UNUSED(status);
-            ASSERT_EQ(children.size(), 2);
-        }
-
-        SKV_UNUSED(volume.close(procHandle));
+		auto children = proc->children();
+		ASSERT_EQ(children.size(), 2);
     }
 
     {
-        auto [status, procHandle] = volume.open("/proc");
+		auto proc = volume.entry("/proc");
 
-        {
-            auto [status, children] = volume.links(procHandle);
-            SKV_UNUSED(status);
-            ASSERT_EQ(children.size(), 2);
-        }
+		ASSERT_TRUE(proc != nullptr);
 
-        status = volume.link(procHandle, "self");
+		auto children = proc->children();
+		ASSERT_EQ(children.size(), 2);
+
+        status = volume.link(*proc, "self");
         ASSERT_TRUE(status.isOk());
 
-        status = volume.link(procHandle, "self");
+        status = volume.link(*proc, "self");
         ASSERT_FALSE(status.isOk());
-
-        ASSERT_TRUE(volume.close(procHandle).isOk());
     }
 
     {
-        auto [status, selfHandle] = volume.open("/proc/self");
-        SKV_UNUSED(status);
-        {
-            auto [status, children] = volume.links(selfHandle);
-            SKV_UNUSED(status);
-            ASSERT_TRUE(children.empty());
-        }
+		auto self = volume.entry("/proc/self");
 
-        ASSERT_TRUE(volume.setProperty(selfHandle, "int_property", 1).isOk());
-        ASSERT_TRUE(volume.setProperty(selfHandle, "str_property", "some text").isOk());
-        ASSERT_TRUE(volume.setProperty(selfHandle, "flt_property", 1024.0f).isOk());
-        ASSERT_TRUE(volume.setProperty(selfHandle, "dbl_property", 4096.0).isOk());
+		ASSERT_TRUE(self != nullptr);
 
-        ASSERT_TRUE(volume.close(selfHandle).isOk());
+		auto children = self->children();
+		ASSERT_TRUE(children.empty());
+
+        ASSERT_TRUE(self->setProperty("int_property", 1).isOk());
+        ASSERT_TRUE(self->setProperty("str_property", "some text").isOk());
+        ASSERT_TRUE(self->setProperty("flt_property", 1024.0f).isOk());
+        ASSERT_TRUE(self->setProperty("dbl_property", 4096.0).isOk());
     }
 
     {
-        auto [status, selfHandle] = volume.open("/proc/self");
-        SKV_UNUSED(status);
-        {
-            auto [status, children] = volume.links(selfHandle);
-            SKV_UNUSED(status);
-            ASSERT_TRUE(children.empty());
-        }
+		auto self = volume.entry("/proc/self");
 
-        auto [s1, b1] = volume.hasProperty(selfHandle, "int_property");
-        auto [s2, b2] = volume.hasProperty(selfHandle, "str_property");
-        auto [s3, b3] = volume.hasProperty(selfHandle, "flt_property");
-        auto [s4, b4] = volume.hasProperty(selfHandle, "dbl_property");
+		ASSERT_TRUE(self != nullptr);
 
-        ASSERT_TRUE(s1.isOk() && b1);
-        ASSERT_TRUE(s2.isOk() && b2);
-        ASSERT_TRUE(s3.isOk() && b3);
-        ASSERT_TRUE(s4.isOk() && b4);
+		auto children = self->children();
+		ASSERT_TRUE(children.empty());
 
-        ASSERT_TRUE(volume.close(selfHandle).isOk());
+        ASSERT_TRUE(self->hasProperty("int_property"));
+		ASSERT_TRUE(self->hasProperty("str_property"));
+		ASSERT_TRUE(self->hasProperty("flt_property"));
+		ASSERT_TRUE(self->hasProperty("dbl_property"));
     }
 
     {
-        auto [status, selfHandle] = volume.open("/proc/self");
-        SKV_UNUSED(status);
-        auto [s1, v1] = volume.property(selfHandle, "int_property");
-        auto [s2, v2] = volume.property(selfHandle, "str_property");
-        auto [s3, v3] = volume.property(selfHandle, "flt_property");
-        auto [s4, v4] = volume.property(selfHandle, "dbl_property");
+		auto self = volume.entry("/proc/self");
+
+		ASSERT_TRUE(self != nullptr);
+
+        auto [s1, v1] = self->property("int_property");
+        auto [s2, v2] = self->property("str_property");
+        auto [s3, v3] = self->property("flt_property");
+        auto [s4, v4] = self->property("dbl_property");
 
         ASSERT_TRUE(s1.isOk() && v1 == Property{1});
         ASSERT_TRUE(s2.isOk() && v2 == Property{"some text"});
         ASSERT_TRUE(s3.isOk() && v3 == Property{1024.0f});
         ASSERT_TRUE(s4.isOk() && v4 == Property{4096.0});
-
-        ASSERT_TRUE(volume.close(selfHandle).isOk());
     }
 
     ASSERT_TRUE(volume.deinitialize().isOk());
@@ -364,44 +320,6 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
 
     ASSERT_TRUE(status.isOk());
     ASSERT_TRUE(volume.initialized());
-
-    {
-        auto [status, selfHandle] = volume.open("/proc/self");
-        SKV_UNUSED(status);
-        {
-            auto [status, children] = volume.links(selfHandle);
-            SKV_UNUSED(status);
-            ASSERT_TRUE(children.empty());
-        }
-
-        auto [s1, b1] = volume.hasProperty(selfHandle, "int_property");
-        auto [s2, b2] = volume.hasProperty(selfHandle, "str_property");
-        auto [s3, b3] = volume.hasProperty(selfHandle, "flt_property");
-        auto [s4, b4] = volume.hasProperty(selfHandle, "dbl_property");
-
-        ASSERT_TRUE(s1.isOk() && b1);
-        ASSERT_TRUE(s2.isOk() && b2);
-        ASSERT_TRUE(s3.isOk() && b3);
-        ASSERT_TRUE(s4.isOk() && b4);
-
-        ASSERT_TRUE(volume.close(selfHandle).isOk());
-    }
-
-    {
-        auto [status, selfHandle] = volume.open("/proc/self");
-        SKV_UNUSED(status);
-        auto [s1, v1] = volume.property(selfHandle, "int_property");
-        auto [s2, v2] = volume.property(selfHandle, "str_property");
-        auto [s3, v3] = volume.property(selfHandle, "flt_property");
-        auto [s4, v4] = volume.property(selfHandle, "dbl_property");
-
-        ASSERT_TRUE(s1.isOk() && v1 == Property{1});
-        ASSERT_TRUE(s2.isOk() && v2 == Property{"some text"});
-        ASSERT_TRUE(s3.isOk() && v3 == Property{1024.0f});
-        ASSERT_TRUE(s4.isOk() && v4 == Property{4096.0});
-
-        ASSERT_TRUE(volume.close(selfHandle).isOk());
-    }
 
     ASSERT_TRUE(volume.deinitialize().isOk());
     ASSERT_FALSE(volume.initialized());

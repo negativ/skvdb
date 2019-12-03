@@ -34,27 +34,27 @@ using namespace skv::vfs;
 /**
  * @brief Volume entry
  */
-class Entry final {
+class Record final {
 public:
     using Child = std::pair<std::string, IEntry::Handle>;
     using Children = std::map<std::string, IEntry::Handle>;
 
-    Entry():
+    Record():
         impl_{std::make_unique<Impl>()}
     {
 
     }
 
-    ~Entry() noexcept  = default;
+    ~Record() noexcept  = default;
 
-    Entry(IEntry::Handle handle, std::string name):
-        Entry()
+    Record(IEntry::Handle handle, std::string name):
+        Record()
     {
         impl_->key_ = handle;
         impl_->name_ = std::move(name);
     }
 
-    Entry(const Entry& other) {
+    Record(const Record& other) {
         using std::swap;
 
         ImplPtr copy = std::make_unique<Impl>();
@@ -63,7 +63,7 @@ public:
         swap(impl_, copy);
     }
 
-    Entry& operator=(const Entry& other) {
+    Record& operator=(const Record& other) {
         using std::swap;
 
         ImplPtr copy = std::make_unique<Impl>();
@@ -74,13 +74,13 @@ public:
         return *this;
     }
 
-    Entry(Entry&& other) noexcept {
+    Record(Record&& other) noexcept {
         using std::swap;
 
         swap(impl_, other.impl_);
     }
 
-    Entry& operator=(Entry&& other) noexcept {
+    Record& operator=(Record&& other) noexcept {
         using std::swap;
 
         swap(impl_, other.impl_);
@@ -178,7 +178,7 @@ public:
         return ret;
     }
 
-    [[nodiscard]] Status addChild(Entry& e) {
+    [[nodiscard]] Status addChild(Record& e) {
         if (e.parent() != IVolume::InvalidHandle)
             return Status::InvalidArgument("Entry already has a parent");
 
@@ -193,7 +193,7 @@ public:
         return Status::InvalidArgument("Duplicate entry");
     }
 
-    [[nodiscard]] Status removeChild(Entry& e) {
+    [[nodiscard]] Status removeChild(Record& e) {
         auto& index = impl_->children_.template get<typename Impl::ChildByKey>();
 
         auto it = index.find(e.handle());
@@ -217,7 +217,7 @@ public:
         return ret;
     }
 
-    [[nodiscard]] bool operator==(const Entry& other) const noexcept {
+    [[nodiscard]] bool operator==(const Record& other) const noexcept {
         return handle() == other.handle() &&
                parent() == other.parent() &&
                name() == other.name() &&
@@ -225,21 +225,21 @@ public:
                properties() == other.properties(); // need better way to do this
     }
 
-    [[nodiscard]] bool operator!=(const Entry& other) const noexcept {
+    [[nodiscard]] bool operator!=(const Record& other) const noexcept {
         return !(*this == other);
     }
 
-    [[nodiscard]] bool operator<(const Entry& other) const noexcept {
+    [[nodiscard]] bool operator<(const Record& other) const noexcept {
         return handle() < other.handle();
     }
 
-    [[nodiscard]] bool operator>(const Entry& other) const noexcept {
+    [[nodiscard]] bool operator>(const Record& other) const noexcept {
         return handle() > other.handle();
     }
 
 private:
-    friend std::ostream& operator<<(std::ostream& _os, const Entry& p);
-    friend std::istream& operator>>(std::istream& _is, Entry& p);
+    friend std::ostream& operator<<(std::ostream& _os, const Record& p);
+    friend std::istream& operator>>(std::istream& _is, Record& p);
 
     void setParent(IEntry::Handle p) noexcept {
         impl_->parent_ = p;
@@ -298,7 +298,7 @@ private:
 
 };
 
-inline std::istream& operator>>(std::istream& _is, Entry& p) {
+inline std::istream& operator>>(std::istream& _is, Record& p) {
     namespace be = boost::endian;
 
     Deserializer ds{_is};
@@ -311,7 +311,7 @@ inline std::istream& operator>>(std::istream& _is, Entry& p) {
        >> parent
        >> name;
 
-    Entry ret{handle, name};
+    Record ret{handle, name};
     ret.setParent(parent);
 
     std::uint64_t propertiesCount;
@@ -338,7 +338,7 @@ inline std::istream& operator>>(std::istream& _is, Entry& p) {
         ds >> cname
            >> chandle;
 
-        Entry child(chandle, cname);
+        Record child(chandle, cname);
 
         [[maybe_unused]] auto status = ret.addChild(child);
 
@@ -367,8 +367,8 @@ inline std::istream& operator>>(std::istream& _is, Entry& p) {
     return _is;
 }
 
-inline std::ostream& operator<<(std::ostream& _os, const Entry& p) {
-    const_cast<Entry&>(p).doPropertyCleanup();
+inline std::ostream& operator<<(std::ostream& _os, const Record& p) {
+    const_cast<Record&>(p).doPropertyCleanup();
 
     Serializer s{_os};
 

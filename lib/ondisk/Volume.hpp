@@ -42,27 +42,15 @@ public:
     Volume(Volume&&) = delete;
     Volume& operator=(Volume&&) = delete;
 
-    // vfs::IVolume interface
-    [[nodiscard]] Status initialize(std::string_view directory, std::string_view volumeName) override;
-    [[nodiscard]] Status deinitialize() override;
-    [[nodiscard]] bool initialized() const noexcept override;
+    [[nodiscard]] Status initialize(const std::string& directory, const std::string& volumeName);
+    [[nodiscard]] Status deinitialize();
+
+    [[nodiscard]] bool initialized() const noexcept;
 
     std::shared_ptr<IEntry> entry(const std::string& path) override;
-    [[nodiscard]] std::tuple<Status, Handle> open(std::string_view path) override;
-    [[nodiscard]] Status close(Handle handle) override;
 
-    [[nodiscard]] std::tuple<Status, Properties> properties(Handle handle) override;
-    [[nodiscard]] std::tuple<Status, PropertiesNames> propertiesNames(Handle handle) override;
-    [[nodiscard]] std::tuple<Status, Property> property(Handle h, std::string_view name) override;
-    [[nodiscard]] Status setProperty(Handle h, std::string_view name, const Property& value) override;
-    [[nodiscard]] Status removeProperty(Handle h, std::string_view name) override;
-    [[nodiscard]] std::tuple<Status, bool> hasProperty(Handle h, std::string_view name) override;
-    [[nodiscard]] Status expireProperty(Handle h, std::string_view name, chrono::system_clock::time_point tp) override;
-    [[nodiscard]] Status cancelPropertyExpiration(Handle h, std::string_view name) override;
-
-    [[nodiscard]] std::tuple<Status, Links> links(Handle handle) override;
-    [[nodiscard]] Status link(Handle handle, std::string_view name) override;
-    [[nodiscard]] Status unlink(Handle handle, std::string_view name) override;
+    [[nodiscard]] Status link(IEntry& entry, std::string_view name) override;
+    [[nodiscard]] Status unlink(IEntry& entry, std::string_view name) override;
 
     [[nodiscard]] Status claim(Token token) noexcept override;
     [[nodiscard]] Status release(Token token) noexcept override;

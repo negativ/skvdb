@@ -14,58 +14,26 @@ Storage::Storage(Storage &&other) noexcept {
     std::swap(impl_, other.impl_);
 }
 
+std::shared_ptr<IEntry> Storage::entry(const std::string &path) {
+	return impl_->entry(path);
+}
+
 Storage::~Storage() noexcept = default;
 
-std::tuple<Status, Storage::Handle> Storage::open(std::string_view path) {
-    return impl_->open(path);
+Status Storage::link(IEntry &entry, std::string_view name) {
+	return Status::IOError(""); // TODO: implement
 }
 
-Status Storage::close(Storage::Handle handle) {
-    return impl_->close(handle);
+Status Storage::unlink(IEntry &entry, std::string_view name) {
+	return Status::IOError(""); // TODO: implement
 }
 
-std::tuple<Status, Storage::Properties > Storage::properties(Storage::Handle handle) {
-    return impl_->properties(handle);
+Status Storage::claim(IVolume::Token token) noexcept {
+	return Status::IOError(""); // TODO: implement
 }
 
-std::tuple<Status, Storage::PropertiesNames> Storage::propertiesNames(Handle handle) {
-    return impl_->propertiesNames(handle);
-}
-
-std::tuple<Status, Property> Storage::property(Storage::Handle handle, std::string_view name) {
-    return impl_->property(handle, name);
-}
-
-Status Storage::setProperty(Storage::Handle handle, std::string_view name, const Property &value) {
-    return impl_->setProperty(handle, name, value);
-}
-
-Status Storage::removeProperty(Storage::Handle handle, std::string_view name) {
-    return impl_->removeProperty(handle, name);
-}
-
-std::tuple<Status, bool> Storage::hasProperty(Storage::Handle handle, std::string_view name) {
-    return impl_->hasProperty(handle, name);
-}
-
-Status Storage::expireProperty(Storage::Handle handle, std::string_view name, chrono::system_clock::time_point tp) {
-    return impl_->expireProperty(handle, name, tp);
-}
-
-Status Storage::cancelPropertyExpiration(Storage::Handle handle, std::string_view name) {
-    return impl_->cancelPropertyExpiration(handle, name);
-}
-
-std::tuple<Status, Storage::Links> Storage::links(Storage::Handle handle) {
-    return impl_->links(handle);
-}
-
-Status Storage::link(Storage::Handle handle, std::string_view name) {
-    return impl_->link(handle, name);
-}
-
-Status Storage::unlink(Handle handle, std::string_view name) {
-    return impl_->unlink(handle, name);
+Status Storage::release(IVolume::Token token) noexcept {
+	return Status::IOError(""); // TODO: implement
 }
 
 Status Storage::mount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath, Storage::Priority prio) {

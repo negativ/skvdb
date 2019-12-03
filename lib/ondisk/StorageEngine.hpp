@@ -14,7 +14,7 @@
 #include <boost/iostreams/stream.hpp>
 
 #include "ContainerStreamDevice.hpp"
-#include "Entry.hpp"
+#include "Record.hpp"
 #include "IndexTable.hpp"
 #include "LogDevice.hpp"
 #include "os/File.hpp"
@@ -52,7 +52,7 @@ public:
     using index_record_type = typename index_table_type::index_record_type;
     using buffer_type       = std::vector<char>;
     using log_device_type   = LogDevice<block_index_type, block_index_type, buffer_type>;
-    using entry_type        = Entry;
+    using record_type       = Record;
 
     static_assert (std::is_integral_v<key_type>,            "Key type should be integral");
     static_assert (std::is_unsigned_v<block_index_type>,    "Block index type should be unsigned");
@@ -83,11 +83,11 @@ public:
     StorageEngine(StorageEngine&&) = delete;
     StorageEngine& operator=(StorageEngine&&) = delete;
 
-    [[nodiscard]] std::tuple<Status, entry_type> load(const entry_type& e) {
+    [[nodiscard]] std::tuple<Status, record_type> load(const record_type& e) {
         return load(e.handle());
     }
 
-    [[nodiscard]] std::tuple<Status, entry_type> load(const key_type& key) {
+    [[nodiscard]] std::tuple<Status, record_type> load(const key_type& key) {
         namespace io = boost::iostreams;
 
         if (key == InvalidEntryId)
@@ -112,7 +112,7 @@ public:
                 return {status, {}};
 
             io::stream<ContainerStreamDevice<buffer_type>> stream(buffer);
-            entry_type e;
+            record_type e;
 
             stream.seekg(0, BOOST_IOS::beg);
             stream >> e;
@@ -126,7 +126,7 @@ public:
         return {Status::Fatal("Unknown error"), {}};
     }
 
-    [[nodiscard]] Status save(const entry_type& e) {
+    [[nodiscard]] Status save(const record_type& e) {
         namespace io = boost::iostreams;
 
         if (e.handle() == InvalidEntryId)
@@ -171,7 +171,7 @@ public:
         return insertIndexRecord(index_record_type{e.handle(), blockIndex, bytes_count_type(buffer.size())});
     }
 
-    [[nodiscard]] Status remove(const entry_type& e) {
+    [[nodiscard]] Status remove(const record_type& e) {
         return remove(e.handle());
     }
 
@@ -336,7 +336,7 @@ private:
     [[nodiscard]] Status createRootIndex() {
         resetKeyCounter();
 
-        entry_type root{newKey(), ""};
+        record_type root{newKey(), ""};
 
         return save(root);
     }
