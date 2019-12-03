@@ -29,6 +29,66 @@ using namespace skv::util;
 using ThreadPool = util::ThreadPool<>;
 
 class EntryImpl final : public vfs::IEntry {
+    static constexpr const char* const TAG = "vfs::Storage";
+
+    template <typename Iterator>
+    void waitAllFutures(Iterator start, Iterator stop) const  {
+        using namespace std::literals;
+
+        while (!std::all_of(start, stop,
+                            [](auto& f) { return (f.wait_for(0ms) == std::future_status::ready); }))
+            threadPool_.get().throttle(); // helping thread pool to do his work
+    }
+
+    template <typename F, typename ... Args>
+    auto forEachEntry(F&& func, Args&& ... args) const {
+        using namespace std::literals;
+        using result      = std::invoke_result_t<F, IEntry*, Args...>;
+        using future      = std::future<result>;
+        using future_list = std::vector<future>;
+        using result_list = std::vector<result>;
+
+        auto start = std::begin(entries_),
+             stop  = std::end(entries_);
+
+        if (start == stop)
+            return result_list{};
+
+        result_list results;
+        future_list futures;
+
+        auto it = start;
+
+        std::advance(start, 1); // first call in current thread context
+
+        while (start != stop) {
+            auto& entry = (*start);
+
+            try {
+                futures.emplace_back(threadPool_.get().schedule(std::forward<F>(func), entry.get(), std::forward<Args>(args)...));
+            }
+            catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); }
+
+            ++start;
+        }
+
+        try {
+            results.emplace_back(std::invoke(std::forward<F>(func), (*it).get(), std::forward<Args>(args)...));
+        }
+        catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); }
+
+        waitAllFutures(std::begin(futures), std::end(futures));
+
+        for (auto& f : futures) {
+            try {
+                results.emplace_back(f.get());
+            }
+            catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); }
+        }
+
+        return  results;
+    }
+
 public:
 	using Entries = std::vector<std::shared_ptr<IEntry>>;
 	using Volumes = std::vector<IVolumePtr>;
@@ -52,105 +112,129 @@ public:
 		return ""; // TODO: implement
 	}
 
-	bool hasProperty(const std::string& prop) const noexcept override {
-		return false; // TODO: implement
+    bool hasProperty(const std::string& prop) const noexcept override {
+        auto results = forEachEntry(&IEntry::hasProperty, prop);
+
+        return std::any_of(std::cbegin(results), std::cend(results),
+                           [](auto v) { return v; });
 	}
 
-	Status setProperty(const std::string& prop, const Property& value) override {
-		return Status::IOError(""); // TODO: implement
+    Status setProperty(const std::string& prop, const Property& value) override {
+        auto results = forEachEntry(&IEntry::setProperty, prop, value);
+
+        auto ok = std::all_of(std::cbegin(results), std::cend(results),
+                              [](auto&& status) { return status.isOk(); });
+
+        return ok? Status::Ok() : Status::InvalidOperation("Unknown error");
 	}
 
 	std::tuple<Status, Property> property(const std::string& prop) const override {
-		return { Status::IOError(""), {} }; // TODO: implement
+        auto results = forEachEntry(&IEntry::property, prop);
+
+        for (const auto& [status, value] : results) {
+            if (status.isOk())
+                return {status, value};
+        }
+
+        return {Status::InvalidArgument("No such property"), {}};
 	}
 
 	Status removeProperty(const std::string& prop) override {
-		return Status::IOError(""); // TODO: implement
+        auto results = forEachEntry(&IEntry::removeProperty, prop);
+
+        auto ok = std::any_of(std::cbegin(results), std::cend(results),
+                              [](auto&& status) { return status.isOk(); });
+
+        return ok? Status::Ok() : Status::InvalidArgument("No such property");
 	}
 
 	Properties properties() const override {
-		return {}; // TODO: implement
+        auto results = forEachEntry(&IEntry::properties);
+
+        if (results.empty())
+            return {};
+
+        Properties ret = std::move(results[0]); // just moving first result to result (properties from entry with highest priority)
+
+        for (std::size_t i = 1; i < results.size(); ++i) {
+            auto& props = results[i];
+
+            for (const auto& [key, value] : props) {
+                if (auto it = ret.find(key); it != std::cend(ret))
+                    ret[key] = value;
+            }
+        }
+
+        return ret;
 	}
 
 	std::set<std::string> propertiesNames() const override {
-		return {}; // TODO: implement
+        auto results = forEachEntry(&IEntry::propertiesNames);
+
+        if (results.empty())
+            return {};
+
+        std::set<std::string> ret = std::move(results[0]); // just moving first result to result (properties from entry with highest priority)
+
+        for (std::size_t i = 1; i < results.size(); ++i) {
+            auto& props = results[i];
+
+            for (auto& name : props) {
+                if (auto it = ret.find(name); it != std::cend(ret))
+                    ret.insert(name);
+            }
+        }
+
+        return ret;
 	}
 
 	Status expireProperty(const std::string& prop, chrono::milliseconds ms) override {
-		return Status::IOError(""); // TODO: implement
+        auto results = forEachEntry(&IEntry::expireProperty, prop, ms);
+
+        auto ok = std::any_of(std::cbegin(results), std::cend(results),
+                              [](auto&& status) { return status.isOk(); });
+
+        return ok? Status::Ok() : Status::InvalidArgument("No such property");
 	}
 
 	Status cancelPropertyExpiration(const std::string& prop) override {
-		return Status::IOError(""); // TODO: implement
+        auto results = forEachEntry(&IEntry::cancelPropertyExpiration, prop);
+
+        auto ok = std::any_of(std::cbegin(results), std::cend(results),
+                              [](auto&& status) { return status.isOk(); });
+
+        return ok? Status::Ok() : Status::InvalidArgument("No such property");
 	}
 
 	std::set<std::string> children() const override {
-		return {}; // TODO: implement
+        auto results = forEachEntry(&IEntry::children);
+
+        if (results.empty())
+            return {};
+
+        std::set<std::string> ret = std::move(results[0]); // just moving first result to result (properties from entry with highest priority)
+
+        for (std::size_t i = 1; i < results.size(); ++i) {
+            auto& props = results[i];
+
+            for (auto& name : props) {
+                if (auto it = ret.find(name); it != std::cend(ret))
+                    ret.insert(name);
+            }
+        }
+
+        return ret;
 	}
 
-private:
-	template <typename Iterator>
-	void waitAllFutures(Iterator start, Iterator stop) {
-		using namespace std::literals;
-
-		while (!std::all_of(start, stop,
-			[](auto& f) { return (f.wait_for(0ms) == std::future_status::ready); }))
-			threadPool_.throttle(); // helping thread pool to do his work
-	}
-
-	template <typename Iterator, typename F, typename ... Args>
-    auto forEachEntry(F&& func, Args&& ... args) {
-        using namespace std::literals;
-        using result      = std::invoke_result_t<F, IEntry*, Args...>;
-        using future      = std::future<result>;
-        using future_list = std::vector<future>;
-        using result_list = std::vector<result>;
-
-		auto start = std::begin(entries_),
-			 stop  = std::end(entries_);
-        
-		if (start == stop)
-			return result_list{};
-
-		result_list results;
-		future_list futures;
-
-		auto it = start;
-
-		std::advance(start, 1); // first call in current thread context
-
-		while (start != stop) {
-			auto& entry = (*start);
-
-			try {
-				futures.emplace_back(threadPool_.schedule(std::forward<F>(func), entry.get(), std::forward<Args>(args)...));
-			}
-			catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); } 
-
-			++start;
-		}
-
-		try {
-			results.emplace_back(std::invoke(std::forward<F>(func), (*it).get(), std::forward<Args>(args)...));
-		}
-		catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); }
-
-		waitAllFutures(std::begin(futures), std::end(futures));
-
-		for (auto& f : futures) {
-			try {
-				results.emplace_back(f.get());
-			}
-			catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); }
-		}
-
-        return  results;
+    Volumes& volumes() const noexcept {
+        return volumes_;
     }
 
+private:
 	Handle handle_;
-	Entries entries_;
-	Volumes volumes_;
-	std::reference_wrapper<ThreadPool> threadPool_;
+    mutable Entries entries_;
+    mutable Volumes volumes_;
+    mutable std::reference_wrapper<ThreadPool> threadPool_;
 };
 
 struct Storage::Impl {
@@ -177,7 +261,7 @@ struct Storage::Impl {
 
     [[nodiscard]] std::shared_ptr<IEntry> entry(std::string_view path) {
         using result      = std::shared_ptr<IEntry>;
-        using future      = std::future<result>;
+        using future      = std::future<std::pair<IVolumePtr, result>>;
         using future_list = std::vector<future>;
         using result_list = std::vector<result>;
 
@@ -191,16 +275,14 @@ struct Storage::Impl {
 
         auto subvpath = vpath.substr(mountPath.size(), vpath.size() - mountPath.size()); // extracting subpath from vpath
         future_list futures;
-		EntryImpl::Volumes volumes;
 
         try {
 			for (auto& mentry : mountEntries) {
-				futures.emplace_back(threadPool_.schedule([&]() -> result {
+                futures.emplace_back(threadPool_.schedule([&]() -> std::pair<IVolumePtr, result> {
 															auto volume = mentry.volume();
-															auto subpath = simplifyPath(mentry.entryPath() + "/" + subvpath);
-															return volume->entry(subpath);
+                                                            auto subpath = simplifyPath(mentry.entryPath() + "/" + subvpath);
+                                                            return {volume, volume->entry(subpath)};
 														 }));
-				volumes.emplace_back(mentry.volume());
 			}
         }
         catch (const std::exception &e) {
@@ -212,15 +294,19 @@ struct Storage::Impl {
         waitAllFutures(std::begin(futures), std::end(futures));
 
         result_list results;
+        EntryImpl::Volumes volumes;
 
 		for (auto& f : futures) {
 			try {
-				results.emplace_back(f.get());
+                auto [volume, entry] = f.get();
+
+                volumes.emplace_back(std::move(volume));
+                results.emplace_back(std::move(entry));
 			}
 			catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); }
 		}
 
-		if (results.empty())
+        if (results.empty() || (volumes.size() != results.size()))
 			return {};
 
 		auto ptr = std::make_shared<EntryImpl>(newHandle(), std::move(results), std::move(volumes), threadPool_);
