@@ -31,26 +31,6 @@ public:
     IVolume& operator=(IVolume&&) = delete;
 
     /**
-     * @brief Initialize volume "volumeName" in directory "directory"
-     * @param directory - volume location (directory)
-     * @param volumeName - volume name
-     * @return Status::Ok() on success
-     */
-    [[nodiscard]] virtual Status initialize(const std::string& directory, const std::string& volumeName) = 0;
-
-    /**
-     * @brief Deinitialize volume
-     * @return
-     */
-    [[nodiscard]] virtual Status deinitialize() = 0;
-
-    /**
-     * @brief Check volume is initialized
-     * @return
-     */
-    [[nodiscard]] virtual bool initialized() const noexcept  = 0;
-
-    /**
      * @brief Get entry at specified path
      * @param path - path to the entry
      * @return

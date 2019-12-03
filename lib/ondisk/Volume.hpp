@@ -42,10 +42,10 @@ public:
     Volume(Volume&&) = delete;
     Volume& operator=(Volume&&) = delete;
 
-    // vfs::IVolume interface
-    [[nodiscard]] Status initialize(const std::string& directory, const std::string& volumeName) override;
-    [[nodiscard]] Status deinitialize() override;
-    [[nodiscard]] bool initialized() const noexcept override;
+    [[nodiscard]] Status initialize(const std::string& directory, const std::string& volumeName);
+    [[nodiscard]] Status deinitialize();
+
+    [[nodiscard]] bool initialized() const noexcept;
 
     std::shared_ptr<IEntry> entry(const std::string& path) override;
 

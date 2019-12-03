@@ -5,6 +5,7 @@
 #include <string>
 
 #include "IVolume.hpp"
+#include "IEntry.hpp"
 
 namespace skv::vfs::mount {
 
@@ -49,7 +50,7 @@ public:
      * @brief Handle of the entry
      * @return
      */
-    [[nodiscard]] IVolume::Handle handle() const noexcept;
+    [[nodiscard]] std::shared_ptr<IEntry> entry() const;
 
     /**
      * @brief Entry priority

@@ -29,7 +29,7 @@ using namespace skv::util;
 using VirtualEntries = std::vector<VirtualEntry>;
 
 struct Storage::Impl {
-//    const Status InvalidVolumeArgumentStatus = Status::InvalidArgument("Invalid volume");
+    static constexpr Status InvalidVolumeArgumentStatus = Status::InvalidArgument("Invalid volume");
 
 //    template <typename Iterator, typename F, typename ... Args>
 //    auto forEachEntry(Iterator start, Iterator stop, F&& func, Args&& ... args) {
@@ -86,14 +86,14 @@ struct Storage::Impl {
 //            threadPool_.throttle(); // helping thread pool to do his work
 //    }
 
-//    Impl() = default;
-//    ~Impl() noexcept = default;
+    Impl() = default;
+    ~Impl() noexcept = default;
 
-//    Impl(const Impl&) = delete;
-//    Impl& operator=(const Impl&) = delete;
+    Impl(const Impl&) = delete;
+    Impl& operator=(const Impl&) = delete;
 
-//    Impl(Impl&&) noexcept = delete;
-//    Impl& operator=(Impl&&) noexcept = delete;
+    Impl(Impl&&) noexcept = delete;
+    Impl& operator=(Impl&&) noexcept = delete;
 
 //    [[nodiscard]] std::tuple<Status, Storage::Handle> open(std::string_view path) {
 //        using result      = std::tuple<Status, VirtualEntry>;
@@ -151,340 +151,99 @@ struct Storage::Impl {
 //        return {Status::Ok(), addVirtualEntries(std::move(openedEntries))};
 //    }
 
-//    [[nodiscard]] Status close(Storage::Handle handle) {
-//        const auto& [status, ventries] = getVirtualEntries(handle);
+    [[nodiscard]] std::tuple<Status, std::string, std::vector<mount::Entry>> searchMountPathFor(std::string_view path) const {
+        auto searchPath = simplifyPath(path);
+        ReverseStringPathIterator start{searchPath},
+                                  stop{};
 
-//        if (!status.isOk())
-//            return status;
+        std::shared_lock locker(mpointsLock_);
 
-//        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::close);
+        auto& index = mpoints_.get<mount::tags::ByMountPath>();
 
-//        removeVirtualEntries(handle);
+        while (start != stop) {
+            auto mpath = *start;
+            auto it = index.find(mpath);
 
-//        auto ret = std::all_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
+            if (it != std::cend(index)) {
+                auto [start, stop] = index.equal_range(mpath);
 
-//        return ret? Status::Ok() : Status::InvalidOperation("Unable to close handle");
-//    }
+                std::vector<mount::Entry> ret;
+                std::copy(start, stop, std::back_inserter(ret));
 
-//    [[nodiscard]] std::tuple<Status, Storage::Properties> properties(Storage::Handle handle) {
-//        const auto& [status, ventries] = getVirtualEntries(handle);
+                return {Status::Ok(), mpath, ret};
+            }
 
-//        if (!status.isOk())
-//            return {status, {}};
+            ++start;
+        }
 
-//        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::properties);
+        return {Status::NotFound("Unable to find mount point"), {}, {}};
+    }
 
-//        if (std::any_of(std::cbegin(results), std::cend(results),
-//                        [](const auto& t) { const auto& [status, unused] = t; SKV_UNUSED(unused); return !status.isOk(); }))
-//            return {Status::InvalidArgument("Unable to fetch properties"), {}};
+    [[nodiscard]] Status mount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath, Storage::Priority prio) {
+        if (!volume)
+            return InvalidVolumeArgumentStatus;
 
-//        Storage::Properties ret;
+        if (!volume->claim(this).isOk())
+            return Status::InvalidOperation("Volume already claimed");
 
-//        for (auto&& [status, props] : results) {
-//            SKV_UNUSED(status);
+        mount::Entry entry(mountPath, entryPath, volume, prio);
 
-//            for (auto&& [prop, value] : props) {
-//                if (auto it = ret.find(prop); it == std::cend(ret))
-//                    ret.emplace(prop, value);
-//            }
-//        }
+        if (!entry.open()) {
+            SKV_UNUSED(volume->release(this));
 
-//        return {Status::Ok(), ret};
-//    }
+            return Status::InvalidArgument("Unable to create mount point");
+        }
 
-//    std::tuple<Status, Storage::PropertiesNames> propertiesNames(Handle handle) {
-//        const auto& [status, ventries] = getVirtualEntries(handle);
+        std::unique_lock locker(mpointsLock_);
 
-//        if (!status.isOk())
-//            return { status, {} };
+        auto& index = mpoints_.get<mount::tags::ByAll>();
+        auto retp = index.insert(entry);
 
-//        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::propertiesNames);
+        if (!retp.second) {
+            SKV_UNUSED(volume->release(this));
+            entry.close();
 
-//        if (std::any_of(std::cbegin(results), std::cend(results),
-//            [](const auto& t) { const auto& [status, unused] = t; SKV_UNUSED(unused); return !status.isOk(); }))
-//            return { Status::InvalidArgument("Unable to fetch properties names"), {} };
+            return Status::InvalidArgument("Mount point entry already exist");
+        }
 
-//        Storage::PropertiesNames ret;
+        return Status::Ok();
+    }
 
-//        for (const auto& [status, propNames] : results) {
-//            SKV_UNUSED(status);
+    [[nodiscard]] Status unmount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath) {
+        if (!volume)
+            return InvalidVolumeArgumentStatus;
 
-//            std::copy(std::cbegin(propNames), std::cend(propNames),
-//                      std::inserter(ret, std::begin(ret)));
-//        }
+        std::unique_lock locker(mpointsLock_);
 
-//        return { Status::Ok(), ret };
-//    }
+        auto& index = mpoints_.get<mount::tags::ByMountPath>();
+        auto [start, stop] = index.equal_range(util::to_string(mountPath));
+        auto entryIt = std::find_if(start, stop,
+                                    [&](auto&& entry) {
+                                        return entry.volume() == volume && entry.entryPath() == entryPath;
+                                    });
 
-//    [[nodiscard]] std::tuple<Status, Property> property(Storage::Handle handle, std::string_view name) {
-//        const auto& [status, ventries] = getVirtualEntries(handle);
+        if (entryIt == std::end(index))
+            return Status::InvalidArgument("No such mount point entry");
 
-//        if (!status.isOk())
-//            return {status, {}};
+        if (!volume->release(this).isOk())
+            return Status::Fatal("Unable to release volume");
 
-//        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::property, name);
+        mount::Entry e(*entryIt);
+        e.close();
 
-//        for (const auto& [status, value] : results) {
-//            if (status.isOk())
-//                return {status, value};
-//        }
+        index.erase(entryIt);
 
-//        return {Status::InvalidArgument("No such property"), {}};
-//    }
+        return Status::Ok();
+    }
 
-//    [[nodiscard]] Status setProperty(Storage::Handle handle, std::string_view name, const Property &value) {
-//        const auto& [status, ventries] = getVirtualEntries(handle);
+    [[nodiscard]] Storage::Handle newHandle() noexcept {
+        return currentHandle_.fetch_add(1);
+    }
 
-//        if (!status.isOk())
-//            return status;
-
-//        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::setProperty, name, value);
-//        auto ret = std::all_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
-
-//        return ret? Status::Ok() : Status::InvalidOperation("Unable to set property");
-//    }
-
-//    [[nodiscard]] Status removeProperty(Storage::Handle handle, std::string_view name) {
-//        const auto& [status, ventries] = getVirtualEntries(handle);
-
-//        if (!status.isOk())
-//            return status;
-
-//        /* Removing property in all entries */
-//        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::removeProperty, name);
-//        auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
-
-//        return ret? Status::Ok() : Status::InvalidOperation("Unable to remove properties");
-//    }
-
-//    [[nodiscard]] std::tuple<Status, bool> hasProperty(Storage::Handle handle, std::string_view name) {
-//        const auto& [status, ventries] = getVirtualEntries(handle);
-
-//        if (!status.isOk())
-//            return {status, {}};
-
-//        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::hasProperty, name);
-//        auto hasProp = false;
-
-//        /* checking with side-effect */
-//        if (std::any_of(std::cbegin(results), std::cend(results),
-//                        [&hasProp](const auto& t) {
-//                            const auto& [status, v] = t;
-//                            hasProp = hasProp || v;
-
-//                            return !status.isOk();
-//                        }))
-//            return {Status::InvalidArgument("Unable to check property"), {}};
-
-//        if (results.empty())
-//            return {Status::InvalidArgument("Unknown error"), {}};
-
-//        return {Status::Ok(), hasProp};
-//    }
-
-//    [[nodiscard]] Status expireProperty(Storage::Handle handle, std::string_view name, chrono::system_clock::time_point tp) {
-//        const auto& [status, ventries] = getVirtualEntries(handle);
-
-//        if (!status.isOk())
-//            return status;
-
-//        /* Expiring property in all entries */
-//        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::expireProperty, name, tp);
-//        auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
-
-//        return ret? Status::Ok() : Status::InvalidOperation("Unable to expire property");
-//    }
-
-//    [[nodiscard]] Status cancelPropertyExpiration(Storage::Handle handle, std::string_view name) {
-//        const auto& [status, ventries] = getVirtualEntries(handle);
-
-//        if (!status.isOk())
-//            return status;
-
-//        /* Canceling property expiration in all entries */
-//        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::cancelPropertyExpiration, name);
-//        auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
-
-//        return ret? Status::Ok() : Status::InvalidOperation("Unable to cancel property exp.");
-//    }
-
-//    [[nodiscard]] std::tuple<Status, Storage::Links> links(Storage::Handle handle) {
-//        const auto& [status, ventries] = getVirtualEntries(handle);
-
-//        if (!status.isOk())
-//            return {status, {}};
-
-//        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::links);
-
-//        if (std::any_of(std::cbegin(results), std::cend(results),
-//                        [](const auto& t) { const auto& [status, unused] = t; SKV_UNUSED(unused); return !status.isOk(); }))
-//            return {Status::InvalidArgument("Unable to fetch links"), {}};
-
-//        Storage::Links ret;
-
-//        for (auto&& [status, ls] : results) {
-//            SKV_UNUSED(status);
-
-//            for (auto&& l : ls) {
-//                if (auto it = ret.find(l); it == std::cend(ret))
-//                    ret.insert(l);
-//            }
-//        }
-
-//        return {Status::Ok(), ret};
-//    }
-
-//    [[nodiscard]] Status link(Storage::Handle handle, std::string_view name) {
-//        const auto& [status, ventries] = getVirtualEntries(handle);
-
-//        if (!status.isOk())
-//            return status;
-
-//        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::link, name);
-//        auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
-
-//        return ret? Status::Ok() : Status::InvalidOperation("Unable to create link");
-//    }
-
-//    [[nodiscard]] Status unlink(Handle handle, std::string_view name) {
-//        const auto& [status, ventries] = getVirtualEntries(handle);
-
-//        if (!status.isOk())
-//            return status;
-
-//        auto results = forEachEntry(std::cbegin(ventries), std::cend(ventries), &IVolume::unlink, name);
-//        auto ret = std::any_of(std::cbegin(results), std::cend(results), [](const auto& s) { return s.isOk(); });
-
-//        return ret? Status::Ok() : Status::InvalidOperation("Unable to remove link");
-//    }
-
-//    [[nodiscard]] std::tuple<Status, std::string, std::vector<mount::Entry>> searchMountPathFor(std::string_view path) const {
-//        auto searchPath = simplifyPath(path);
-//        ReverseStringPathIterator start{searchPath},
-//                                  stop{};
-
-//        std::shared_lock locker(mpointsLock_);
-
-//        auto& index = mpoints_.get<mount::tags::ByMountPath>();
-
-//        while (start != stop) {
-//            auto mpath = *start;
-//            auto it = index.find(mpath);
-
-//            if (it != std::cend(index)) {
-//                auto [start, stop] = index.equal_range(mpath);
-
-//                std::vector<mount::Entry> ret;
-//                std::copy(start, stop, std::back_inserter(ret));
-
-//                return {Status::Ok(), mpath, ret};
-//            }
-
-//            ++start;
-//        }
-
-//        return {Status::NotFound("Unable to find mount point"), {}, {}};
-//    }
-
-//    [[nodiscard]] Status mount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath, Storage::Priority prio) {
-//        if (!volume)
-//            return InvalidVolumeArgumentStatus;
-
-//        if (!volume->claim(this).isOk())
-//            return Status::InvalidOperation("Volume already claimed");
-
-//        mount::Entry entry(mountPath, entryPath, volume, prio);
-
-//        if (!entry.open()) {
-//            SKV_UNUSED(volume->release(this));
-
-//            return Status::InvalidArgument("Unable to create mount point");
-//        }
-
-//        std::unique_lock locker(mpointsLock_);
-
-//        auto& index = mpoints_.get<mount::tags::ByAll>();
-//        auto retp = index.insert(entry);
-
-//        if (!retp.second) {
-//            SKV_UNUSED(volume->release(this));
-//            entry.close();
-
-//            return Status::InvalidArgument("Mount point entry already exist");
-//        }
-
-//        return Status::Ok();
-//    }
-
-//    [[nodiscard]] Status unmount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath) {
-//        if (!volume)
-//            return InvalidVolumeArgumentStatus;
-
-//        std::unique_lock locker(mpointsLock_);
-
-//        auto& index = mpoints_.get<mount::tags::ByMountPath>();
-//        auto [start, stop] = index.equal_range(util::to_string(mountPath));
-//        auto entryIt = std::find_if(start, stop,
-//                                    [&](auto&& entry) {
-//                                        return entry.volume() == volume && entry.entryPath() == entryPath;
-//                                    });
-
-//        if (entryIt == std::end(index))
-//            return Status::InvalidArgument("No such mount point entry");
-
-//        if (!volume->release(this).isOk())
-//            return Status::Fatal("Unable to release volume");
-
-//        mount::Entry e(*entryIt);
-//        e.close();
-
-//        index.erase(entryIt);
-
-//        return Status::Ok();
-//    }
-
-//    [[nodiscard]] Storage::Handle addVirtualEntries(VirtualEntries&& ventries) {
-//        auto handle = newHandle();
-
-//        std::sort(std::begin(ventries), std::end(ventries), std::greater<>()); //sort from high priority to low
-
-//        std::unique_lock locker(ventriesLock_);
-
-//        ventries_.emplace(handle, ventries);
-
-//        return handle;
-//    }
-
-//    [[nodiscard]] std::tuple<Status, VirtualEntries> getVirtualEntries(Storage::Handle handle) const {
-//        std::shared_lock locker(ventriesLock_);
-
-//        auto it = ventries_.find(handle);
-
-//        if (it == std::cend(ventries_))
-//            return {Status::InvalidArgument("No such handle"), {}};
-
-//        return {Status::Ok(), it->second};
-//    }
-
-//    void removeVirtualEntries(Storage::Handle handle) {
-//        std::unique_lock locker(ventriesLock_);
-
-//        auto it = ventries_.find(handle);
-
-//        if (it != std::end(ventries_))
-//            ventries_.erase(it);
-//    }
-
-//    [[nodiscard]] Storage::Handle newHandle() noexcept {
-//        return currentHandle_.fetch_add(1);
-//    }
-
-//    mount::Points mpoints_{};
-//    std::unordered_map<Storage::Handle, VirtualEntries> ventries_;
-//    std::atomic<Storage::Handle> currentHandle_{IVolume::RootHandle + 1};
-//    mutable std::shared_mutex mpointsLock_;
-//    mutable std::shared_mutex ventriesLock_;
-//    ThreadPool<> threadPool_;
+    mount::Points mpoints_{};
+    std::atomic<Storage::Handle> currentHandle_{IVolume::RootHandle + 1};
+    mutable std::shared_mutex mpointsLock_;
+    ThreadPool<> threadPool_;
 };
 
 }

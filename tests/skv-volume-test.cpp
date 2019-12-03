@@ -38,8 +38,9 @@ void mtTestRoutineN1(std::reference_wrapper<Volume> v) {
 
 	auto root = volume.entry("/");
 
-    if (!root)
+    if (!root) {
         return;
+    }
 
 	auto id = std::to_string(hasher(std::this_thread::get_id()));
 

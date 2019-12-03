@@ -10,11 +10,10 @@ namespace skv::vfs {
 
 using namespace skv::util;
 
-class Storage final {
+class Storage final: public IVolume {
     struct Impl;
 
 public:
-    using Handle   = IVolume::Handle;
     using Priority  = mount::Entry::Priority;
 
     static constexpr Handle   InvalidHandle     = IVolume::InvalidHandle;
@@ -23,7 +22,7 @@ public:
     static constexpr Priority DefaultPriority   = mount::Entry::DefaultPriority;
 
     Storage();
-    ~Storage() noexcept;
+    ~Storage() noexcept override;
 
     Storage(const Storage&) = delete;
     Storage& operator=(const Storage&) = delete;
@@ -31,22 +30,15 @@ public:
     Storage(Storage&&) noexcept;
     Storage& operator=(Storage&&) noexcept = delete;
 
-    /**
-     * @brief Create new link
-     * @param handle - entry in which link will be created
-     * @param name - name of created link
-     * @return Status::Ok() on success
-     */
-    [[nodiscard]] Status link(Handle h, std::string_view name);
+    std::shared_ptr<IEntry> entry(const std::string &path) override;
 
-    /**
-     * @brief Remove specified link
-     * @param handle - entry
-     * @param name - name of link to remove
-     * @return Status::Ok() on success
-     */
-    [[nodiscard]] Status unlink(Handle h, std::string_view name);
+    Status link(IEntry &entry, std::string_view name) override;
 
+    Status unlink(IEntry &entry, std::string_view name) override;
+
+    Status claim(Token token) noexcept override;
+
+    Status release(Token token) noexcept override;
 
     /**
      * @brief Mount volume entry path to VFS storage
