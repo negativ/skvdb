@@ -50,15 +50,15 @@ protected:
         ASSERT_NE(volume2_, nullptr);
         ASSERT_NE(volume3_, nullptr);
 
-        ASSERT_TRUE(volume1_->initialize(VOLUME_DIR, VOLUME_N1_NAME).isOk());
-        ASSERT_TRUE(volume2_->initialize(VOLUME_DIR, VOLUME_N2_NAME).isOk());
-        ASSERT_TRUE(volume3_->initialize(VOLUME_DIR, VOLUME_N3_NAME).isOk());
+//        ASSERT_TRUE(volume1_->initialize(VOLUME_DIR, VOLUME_N1_NAME).isOk());
+//        ASSERT_TRUE(volume2_->initialize(VOLUME_DIR, VOLUME_N2_NAME).isOk());
+//        ASSERT_TRUE(volume3_->initialize(VOLUME_DIR, VOLUME_N3_NAME).isOk());
     }
 
     void TearDown() override {
-        ASSERT_TRUE(volume3_->deinitialize().isOk());
-        ASSERT_TRUE(volume2_->deinitialize().isOk());
-        ASSERT_TRUE(volume1_->deinitialize().isOk());
+//        ASSERT_TRUE(volume3_->deinitialize().isOk());
+//        ASSERT_TRUE(volume2_->deinitialize().isOk());
+//        ASSERT_TRUE(volume1_->deinitialize().isOk());
 
         volume3_.reset();
         volume2_.reset();
