@@ -390,126 +390,115 @@ TEST_F(VFSStoragePerfomanceTest, MultipleRecordsMultipleThreadsReadWrite) {
 }
 
 TEST_F(VFSStoragePerfomanceTest, RemovePropertyRecordTest) {
-//    using namespace std::chrono;
+    using namespace std::chrono;
 
-//    doMounts();
+    doMounts();
 
-//    auto [status, handle] = storage_.open("/proc");
+    auto proc = storage_.entry("/proc");
 
-//    ASSERT_TRUE(status.isOk());
+    ASSERT_NE(proc, nullptr);
 
-//    for (size_t i = 1; i <= N_THREADS; ++i) {
-//        ASSERT_TRUE(storage_.link(handle, std::to_string(i)).isOk());
-//    }
+    for (size_t i = 1; i <= N_THREADS; ++i) {
+        ASSERT_TRUE(storage_.link(*proc, std::to_string(i)).isOk());
+    }
 
-//    static std::atomic<bool> go_{false};
+    static std::atomic<bool> go_{false};
 
-//    auto removeRoutine = [this](std::size_t id) {
-//        auto [status, handle] = storage_.open("/proc/" + std::to_string(id));
+    auto removeRoutine = [this](std::size_t id) {
+        auto handle = storage_.entry("/proc/" + std::to_string(id));
 
-//        ASSERT_TRUE(status.isOk());
+        ASSERT_NE(handle, nullptr);
 
-//        while (!go_.load(std::memory_order_acquire))
-//            std::this_thread::yield();
+        while (!go_.load(std::memory_order_acquire))
+            std::this_thread::yield();
 
-//        for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
-//            auto status = storage_.removeProperty(handle, std::to_string(i));
-//            SKV_UNUSED(status);
-//        }
+        for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
+            auto status = handle->removeProperty(std::to_string(i));
+            SKV_UNUSED(status);
+        }
+    };
 
-//        ASSERT_TRUE(storage_.close(handle).isOk());
-//    };
+    for (size_t i = 1; i <= N_THREADS; ++i) {
+        go_.store(false);
 
-//    for (size_t i = 1; i <= N_THREADS; ++i) {
-//        go_.store(false);
+        for (size_t j = 1; j <= i; ++j) {
+            auto handle = storage_.entry("/proc/" + std::to_string(j));
 
-//        for (size_t j = 1; j <= i; ++j) {
-//            auto [status, handle] = storage_.open("/proc/" + std::to_string(j));
+            ASSERT_NE(handle, nullptr);
 
-//            ASSERT_TRUE(status.isOk());
+            {
+                const auto &propNames = handle->propertiesNames();
+                ASSERT_TRUE(propNames.empty());
+            }
 
-//            {
-//                const auto [status, propNames] = storage_.propertiesNames(handle);
+            for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
+                auto status = handle->setProperty(std::to_string(i), propsPool[i % propsPool.size()]);
+                ASSERT_TRUE(status.isOk());
+            }
+        }
 
-//                ASSERT_TRUE(status.isOk());
-//                ASSERT_TRUE(propNames.empty());
-//            }
+        std::vector<std::thread> threads;
 
-//            for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
-//                auto status = storage_.setProperty(handle, std::to_string(i), propsPool[i % propsPool.size()]);
-//                ASSERT_TRUE(status.isOk());
-//            }
+        for (std::size_t j = 1; j <= i; ++j)
+            threads.emplace_back(removeRoutine, j);
 
-//            ASSERT_TRUE(storage_.close(handle).isOk());
-//        }
+        auto startTime = steady_clock::now();
 
-//        std::vector<std::thread> threads;
+        go_.store(true, std::memory_order_release);
 
-//        for (std::size_t j = 1; j <= i; ++j)
-//            threads.emplace_back(removeRoutine, j);
+        std::for_each(std::begin(threads), std::end(threads),
+                      [](auto& t) { if (t.joinable()) t.join(); });
 
-//        auto startTime = steady_clock::now();
+        auto stopTime = steady_clock::now();
 
-//        go_.store(true, std::memory_order_release);
+        auto msElapsed = duration_cast<milliseconds>(stopTime - startTime).count();
 
-//        std::for_each(std::begin(threads), std::end(threads),
-//                      [](auto& t) { if (t.joinable()) t.join(); });
+        Log::i("RemovePropertyRecordTest [threads: " + std::to_string(i) + "]", "removeProperty() elapsed time (per. thread): ", msElapsed, " ms.");
+        Log::i("RemovePropertyRecordTest [threads: " + std::to_string(i) + "]", "removeProperty() speed (per.thread): ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
+    }
 
-//        auto stopTime = steady_clock::now();
-
-//        auto msElapsed = duration_cast<milliseconds>(stopTime - startTime).count();
-
-//        Log::i("RemovePropertyRecordTest [threads: " + std::to_string(i) + "]", "removeProperty() elapsed time (per. thread): ", msElapsed, " ms.");
-//        Log::i("RemovePropertyRecordTest [threads: " + std::to_string(i) + "]", "removeProperty() speed (per.thread): ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
-//    }
-
-//    ASSERT_TRUE(storage_.close(handle).isOk());
-
-//    doUnmounts();
+    doUnmounts();
 }
 
 
 TEST_F(VFSStoragePerfomanceTest, LinkUnlinkRecordTest) {
-//    using namespace std::chrono;
+    using namespace std::chrono;
 
-//    doMounts();
+    doMounts();
 
-//    auto [status, handle] = storage_.open("/proc");
+    auto proc = storage_.entry("/proc");
 
-//    ASSERT_TRUE(status.isOk());
+    ASSERT_NE(proc, nullptr);
 
-//    auto startTime = steady_clock::now();
+    auto startTime = steady_clock::now();
 
-//    for (std::size_t i = 0; i < LINKS_COUNT; ++i)
-//        ASSERT_TRUE(storage_.link(handle, std::to_string(i)).isOk());
+    for (std::size_t i = 0; i < LINKS_COUNT; ++i)
+        ASSERT_TRUE(storage_.link(*proc, std::to_string(i)).isOk());
 
-//    auto stopTime = steady_clock::now();
+    auto stopTime = steady_clock::now();
 
-//    auto msElapsed = duration_cast<milliseconds>(stopTime - startTime).count();
+    auto msElapsed = duration_cast<milliseconds>(stopTime - startTime).count();
 
-//    Log::i("CreateRecordTest", "link() elapsed time: ", msElapsed, " ms.");
-//    Log::i("CreateRecordTest", "link() speed: ", (1000.0 / msElapsed) * LINKS_COUNT, " link/s");
+    Log::i("CreateRecordTest", "link() elapsed time: ", msElapsed, " ms.");
+    Log::i("CreateRecordTest", "link() speed: ", (1000.0 / msElapsed) * LINKS_COUNT, " link/s");
 
-//    auto [lstatus, links] = storage_.links(handle);
+    auto links = proc->children();
 
-//    ASSERT_TRUE(lstatus.isOk());
-//    ASSERT_EQ(links.size(), LINKS_COUNT);
+    ASSERT_EQ(links.size(), LINKS_COUNT);
 
-//    startTime = steady_clock::now();
+    startTime = steady_clock::now();
 
-//    for (std::size_t i = 0; i < LINKS_COUNT; ++i)
-//        ASSERT_TRUE(storage_.unlink(handle, std::to_string(i)).isOk());
+    for (std::size_t i = 0; i < LINKS_COUNT; ++i)
+        ASSERT_TRUE(storage_.unlink(*proc, std::to_string(i)).isOk());
 
-//    stopTime = steady_clock::now();
+    stopTime = steady_clock::now();
 
-//    msElapsed = duration_cast<milliseconds>(stopTime - startTime).count();
+    msElapsed = duration_cast<milliseconds>(stopTime - startTime).count();
 
-//    Log::i("CreateRecordTest", "unlink() elapsed time: ", msElapsed, " ms.");
-//    Log::i("CreateRecordTest", "unlink() speed: ", (1000.0 / msElapsed) * LINKS_COUNT, " link/s");
+    Log::i("CreateRecordTest", "unlink() elapsed time: ", msElapsed, " ms.");
+    Log::i("CreateRecordTest", "unlink() speed: ", (1000.0 / msElapsed) * LINKS_COUNT, " link/s");
 
-//    ASSERT_TRUE(storage_.close(handle).isOk());
-
-//    doUnmounts();
+    doUnmounts();
 }
 
 int main(int argc, char** argv) {
