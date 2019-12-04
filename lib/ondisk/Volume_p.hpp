@@ -431,8 +431,6 @@ struct Volume::Impl {
     }
 
     void releaseEntry(EntryImpl* entry) {
-        Log::e("ondisk::Volume", "Realising ", entry->name());
-
         if (!entry)
             return;
 

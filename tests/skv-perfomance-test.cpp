@@ -50,15 +50,15 @@ protected:
         ASSERT_NE(volume2_, nullptr);
         ASSERT_NE(volume3_, nullptr);
 
-//        ASSERT_TRUE(volume1_->initialize(VOLUME_DIR, VOLUME_N1_NAME).isOk());
-//        ASSERT_TRUE(volume2_->initialize(VOLUME_DIR, VOLUME_N2_NAME).isOk());
-//        ASSERT_TRUE(volume3_->initialize(VOLUME_DIR, VOLUME_N3_NAME).isOk());
+        ASSERT_TRUE(volume1_->initialize(VOLUME_DIR, VOLUME_N1_NAME).isOk());
+        ASSERT_TRUE(volume2_->initialize(VOLUME_DIR, VOLUME_N2_NAME).isOk());
+        ASSERT_TRUE(volume3_->initialize(VOLUME_DIR, VOLUME_N3_NAME).isOk());
     }
 
     void TearDown() override {
-//        ASSERT_TRUE(volume3_->deinitialize().isOk());
-//        ASSERT_TRUE(volume2_->deinitialize().isOk());
-//        ASSERT_TRUE(volume1_->deinitialize().isOk());
+        ASSERT_TRUE(volume3_->deinitialize().isOk());
+        ASSERT_TRUE(volume2_->deinitialize().isOk());
+        ASSERT_TRUE(volume1_->deinitialize().isOk());
 
         volume3_.reset();
         volume2_.reset();
@@ -76,46 +76,40 @@ protected:
         SKV_UNUSED(os::File::unlink(VOLUME_DIR + os::File::sep() + VOLUME_N3_NAME+ ".index"));
     }
 
-    void createPath(IVolumePtr& ptr, std::string_view path) {
-//        auto [status, rootHandle] = ptr->open("/");
+    void createPath(std::shared_ptr<ondisk::Volume>& ptr, std::string_view path) {
+        auto root = ptr->entry("/");
 
-//        ASSERT_TRUE(status.isOk());
+        ASSERT_TRUE(root != nullptr);
 
-//        const auto& tokens = util::split(util::simplifyPath(path), '/');
-//        std::string trackPath = "";
+        const auto& tokens = util::split(util::simplifyPath(path), '/');
+        std::string trackPath = "";
 
-//        for (const auto& token : tokens) {
-//            auto [status, children] = ptr->links(rootHandle);
+        for (const auto& token : tokens) {
+            auto children = root->children();
 
-//            trackPath += ("/" + token);
+            trackPath += ("/" + token);
 
-//            if (auto it = std::find(std::cbegin(children), std::cend(children), token); it != std::cend(children)) {
-//                auto [status, handle] = ptr->open(trackPath);
+            if (auto it = std::find(std::cbegin(children), std::cend(children), token); it != std::cend(children)) {
+                auto handle = ptr->entry(trackPath);
 
-//                ASSERT_TRUE(status.isOk());
+                ASSERT_TRUE(handle != nullptr);
 
-//                std::swap(rootHandle, handle);
+                std::swap(root, handle);
 
-//                ASSERT_TRUE(ptr->close(handle).isOk());
+                continue;
+            }
+            else {
+                auto status = ptr->link(*root, token);
 
-//                continue;
-//            }
-//            else {
-//                status = ptr->link(rootHandle, token);
+                ASSERT_TRUE(status.isOk());
 
-//                ASSERT_TRUE(status.isOk());
+                auto handle = ptr->entry(trackPath);
 
-//                auto [status, handle] = ptr->open(trackPath);
+                ASSERT_TRUE(status.isOk());
 
-//                ASSERT_TRUE(status.isOk());
-
-//                std::swap(rootHandle, handle);
-
-//                ASSERT_TRUE(ptr->close(handle).isOk());
-//            }
-//        }
-
-//        ASSERT_TRUE(ptr->close(rootHandle).isOk());
+                std::swap(root, handle);
+            }
+        }
     }
 
     void doMounts() {
@@ -142,9 +136,9 @@ protected:
         return std::to_string(hasher(std::this_thread::get_id()));
     }
 
-    IVolumePtr volume1_;
-    IVolumePtr volume2_;
-    IVolumePtr volume3_;
+    std::shared_ptr<ondisk::Volume> volume1_;
+    std::shared_ptr<ondisk::Volume> volume2_;
+    std::shared_ptr<ondisk::Volume> volume3_;
     vfs::Storage storage_;
 
     std::array<Property, 7> propsPool{Property{123.0f},
@@ -164,250 +158,235 @@ protected:
 };
 
 TEST_F(VFSStoragePerfomanceTest, SingleThread_VolumeOnly) {
-//    doMounts();
+    doMounts();
 
-//    auto [status, handle] = volume1_->open("/proc");
+    auto handle = volume1_->entry("/proc");
 
-//    ASSERT_TRUE(status.isOk());
+    ASSERT_NE(handle, nullptr);
 
-//    auto startTime = std::chrono::steady_clock::now();
+    auto startTime = std::chrono::steady_clock::now();
 
-//    for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
-//        auto status = volume1_->setProperty(handle, propsNames[i % propsPool.size()], propsPool[i % propsPool.size()]);
-//        SKV_UNUSED(status);
-//    }
+    for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
+        auto status = handle->setProperty(propsNames[i % propsPool.size()], propsPool[i % propsPool.size()]);
+        SKV_UNUSED(status);
+    }
 
-//    auto stopTime = std::chrono::steady_clock::now();
+    auto stopTime = std::chrono::steady_clock::now();
 
-//    auto msElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(stopTime - startTime).count();
+    auto msElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(stopTime - startTime).count();
 
-//    Log::i("SingleThreadVolume", "setProperty() elapsed time: ", msElapsed, " ms.");
-//    Log::i("SingleThreadVolume", "setProperty() speed: ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
+    Log::i("SingleThreadVolume", "setProperty() elapsed time: ", msElapsed, " ms.");
+    Log::i("SingleThreadVolume", "setProperty() speed: ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
 
-//    startTime = std::chrono::steady_clock::now();
+    startTime = std::chrono::steady_clock::now();
 
-//    for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
-//        const auto& [status, value] = volume1_->property(handle, propsNames[i % propsPool.size()]);
-//        SKV_UNUSED(status);
-//        ASSERT_EQ(value, propsPool[i % propsPool.size()]);
-//    }
+    for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
+        const auto& [status, value] = handle->property(propsNames[i % propsPool.size()]);
+        SKV_UNUSED(status);
+        ASSERT_EQ(value, propsPool[i % propsPool.size()]);
+    }
 
-//    stopTime = std::chrono::steady_clock::now();
+    stopTime = std::chrono::steady_clock::now();
 
-//    msElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(stopTime - startTime).count();
+    msElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(stopTime - startTime).count();
 
-//    Log::i("SingleThreadVolume", "getProperty() elapsed time: ", msElapsed, " ms.");
-//    Log::i("SingleThreadVolume", "getProperty() speed: ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
+    Log::i("SingleThreadVolume", "getProperty() elapsed time: ", msElapsed, " ms.");
+    Log::i("SingleThreadVolume", "getProperty() speed: ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
 
-//    ASSERT_TRUE(volume1_->close(handle).isOk());
-
-//    doUnmounts();
+    doUnmounts();
 }
 
 TEST_F(VFSStoragePerfomanceTest, OneRecordMultipleThreadsReadWrite) {
-//    using namespace std::chrono;
+    using namespace std::chrono;
 
-//    doMounts();
+    doMounts();
 
-//    auto [status, handle] = storage_.open("/proc");
+    auto proc = storage_.entry("/proc");
 
-//    ASSERT_TRUE(status.isOk());
+    ASSERT_NE(proc, nullptr);
 
-//    static std::atomic<bool> go_{false};
+    static std::atomic<bool> go_{false};
 
-//    auto writerRoutine = [handle{handle}, this] {
-//        while (!go_.load(std::memory_order_acquire))
-//            std::this_thread::yield();
+    auto writerRoutine = [proc{proc}, this] {
+        while (!go_.load(std::memory_order_acquire))
+            std::this_thread::yield();
 
-//        for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
-//            auto status = storage_.setProperty(handle, propsNames[i % propsPool.size()], propsPool[i % propsPool.size()]);
-//            SKV_UNUSED(status);
-//        }
-//    };
+        for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
+            auto status = proc->setProperty(propsNames[i % propsPool.size()], propsPool[i % propsPool.size()]);
+            SKV_UNUSED(status);
+        }
+    };
 
-//    auto readerRoutine = [handle{handle}, this] {
-//        while (!go_.load(std::memory_order_acquire))
-//            std::this_thread::yield();
+    auto readerRoutine = [proc{proc}, this] {
+        while (!go_.load(std::memory_order_acquire))
+            std::this_thread::yield();
 
-//        for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
-//            const auto& [status, value] = storage_.property(handle, propsNames[i % propsPool.size()]);
+        for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
+            const auto& [status, value] = proc->property(propsNames[i % propsPool.size()]);
 
-//            SKV_UNUSED(status);
-//            SKV_UNUSED(value);
-//        }
-//    };
+            SKV_UNUSED(status);
+            SKV_UNUSED(value);
+        }
+    };
 
-//    for (size_t i = 1; i <= N_THREADS; ++i) {
-//        go_.store(false);
+    for (size_t i = 1; i <= N_THREADS; ++i) {
+        go_.store(false);
 
-//        std::vector<std::thread> threads;
-//        std::generate_n(std::back_inserter(threads), i, [&] { return std::thread(writerRoutine); });
+        std::vector<std::thread> threads;
+        std::generate_n(std::back_inserter(threads), i, [&] { return std::thread(writerRoutine); });
 
-//        auto startTime = steady_clock::now();
+        auto startTime = steady_clock::now();
 
-//        go_.store(true, std::memory_order_release);
+        go_.store(true, std::memory_order_release);
 
-//        std::for_each(std::begin(threads), std::end(threads),
-//                      [](auto& t) { if (t.joinable()) t.join(); });
+        std::for_each(std::begin(threads), std::end(threads),
+                      [](auto& t) { if (t.joinable()) t.join(); });
 
-//        auto stopTime = steady_clock::now();
+        auto stopTime = steady_clock::now();
 
-//        auto msElapsed = duration_cast<milliseconds>(stopTime - startTime).count();
+        auto msElapsed = duration_cast<milliseconds>(stopTime - startTime).count();
 
-//        Log::i("OneRecordMultipleThreads [threads: " + std::to_string(i) + "]", "setProperty() elapsed time (per. thread): ", msElapsed, " ms.");
-//        Log::i("OneRecordMultipleThreads [threads: " + std::to_string(i) + "]", "setProperty() speed (per.thread): ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
-//    }
+        Log::i("OneRecordMultipleThreads [threads: " + std::to_string(i) + "]", "setProperty() elapsed time (per. thread): ", msElapsed, " ms.");
+        Log::i("OneRecordMultipleThreads [threads: " + std::to_string(i) + "]", "setProperty() speed (per.thread): ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
+    }
 
-//    for (size_t i = 1; i <= N_THREADS; ++i) {
-//        go_.store(false);
+    for (size_t i = 1; i <= N_THREADS; ++i) {
+        go_.store(false);
 
-//        std::vector<std::thread> threads;
-//        std::generate_n(std::back_inserter(threads), i, [&] { return std::thread(readerRoutine); });
+        std::vector<std::thread> threads;
+        std::generate_n(std::back_inserter(threads), i, [&] { return std::thread(readerRoutine); });
 
-//        auto startTime = steady_clock::now();
+        auto startTime = steady_clock::now();
 
-//        go_.store(true, std::memory_order_release);
+        go_.store(true, std::memory_order_release);
 
-//        std::for_each(std::begin(threads), std::end(threads),
-//                      [](auto& t) { if (t.joinable()) t.join(); });
+        std::for_each(std::begin(threads), std::end(threads),
+                      [](auto& t) { if (t.joinable()) t.join(); });
 
-//        auto stopTime = steady_clock::now();
+        auto stopTime = steady_clock::now();
 
-//        auto msElapsed = duration_cast<milliseconds>(stopTime - startTime).count();
+        auto msElapsed = duration_cast<milliseconds>(stopTime - startTime).count();
 
-//        Log::i("OneRecordMultipleThreads [threads: " + std::to_string(i) + "]", "getProperty() elapsed time (per. thread): ", msElapsed, " ms.");
-//        Log::i("OneRecordMultipleThreads [threads: " + std::to_string(i) + "]", "getProperty() speed (per.thread): ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
-//    }
+        Log::i("OneRecordMultipleThreads [threads: " + std::to_string(i) + "]", "getProperty() elapsed time (per. thread): ", msElapsed, " ms.");
+        Log::i("OneRecordMultipleThreads [threads: " + std::to_string(i) + "]", "getProperty() speed (per.thread): ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
+    }
 
-//    ASSERT_TRUE(storage_.close(handle).isOk());
-
-//    doUnmounts();
+    doUnmounts();
 }
 
 TEST_F(VFSStoragePerfomanceTest, MultipleRecordsMultipleThreadsReadWrite) {
-//    using namespace std::chrono;
+    using namespace std::chrono;
 
-//    doMounts();
+    doMounts();
 
-//    auto [status, handle] = storage_.open("/proc");
+    auto proc = storage_.entry("/proc");
 
-//    ASSERT_TRUE(status.isOk());
+    ASSERT_NE(proc, nullptr);
 
-//    for (size_t i = 1; i <= N_THREADS; ++i) {
-//        ASSERT_TRUE(storage_.link(handle, std::to_string(i)).isOk());
-//    }
+    for (size_t i = 1; i <= N_THREADS; ++i) {
+        ASSERT_TRUE(storage_.link(*proc, std::to_string(i)).isOk());
+    }
 
-//    static std::atomic<bool> go_{false};
+    static std::atomic<bool> go_{false};
 
-//    auto writerRoutine = [this](std::size_t id) {
-//        auto [status, handle] = storage_.open("/proc/" + std::to_string(id));
+    auto writerRoutine = [this](std::size_t id) {
+        auto proc = storage_.entry("/proc/" + std::to_string(id));
 
-//        ASSERT_TRUE(status.isOk());
+        ASSERT_NE(proc, nullptr);
 
-//        while (!go_.load(std::memory_order_acquire))
-//            std::this_thread::yield();
+        while (!go_.load(std::memory_order_acquire))
+            std::this_thread::yield();
 
-//        for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
-//            auto status = storage_.setProperty(handle, propsNames[i % propsPool.size()], propsPool[i % propsPool.size()]);
-//            SKV_UNUSED(status);
-//        }
+        for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
+            auto status = proc->setProperty(propsNames[i % propsPool.size()], propsPool[i % propsPool.size()]);
+            SKV_UNUSED(status);
+        }
+    };
 
-//        ASSERT_TRUE(storage_.close(handle).isOk());
-//    };
+    auto readerRoutine = [this](std::size_t id) {
+        auto proc = storage_.entry("/proc/" + std::to_string(id));
 
-//    auto readerRoutine = [this](std::size_t id) {
-//        auto [status, handle] = storage_.open("/proc/" + std::to_string(id));
+        ASSERT_NE(proc, nullptr);
 
-//        ASSERT_TRUE(status.isOk());
+        while (!go_.load(std::memory_order_acquire))
+            std::this_thread::yield();
 
-//        while (!go_.load(std::memory_order_acquire))
-//            std::this_thread::yield();
+        for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
+            const auto& [status, value] = proc->property(propsNames[i % propsPool.size()]);
 
-//        for (std::size_t i = 0; i < PROPS_COUNT; ++i) {
-//            const auto& [status, value] = storage_.property(handle, propsNames[i % propsPool.size()]);
+            SKV_UNUSED(status);
+            SKV_UNUSED(value);
+        }
+    };
 
-//            SKV_UNUSED(status);
-//            SKV_UNUSED(value);
-//        }
+    for (size_t i = 1; i <= N_THREADS; ++i) {
+        go_.store(false);
 
-//        ASSERT_TRUE(storage_.close(handle).isOk());
-//    };
+        std::vector<std::thread> threads;
 
-//    for (size_t i = 1; i <= N_THREADS; ++i) {
-//        go_.store(false);
+        for (std::size_t j = 1; j <= i; ++j)
+            threads.emplace_back(writerRoutine, j);
 
-//        std::vector<std::thread> threads;
+        auto startTime = steady_clock::now();
 
-//        for (std::size_t j = 1; j <= i; ++j)
-//            threads.emplace_back(writerRoutine, j);
+        go_.store(true, std::memory_order_release);
 
-//        auto startTime = steady_clock::now();
+        std::for_each(std::begin(threads), std::end(threads),
+                      [](auto& t) { if (t.joinable()) t.join(); });
 
-//        go_.store(true, std::memory_order_release);
+        auto stopTime = steady_clock::now();
 
-//        std::for_each(std::begin(threads), std::end(threads),
-//                      [](auto& t) { if (t.joinable()) t.join(); });
+        auto msElapsed = duration_cast<milliseconds>(stopTime - startTime).count();
 
-//        auto stopTime = steady_clock::now();
+        Log::i("MultipleRecordsMultipleThreads [threads: " + std::to_string(i) + "]", "setProperty() elapsed time (per. thread): ", msElapsed, " ms.");
+        Log::i("MultipleRecordsMultipleThreads [threads: " + std::to_string(i) + "]", "setProperty() speed (per.thread): ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
+    }
 
-//        auto msElapsed = duration_cast<milliseconds>(stopTime - startTime).count();
+    for (size_t i = 1; i <= N_THREADS; ++i) {
+        go_.store(false);
 
-//        Log::i("MultipleRecordsMultipleThreads [threads: " + std::to_string(i) + "]", "setProperty() elapsed time (per. thread): ", msElapsed, " ms.");
-//        Log::i("MultipleRecordsMultipleThreads [threads: " + std::to_string(i) + "]", "setProperty() speed (per.thread): ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
-//    }
+        std::vector<std::thread> threads;
 
-//    for (size_t i = 1; i <= N_THREADS; ++i) {
-//        go_.store(false);
+        for (std::size_t j = 1; j <= i; ++j)
+            threads.emplace_back(readerRoutine, j);
 
-//        std::vector<std::thread> threads;
+        auto startTime = steady_clock::now();
 
-//        for (std::size_t j = 1; j <= i; ++j)
-//            threads.emplace_back(readerRoutine, j);
+        go_.store(true, std::memory_order_release);
 
-//        auto startTime = steady_clock::now();
+        std::for_each(std::begin(threads), std::end(threads),
+                      [](auto& t) { if (t.joinable()) t.join(); });
 
-//        go_.store(true, std::memory_order_release);
+        auto stopTime = steady_clock::now();
 
-//        std::for_each(std::begin(threads), std::end(threads),
-//                      [](auto& t) { if (t.joinable()) t.join(); });
+        auto msElapsed = duration_cast<milliseconds>(stopTime - startTime).count();
 
-//        auto stopTime = steady_clock::now();
+        Log::i("MultipleRecordsMultipleThreads [threads: " + std::to_string(i) + "]", "getProperty() elapsed time (per. thread): ", msElapsed, " ms.");
+        Log::i("MultipleRecordsMultipleThreads [threads: " + std::to_string(i) + "]", "getProperty() speed (per.thread): ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
+    }
 
-//        auto msElapsed = duration_cast<milliseconds>(stopTime - startTime).count();
+    {   // inspecting storage links
+        auto children = proc->children();
 
-//        Log::i("MultipleRecordsMultipleThreads [threads: " + std::to_string(i) + "]", "getProperty() elapsed time (per. thread): ", msElapsed, " ms.");
-//        Log::i("MultipleRecordsMultipleThreads [threads: " + std::to_string(i) + "]", "getProperty() speed (per.thread): ", (1000.0 / msElapsed) * PROPS_COUNT, " prop/s");
-//    }
+        ASSERT_EQ(children.size(), N_THREADS);
 
-//    {   // inspecting storage links
-//        auto [status, links] = storage_.links(handle);
+        for (const auto& child : children) {
+            auto path = util::simplifyPath("/proc/" + child);
 
-//        ASSERT_TRUE(status.isOk());
-//        ASSERT_EQ(links.size(), N_THREADS);
+            auto chandle = storage_.entry(path);
 
-//        for (const auto& link : links) {
-//            auto path = util::simplifyPath("/proc/" + link);
+            ASSERT_NE(chandle, nullptr);
 
-//            auto [status, cHandle] = storage_.open(path);
+            auto props = chandle->properties();
 
-//            ASSERT_TRUE(status.isOk());
+            ASSERT_EQ(props.size(), propsPool.size());
 
-//            auto [pstatus, props] = storage_.properties(cHandle);
+            for (std::size_t i = 0; i < propsNames.size(); ++i)
+                ASSERT_EQ(props[propsNames[i]], propsPool[i]);
+        }
+    }
 
-//            ASSERT_TRUE(pstatus.isOk());
-//            ASSERT_EQ(props.size(), propsPool.size());
-
-
-//            for (std::size_t i = 0; i < propsNames.size(); ++i)
-//                ASSERT_EQ(props[propsNames[i]], propsPool[i]);
-
-//            ASSERT_TRUE(storage_.close(cHandle).isOk());
-//        }
-//    }
-
-//    ASSERT_TRUE(storage_.close(handle).isOk());
-
-//    doUnmounts();
+    doUnmounts();
 }
 
 TEST_F(VFSStoragePerfomanceTest, RemovePropertyRecordTest) {
