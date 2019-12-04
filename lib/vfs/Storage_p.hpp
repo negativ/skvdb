@@ -157,12 +157,8 @@ public:
         Properties ret = std::move(results[0]); // just moving first result to result (properties from entry with highest priority)
 
         for (std::size_t i = 1; i < results.size(); ++i) {
-            auto& props = results[i];
-
-            for (const auto& [key, value] : props) {
-                if (auto it = ret.find(key); it != std::cend(ret))
-                    ret[key] = value;
-            }
+            for (const auto& p : results[i])
+                ret.insert(p);
         }
 
         return ret;
@@ -177,12 +173,8 @@ public:
         std::set<std::string> ret = std::move(results[0]); // just moving first result to result (properties from entry with highest priority)
 
         for (std::size_t i = 1; i < results.size(); ++i) {
-            auto& props = results[i];
-
-            for (auto& name : props) {
-                if (auto it = ret.find(name); it != std::cend(ret))
-                    ret.insert(name);
-            }
+            for (auto& name : results[i])
+                ret.insert(name);
         }
 
         return ret;
@@ -215,12 +207,8 @@ public:
         std::set<std::string> ret = std::move(results[0]); // just moving first result to result (properties from entry with highest priority)
 
         for (std::size_t i = 1; i < results.size(); ++i) {
-            auto& props = results[i];
-
-            for (auto& name : props) {
-                if (auto it = ret.find(name); it != std::cend(ret))
-                    ret.insert(name);
-            }
+            for (auto& child : results[i])
+                ret.insert(child);
         }
 
         return ret;
