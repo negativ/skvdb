@@ -90,8 +90,8 @@ class EntryImpl final : public vfs::IEntry {
     }
 
 public:
-	using Entries = std::vector<std::shared_ptr<IEntry>>;
-	using Volumes = std::vector<IVolumePtr>;
+    using Entries = std::vector<std::shared_ptr<IEntry>>;
+    using Volumes = std::vector<IVolumePtr>;
 
 	EntryImpl(Handle handle, Entries&& entries, Volumes&& volumes, ThreadPool& threadPool):
 		handle_{handle},
@@ -157,12 +157,8 @@ public:
         Properties ret = std::move(results[0]); // just moving first result to result (properties from entry with highest priority)
 
         for (std::size_t i = 1; i < results.size(); ++i) {
-            auto& props = results[i];
-
-            for (const auto& [key, value] : props) {
-                if (auto it = ret.find(key); it != std::cend(ret))
-                    ret[key] = value;
-            }
+            for (const auto& p : results[i])
+                ret.insert(p);
         }
 
         return ret;
@@ -177,12 +173,8 @@ public:
         std::set<std::string> ret = std::move(results[0]); // just moving first result to result (properties from entry with highest priority)
 
         for (std::size_t i = 1; i < results.size(); ++i) {
-            auto& props = results[i];
-
-            for (auto& name : props) {
-                if (auto it = ret.find(name); it != std::cend(ret))
-                    ret.insert(name);
-            }
+            for (auto& name : results[i])
+                ret.insert(name);
         }
 
         return ret;
@@ -215,12 +207,8 @@ public:
         std::set<std::string> ret = std::move(results[0]); // just moving first result to result (properties from entry with highest priority)
 
         for (std::size_t i = 1; i < results.size(); ++i) {
-            auto& props = results[i];
-
-            for (auto& name : props) {
-                if (auto it = ret.find(name); it != std::cend(ret))
-                    ret.insert(name);
-            }
+            for (auto& child : results[i])
+                ret.insert(child);
         }
 
         return ret;
@@ -228,6 +216,10 @@ public:
 
     Volumes& volumes() const noexcept {
         return volumes_;
+    }
+
+    Entries& entries() const noexcept {
+        return entries_;
     }
 
 private:
@@ -303,15 +295,130 @@ struct Storage::Impl {
                 volumes.emplace_back(std::move(volume));
                 results.emplace_back(std::move(entry));
 			}
-			catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); }
+            catch (...) { Log::e(TAG, "Ignoring exception"); }
 		}
 
         if (results.empty() || (volumes.size() != results.size()))
 			return {};
 
-		auto ptr = std::make_shared<EntryImpl>(newHandle(), std::move(results), std::move(volumes), threadPool_);
+        auto ptr = std::shared_ptr<EntryImpl>(new EntryImpl{newHandle(), std::move(results), std::move(volumes), threadPool_},
+                                              [this](EntryImpl* ptr) {
+                                                  unregisterEntry(ptr);
 
-		return std::static_pointer_cast<vfs::IEntry>(ptr);
+                                                  delete ptr;
+                                              });
+
+        return registerEntry(ptr.get())? std::static_pointer_cast<vfs::IEntry>(ptr) : std::shared_ptr<IEntry>{nullptr};
+    }
+
+    [[nodiscard]] Status link(IEntry &entry, std::string_view name) {
+        using result      = Status;
+        using future      = std::future<result>;
+        using future_list = std::vector<future>;
+        using result_list = std::vector<result>;
+
+        std::shared_lock locker{openedEntriesLock_};
+
+        auto it = openedEntries_.find(&entry);
+
+        if (it == std::end(openedEntries_))
+            return Status::InvalidArgument("No such entry");
+
+        auto* entryPtr = it->second;
+
+        assert(entryPtr != nullptr);
+
+        future_list futures;
+
+        try {
+            auto& volumes = entryPtr->volumes();
+            auto& entries = entryPtr->entries();
+
+            assert(volumes.size() == entries.size());
+
+            for (std::size_t i = 0; i < volumes.size(); ++i) {
+                auto& volume = volumes[i];
+                auto& entry = entries[i];
+
+                futures.emplace_back(threadPool_.schedule([&]() -> result { return volume->link(*entry, name); }));
+            }
+        }
+        catch (const std::exception &e) {
+            Log::e(TAG, e.what());
+
+            return Status::Fatal("Unknown error");
+        }
+
+        waitAllFutures(std::begin(futures), std::end(futures));
+
+        result_list results;
+
+        for (auto& f : futures) {
+            try {
+                results.emplace_back(f.get());
+            }
+            catch (...) { Log::e(TAG, "Ignoring exception"); }
+        }
+
+        auto ok = std::any_of(std::cbegin(results), std::cend(results),
+                              [](auto&& status) { return status.isOk(); });
+
+        return ok? Status::Ok() : Status::InvalidArgument("Unknown error");
+    }
+
+    [[nodiscard]] Status unlink(IEntry &entry, std::string_view name) {
+        using result      = Status;
+        using future      = std::future<result>;
+        using future_list = std::vector<future>;
+        using result_list = std::vector<result>;
+
+        std::shared_lock locker{openedEntriesLock_};
+
+        auto it = openedEntries_.find(&entry);
+
+        if (it == std::end(openedEntries_))
+                return Status::InvalidArgument("No such entry");
+
+        auto* entryPtr = it->second;
+
+        assert(entryPtr != nullptr);
+
+        future_list futures;
+
+        try {
+            auto& volumes = entryPtr->volumes();
+            auto& entries = entryPtr->entries();
+
+            assert(volumes.size() == entries.size());
+
+            for (std::size_t i = 0; i < volumes.size(); ++i) {
+                auto& volume = volumes[i];
+                auto& entry = entries[i];
+
+                futures.emplace_back(threadPool_.schedule([&]() -> result { return volume->unlink(*entry, name); }));
+            }
+        }
+        catch (const std::exception &e) {
+            Log::e(TAG, e.what());
+
+            return Status::Fatal("Unknown error");
+        }
+
+        waitAllFutures(std::begin(futures), std::end(futures));
+
+        result_list results;
+
+        for (auto& f : futures) {
+            try {
+                results.emplace_back(f.get());
+            }
+            catch (...) { Log::e(TAG, "Ignoring exception"); }
+        }
+
+        auto ok = std::any_of(std::cbegin(results), std::cend(results),
+                                  [](auto&& status) { return status.isOk(); });
+
+        return ok? Status::Ok() : Status::InvalidArgument("Unknown error");
     }
 
     [[nodiscard]] std::tuple<Status, std::string, std::vector<mount::Entry>> searchMountPathFor(std::string_view path) const {
@@ -403,9 +510,29 @@ struct Storage::Impl {
         return currentHandle_.fetch_add(1);
     }
 
+    bool registerEntry(EntryImpl* entry) {
+        if (!entry)
+            return false;
+
+        std::unique_lock locker{openedEntriesLock_};
+
+        return openedEntries_.insert(std::make_pair(static_cast<IEntry*>(entry), entry)).second;
+    }
+
+    bool unregisterEntry(EntryImpl* entry) {
+        if (!entry)
+            return false;
+
+        std::unique_lock locker{openedEntriesLock_};
+
+        return openedEntries_.erase(static_cast<IEntry*>(entry)) > 0;
+    }
+
     mount::Points mpoints_{};
     std::atomic<Storage::Handle> currentHandle_{IVolume::RootHandle + 1};
     mutable std::shared_mutex mpointsLock_;
+    std::unordered_map<IEntry*, EntryImpl*> openedEntries_; // alternative - using dynamic_cast
+    std::shared_mutex openedEntriesLock_;
     ThreadPool threadPool_;
 };
 

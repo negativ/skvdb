@@ -21,11 +21,11 @@ std::shared_ptr<IEntry> Storage::entry(const std::string &path) {
 Storage::~Storage() noexcept = default;
 
 Status Storage::link(IEntry &entry, std::string_view name) {
-	return Status::IOError(""); // TODO: implement
+    return impl_->link(entry, name);
 }
 
 Status Storage::unlink(IEntry &entry, std::string_view name) {
-	return Status::IOError(""); // TODO: implement
+    return impl_->unlink(entry, name);
 }
 
 Status Storage::claim(IVolume::Token token) noexcept {
