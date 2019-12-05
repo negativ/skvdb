@@ -40,13 +40,16 @@ if (UNIX)
     list(APPEND LIBS -pthread)
 endif ()
 
+list(APPEND LIBS ${Boost_LIBRARIES})
+
 add_library(${PROJECT_NAME} SHARED
             ${SRCS}
             ${HDRS})
 
 set_target_properties(skv PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-target_link_libraries(${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME}
+                      ${LIBS})
 
 install(TARGETS ${PROJECT_NAME}
         LIBRARY DESTINATION lib)

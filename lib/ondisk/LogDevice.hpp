@@ -10,6 +10,8 @@
 #include <tuple>
 #include <vector>
 
+#include <boost/filesystem.hpp>
+
 #include "os/File.hpp"
 #include "util/Status.hpp"
 #include "util/Unused.hpp"
@@ -17,6 +19,8 @@
 namespace skv::ondisk {
 
 using namespace skv::util;
+
+namespace fs = boost::filesystem;
 
 /**
  * @brief Log-structured block device
@@ -61,7 +65,7 @@ public:
      * @param options
      * @return
      */
-    [[nodiscard]] Status open(std::string_view path, OpenOption options) {
+    [[nodiscard]] Status open(const fs::path& path, OpenOption options) {
         if (options.BlockSize % MIN_BLOCK_SIZE != 0)
             return Status::InvalidArgument("Invalid block size");
 
@@ -256,7 +260,7 @@ private:
         return true;
     }
 
-    std::string path_;
+    fs::path path_;
     OpenOption openOption_;
     std::atomic<block_count_type> blocks_{0};
     bool opened_{false};

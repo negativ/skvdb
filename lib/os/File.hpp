@@ -2,12 +2,15 @@
 
 #include <cstdint>
 #include <memory>
-#include <string_view>
 #include <cstdio>
+
+#include <boost/filesystem.hpp>
 
 #include <util/Status.hpp>
 
 namespace skv::os {
+
+namespace fs = boost::filesystem;
 
 /**
  * @brief OS-specific low-level actions with files
@@ -21,7 +24,7 @@ struct File {
 
     using Handle = std::shared_ptr<std::FILE>;
 
-    [[nodiscard]] static Handle open(std::string_view path, std::string_view mode) noexcept;
+    [[nodiscard]] static Handle open(const fs::path& path, std::string_view mode) noexcept;
 
     [[nodiscard]] static std::uint64_t write(const void* __restrict ptr, std::uint64_t size, std::uint64_t n, const Handle& handle) noexcept;
     [[nodiscard]] static std::uint64_t read(void* __restrict ptr, std::uint64_t size, std::uint64_t n, const Handle& handle) noexcept;
@@ -31,13 +34,13 @@ struct File {
 
     static void flush(const Handle& handle) noexcept;
 
-    [[nodiscard]] static bool unlink(std::string_view filePath) noexcept;
+    [[nodiscard]] static bool unlink(const fs::path& filePath) noexcept;
 
-    [[nodiscard]] static bool exists(std::string_view filePath) noexcept;
+    [[nodiscard]] static bool exists(const fs::path& filePath) noexcept;
 
     [[nodiscard]] static char sep() noexcept;  // path separator
 
-    [[nodiscard]] static bool rename(std::string_view oldName, std::string newName) noexcept;
+    [[nodiscard]] static bool rename(const fs::path& oldName, const fs::path& newName) noexcept;
 };
 
 

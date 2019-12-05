@@ -54,7 +54,7 @@ struct Volume::Impl {
     Impl(Impl&&) noexcept = delete;
     Impl& operator=(Impl&&) noexcept = delete;
 
-    [[nodiscard]] Status initialize(const std::string& directory, const std::string& volumeName) {
+    [[nodiscard]] Status initialize(const fs::path& directory, const std::string& volumeName) {
         storage_type::OpenOptions storageOpts;
 
         storageOpts.CompactionRatio = opts_.CompactionRatio;
