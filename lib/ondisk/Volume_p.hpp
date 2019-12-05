@@ -10,6 +10,7 @@
 #include <thread>
 #include <unordered_map>
 
+#include "Entry.hpp"
 #include "Property.hpp"
 #include "StorageEngine.hpp"
 #include "vfs/IEntry.hpp"
@@ -22,143 +23,14 @@
 
 namespace skv::ondisk {
 
-class EntryImpl final: public vfs::IEntry {
-public:
-    EntryImpl(ondisk::Record&& record):
-        record_{record}
-    {
-
-    }
-
-    ~EntryImpl() noexcept override = default;
-
-    virtual Handle handle() const noexcept override {
-        std::shared_lock locker{xLock_};
-
-        return record_.handle();
-    }
-
-    virtual std::string name() const override {
-        std::shared_lock locker{xLock_};
-
-        return record_.name();
-    }
-
-    virtual bool hasProperty(const std::string &prop) const noexcept override {
-        std::shared_lock locker(xLock_);
-
-        return record_.hasProperty(prop);
-    }
-
-    virtual Status setProperty(const std::string &prop, const Property &value) override {
-        std::unique_lock locker{xLock_};
-
-        auto status = record_.setProperty(prop, value);
-
-        if (status.isOk())
-            setDirty(true);
-
-        return status;
-    }
-
-    virtual std::tuple<Status, Property> property(const std::string &prop) const override {
-        std::shared_lock locker{xLock_};
-
-        return record_.property(prop);
-    }
-
-    virtual Status removeProperty(const std::string &prop) override {
-        std::unique_lock locker{xLock_};
-
-        auto status = record_.removeProperty(prop);
-
-        if (status.isOk())
-            setDirty(true);
-
-        return status;
-    }
-
-    virtual Properties properties() const override {
-        std::shared_lock locker{xLock_};
-
-        return record_.properties();
-    }
-
-    virtual std::set<std::string> propertiesNames() const override {
-        std::shared_lock locker{xLock_};
-
-        return record_.propertiesNames();
-    }
-
-    virtual Status expireProperty(const std::string &prop, chrono::milliseconds ms) override {
-        std::unique_lock locker{xLock_};
-
-        auto status = record_.expireProperty(prop, ms);
-
-        if (status.isOk())
-            setDirty(true);
-
-        return status;
-    }
-
-    virtual Status cancelPropertyExpiration(const std::string &prop) override {
-        std::unique_lock locker{xLock_};
-
-        auto status = record_.cancelPropertyExpiration(prop);
-
-        if (status.isOk())
-            setDirty(true);
-
-        return status;
-    }
-
-    virtual std::set<std::string> children() const override {
-        std::shared_lock locker{xLock_};
-
-        auto children = record_.children();
-
-        locker.unlock();
-
-        std::set<std::string> ret;
-
-        for (const auto& [name, handle] : children) {
-            SKV_UNUSED(handle);
-
-            ret.insert(name);
-        }
-
-        return ret;
-    }
-
-    void setDirty(bool dirty) {
-        dirty_ = dirty;
-    }
-
-    [[nodiscard]] bool dirty() const noexcept {
-        return dirty_;
-    }
-
-    [[nodiscard]] Record& record() const noexcept {
-        return record_;
-    }
-
-    [[nodiscard]] std::shared_mutex& xLock() const noexcept {
-        return xLock_;
-    }
-
-    mutable Record record_;
-    mutable std::shared_mutex xLock_;
-    bool dirty_{false};
-};
-
 struct Volume::Impl {
     const skv::util::Status NoSuchEntryStatus   = skv::util::Status::InvalidArgument("No such entry");
     const skv::util::Status InvalidTokenStatus  = skv::util::Status::InvalidArgument("Invalid token");
 
     static constexpr std::size_t PATH_MRU_CACHE_SIZE = 1024;
 
-    using EntryImplPtr  = std::shared_ptr<EntryImpl>;
-    using EntryImplWPtr = std::weak_ptr<EntryImpl>;
+    using EntryPtr  = std::shared_ptr<Entry>;
+    using EntryWPtr = std::weak_ptr<Entry>;
     using storage_type       = StorageEngine<IVolume::Handle,          // key type
                                              std::uint32_t,            // block index type
                                              std::uint32_t,            // bytes count in one record (4GB now)
@@ -395,7 +267,7 @@ struct Volume::Impl {
         pathCache_.clear();
     }
 
-    [[nodiscard]] std::shared_ptr<EntryImpl> createEntryForHandle(Volume::Handle handle) {
+    [[nodiscard]] EntryPtr createEntryForHandle(Volume::Handle handle) {
         std::unique_lock locker{openedEntriesLock_};
 
         auto it = openedEntries_.find(handle);
@@ -413,7 +285,7 @@ struct Volume::Impl {
         return createEntryForHandle(handle, std::move(entry));
     }
 
-    [[nodiscard]] std::shared_ptr<EntryImpl> createEntryForHandle(Volume::Handle handle, Record&& record) {
+    [[nodiscard]] EntryPtr createEntryForHandle(Volume::Handle handle, Record&& record) {
         std::unique_lock locker{openedEntriesLock_};
 
         auto it = openedEntries_.find(handle);
@@ -421,16 +293,16 @@ struct Volume::Impl {
         if (it != std::end(openedEntries_)) // ok, someone already opened this handle
             return it->second.lock();
 
-        auto ptr = std::make_unique<EntryImpl>(std::move(record));
-        auto deleter = [this](EntryImpl *e) { releaseEntry(e); };
-        auto entry = std::shared_ptr<EntryImpl>{ptr.release(), deleter};
+        auto ptr = std::make_unique<Entry>(std::move(record));
+        auto deleter = [this](Entry *e) { releaseEntry(e); };
+        auto entry = std::shared_ptr<Entry>{ptr.release(), deleter};
 
-        openedEntries_[handle] = EntryImplWPtr{entry};
+        openedEntries_[handle] = EntryWPtr{entry};
 
         return entry;
     }
 
-    void releaseEntry(EntryImpl* entry) {
+    void releaseEntry(Entry* entry) {
         if (!entry)
             return;
 
@@ -448,7 +320,7 @@ struct Volume::Impl {
         delete entry;
     }
 
-    [[nodiscard]] EntryImplPtr getEntry(Volume::Handle handle) {
+    [[nodiscard]] EntryPtr getEntry(Volume::Handle handle) {
         std::shared_lock locker{openedEntriesLock_};
 
         auto it = openedEntries_.find(handle);
@@ -520,7 +392,7 @@ struct Volume::Impl {
     std::unique_ptr<storage_type> storage_;
     Volume::OpenOptions opts_;
     std::shared_mutex openedEntriesLock_;
-    std::unordered_map<Volume::Handle, std::weak_ptr<EntryImpl>> openedEntries_;
+    std::unordered_map<Volume::Handle, EntryWPtr> openedEntries_;
     MRUCache<std::string, Volume::Handle, PATH_MRU_CACHE_SIZE> pathCache_;
     mutable SpinLock<> claimLock_;
     Volume::Token claimToken_{};
