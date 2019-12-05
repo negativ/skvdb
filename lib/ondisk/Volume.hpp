@@ -39,7 +39,7 @@ public:
     Volume(const Volume&) = delete;
     Volume& operator=(const Volume&) = delete;
 
-    Volume(Volume&&) = delete;
+    Volume(Volume&&) noexcept;
     Volume& operator=(Volume&&) = delete;
 
     [[nodiscard]] Status initialize(const std::string& directory, const std::string& volumeName);

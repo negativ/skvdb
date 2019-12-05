@@ -21,6 +21,10 @@ Volume::Volume(OpenOptions opts):
 
 }
 
+Volume::Volume(Volume &&other) noexcept{
+    std::swap(impl_, other.impl_);
+}
+
 Volume::~Volume() noexcept = default;
 
 Status Volume::initialize(const std::string &directory, const std::string &volumeName) {
