@@ -7,7 +7,7 @@
       "inheritEnvironments": [ "msvc_x64_x64" ],
       "buildRoot": "${projectDir}\\out\\build\\${name}",
       "installRoot": "${projectDir}\\out\\install\\${name}",
-      "cmakeCommandArgs": "-DBOOST_INCLUDEDIR=\"D:\\Projects\\boost_1_71_0\" -DBOOST_LIBRARYDIR=\"D:\\Projects\\boost_1_71_0\\lib64-msvc-14.2\" -DBOOST_ROOT=\"D:\\Projects\\boost_1_71_0\\boost\"",
+      "cmakeCommandArgs": "-DBOOST_INCLUDEDIR=\"D:\\Projects\\boost_1_71_0\" -DBOOST_LIBRARYDIR=\"D:\\Projects\\boost_1_71_0\\lib64-msvc-14.2\" -DBOOST_ROOT=\"D:\\Projects\\boost_1_71_0\\boost\" -DBoost_USE_STATIC_LIBS=ON",
       "buildCommandArgs": "-v",
       "ctestCommandArgs": "",
       "variables": []
@@ -18,7 +18,7 @@
       "configurationType": "Release",
       "buildRoot": "${projectDir}\\out\\build\\${name}",
       "installRoot": "${projectDir}\\out\\install\\${name}",
-      "cmakeCommandArgs": "-DBOOST_INCLUDEDIR=\"D:\\Projects\\boost_1_71_0\" -DBOOST_LIBRARYDIR=\"D:\\Projects\\boost_1_71_0\\lib64-msvc-14.2\" -DBOOST_ROOT=\"D:\\Projects\\boost_1_71_0\\boost\"",
+      "cmakeCommandArgs": "-DBOOST_INCLUDEDIR=\"D:\\Projects\\boost_1_71_0\" -DBOOST_LIBRARYDIR=\"D:\\Projects\\boost_1_71_0\\lib64-msvc-14.2\" -DBOOST_ROOT=\"D:\\Projects\\boost_1_71_0\\boost\" -DBoost_USE_STATIC_LIBS=ON",
       "buildCommandArgs": "-v",
       "ctestCommandArgs": "",
       "inheritEnvironments": [ "msvc_x64_x64" ],

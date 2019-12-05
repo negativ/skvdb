@@ -301,7 +301,7 @@ private:
     }
 
     [[nodiscard]] Status openIndexTable(const fs::path& path) {
-        std::fstream stream{path.c_str(), std::ios_base::in};
+        std::fstream stream{path.string().c_str(), std::ios_base::in};
 
         indexTable_.setBlockSize(openOptions_.LogDeviceBlockSize);
 
@@ -347,7 +347,7 @@ private:
 
     [[nodiscard]] std::string createPath(const fs::path& directory, std::string_view storageName, std::string_view suffix) {
         std::stringstream stream;
-        stream << directory.c_str() << os::File::sep() << storageName << suffix;
+        stream << directory.string() << os::File::sep() << storageName << suffix;
 
         return stream.str();
     }

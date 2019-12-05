@@ -23,7 +23,6 @@ endif ()
 find_package(Boost 1.60 REQUIRED COMPONENTS filesystem system)
 
 include_directories(${Boost_INCLUDE_DIRS})
-add_definitions(${Boost_LIB_DIAGNOSTIC_DEFINITIONS})
 
 if (UNIX)
     add_definitions(-DBUILDING_UNIX)
