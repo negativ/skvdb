@@ -14,12 +14,6 @@ IEntry::Handle Entry::handle() const noexcept {
     return record_.handle();
 }
 
-std::string Entry::name() const {
-    std::shared_lock locker{xLock_};
-
-    return record_.name();
-}
-
 bool Entry::hasProperty(const std::string &prop) const noexcept {
     std::shared_lock locker(xLock_);
 

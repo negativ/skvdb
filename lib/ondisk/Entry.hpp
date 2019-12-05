@@ -17,9 +17,9 @@ public:
     Entry(const Entry&) = delete;
     Entry& operator=(const Entry&) = delete;
 
+
     Handle handle() const noexcept override;
 
-    std::string name() const override;
 
     bool hasProperty(const std::string &prop) const noexcept override;
 

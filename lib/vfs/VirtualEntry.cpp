@@ -15,10 +15,6 @@ IEntry::Handle VirtualEntry::handle() const noexcept {
     return handle_;
 }
 
-std::string VirtualEntry::name() const {
-    return ""; // TODO: implement
-}
-
 bool VirtualEntry::hasProperty(const std::string &prop) const noexcept {
     auto results = forEachEntry(&IEntry::hasProperty, prop);
 

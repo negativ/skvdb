@@ -21,9 +21,9 @@ public:
     VirtualEntry(const VirtualEntry&) = delete;
     VirtualEntry& operator=(const VirtualEntry&) = delete;
 
+
     Handle handle() const noexcept override;
 
-    std::string name() const override;
 
     bool hasProperty(const std::string& prop) const noexcept override;
 
@@ -37,9 +37,11 @@ public:
 
     std::set<std::string> propertiesNames() const override;
 
+
     Status expireProperty(const std::string& prop, chrono::milliseconds ms) override;
 
     Status cancelPropertyExpiration(const std::string& prop) override;
+
 
     std::set<std::string> children() const override;
 

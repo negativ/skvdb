@@ -34,8 +34,6 @@ public:
 
     virtual Handle handle() const noexcept = 0;
 
-    virtual std::string name() const = 0;
-
 
     virtual bool hasProperty(const std::string& prop) const noexcept = 0;
 
