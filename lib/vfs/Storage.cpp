@@ -29,11 +29,11 @@ Status Storage::unlink(IEntry &entry, std::string_view name) {
 }
 
 Status Storage::claim(IVolume::Token token) noexcept {
-	return Status::IOError(""); // TODO: implement
+    return impl_->claim(token);
 }
 
 Status Storage::release(IVolume::Token token) noexcept {
-	return Status::IOError(""); // TODO: implement
+    return impl_->release(token);
 }
 
 Status Storage::mount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath, Storage::Priority prio) {

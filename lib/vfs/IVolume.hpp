@@ -35,7 +35,7 @@ public:
      * @param path - path to the entry
      * @return
      */
-    virtual std::shared_ptr<IEntry> entry(const std::string& path) = 0;
+    [[nodiscard]] virtual std::shared_ptr<IEntry> entry(const std::string& path) = 0;
 
     /**
      * @brief Create new link

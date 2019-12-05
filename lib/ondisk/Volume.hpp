@@ -47,12 +47,43 @@ public:
 
     [[nodiscard]] bool initialized() const noexcept;
 
-    std::shared_ptr<IEntry> entry(const std::string& path) override;
+    /**
+     * @brief Get entry at specified path
+     * @param path - path to the entry
+     * @return
+     */
+    [[nodiscard]] std::shared_ptr<IEntry> entry(const std::string& path) override;
 
+
+    /**
+     * @brief Create new link
+     * @param entry - entry in which link will be created
+     * @param name - name of created link
+     * @return Status::Ok() on success
+     */
     [[nodiscard]] Status link(IEntry& entry, std::string_view name) override;
+
+    /**
+     * @brief Remove specified link
+     * @param entry - parent entry
+     * @param name - name of link to remove
+     * @return Status::Ok() on success
+     */
     [[nodiscard]] Status unlink(IEntry& entry, std::string_view name) override;
 
+
+    /**
+     * @brief Claiming by VFS. Can be called more than once
+     * @param token
+     * @return Status::Ok() on success
+     */
     [[nodiscard]] Status claim(Token token) noexcept override;
+
+    /**
+     * @brief Realising volume by VFS. If call count to release() eq. count of claim()'s then volume can be used by another VFS instance
+     * @param token
+     * @return
+     */
     [[nodiscard]] Status release(Token token) noexcept override;
 
 private:

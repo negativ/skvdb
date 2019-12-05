@@ -16,6 +16,7 @@
 #include "MountPoint.hpp"
 #include "vfs/VirtualEntry.hpp"
 #include "util/Log.hpp"
+#include "util/SpinLock.hpp"
 #include "util/Status.hpp"
 #include "util/String.hpp"
 #include "util/StringPath.hpp"
@@ -29,6 +30,8 @@ using namespace skv::util;
 
 struct Storage::Impl {
     static constexpr Status InvalidVolumeArgumentStatus = Status::InvalidArgument("Invalid volume");
+    const skv::util::Status InvalidTokenStatus  = skv::util::Status::InvalidArgument("Invalid token");
+
 	static constexpr const char* const TAG = "vfs::Storage";
 
     enum class ChildOp {
@@ -118,7 +121,7 @@ struct Storage::Impl {
         return ok? Status::Ok() : Status::InvalidArgument("Unknown error");
     }
 
-    [[nodiscard]] std::shared_ptr<IEntry> entry(std::string_view path) {
+    std::shared_ptr<IEntry> entry(std::string_view path) {
         using result      = std::shared_ptr<IEntry>;
         using future      = std::future<std::pair<IVolumePtr, result>>;
         using future_list = std::vector<future>;
@@ -170,7 +173,7 @@ struct Storage::Impl {
 
         auto ptr = std::shared_ptr<VirtualEntry>(new VirtualEntry{newHandle(), std::move(results), std::move(volumes), threadPool_},
                                                  [this](VirtualEntry* ptr) {
-                                                     unregisterEntry(ptr);
+                                                     SKV_UNUSED(unregisterEntry(ptr));
 
                                                      delete ptr;
                                                  });
@@ -178,43 +181,50 @@ struct Storage::Impl {
         return registerEntry(ptr.get())? std::static_pointer_cast<vfs::IEntry>(ptr) : std::shared_ptr<IEntry>{nullptr};
     }
 
-    [[nodiscard]] Status link(IEntry &entry, std::string_view name) {
+    Status link(IEntry &entry, std::string_view name) {
         return childOperation(entry, name, ChildOp::Link);
     }
 
-    [[nodiscard]] Status unlink(IEntry &entry, std::string_view name) {
+    Status unlink(IEntry &entry, std::string_view name) {
         return childOperation(entry, name, ChildOp::Unlink);
     }
 
-    [[nodiscard]] std::tuple<Status, std::string, std::vector<mount::Entry>> searchMountPathFor(std::string_view path) const {
-        auto searchPath = simplifyPath(path);
-        ReverseStringPathIterator start{searchPath},
-                                  stop{};
+    Status claim(IVolume::Token token) noexcept {
+        std::unique_lock locker(claimLock_);
 
-        std::shared_lock locker(mpointsLock_);
-
-        auto& index = mpoints_.get<mount::tags::ByMountPath>();
-
-        while (start != stop) {
-            auto mpath = *start;
-            auto it = index.find(mpath);
-
-            if (it != std::cend(index)) {
-                auto [start, stop] = index.equal_range(mpath);
-
-                std::vector<mount::Entry> ret;
-                std::copy(start, stop, std::back_inserter(ret));
-
-                return {Status::Ok(), mpath, ret};
-            }
-
-            ++start;
+        if (claimToken_ != IVolume::Token{} &&
+            claimToken_ != token)
+        {
+            return InvalidTokenStatus;
         }
 
-        return {Status::NotFound("Unable to find mount point"), {}, {}};
+        if (token == IVolume::Token{})
+            return InvalidTokenStatus;
+
+        claimToken_ = token;
+        ++claimCount_;
+
+        return Status::Ok();
     }
 
-    [[nodiscard]] Status mount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath, Storage::Priority prio) {
+    Status release(IVolume::Token token) noexcept {
+        std::unique_lock locker(claimLock_);
+
+        if (claimToken_ == IVolume::Token{})
+            return Status::InvalidOperation("Volume not claimed");
+
+        if (claimToken_ != token)
+            return InvalidTokenStatus;
+
+        --claimCount_;
+
+        if (claimCount_ == 0)
+            claimToken_ = IVolume::Token{};
+
+        return Status::Ok();
+    }
+
+    Status mount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath, Storage::Priority prio) {
         if (!volume)
             return InvalidVolumeArgumentStatus;
 
@@ -244,7 +254,7 @@ struct Storage::Impl {
         return Status::Ok();
     }
 
-    [[nodiscard]] Status unmount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath) {
+    Status unmount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath) {
         if (!volume)
             return InvalidVolumeArgumentStatus;
 
@@ -275,7 +285,7 @@ struct Storage::Impl {
         return currentHandle_.fetch_add(1);
     }
 
-    bool registerEntry(VirtualEntry* entry) {
+    [[nodiscard]] bool registerEntry(VirtualEntry* entry) {
         if (!entry)
             return false;
 
@@ -284,7 +294,7 @@ struct Storage::Impl {
         return openedEntries_.insert(std::make_pair(entry->handle(), entry)).second;
     }
 
-    bool unregisterEntry(VirtualEntry* entry) {
+    [[nodiscard]] bool unregisterEntry(VirtualEntry* entry) {
         if (!entry)
             return false;
 
@@ -293,12 +303,43 @@ struct Storage::Impl {
         return openedEntries_.erase(entry->handle()) > 0;
     }
 
+    [[nodiscard]] std::tuple<Status, std::string, std::vector<mount::Entry>> searchMountPathFor(std::string_view path) const {
+        auto searchPath = simplifyPath(path);
+        ReverseStringPathIterator start{searchPath},
+                                  stop{};
+
+        std::shared_lock locker(mpointsLock_);
+
+        auto& index = mpoints_.get<mount::tags::ByMountPath>();
+
+        while (start != stop) {
+            auto mpath = *start;
+            auto it = index.find(mpath);
+
+            if (it != std::cend(index)) {
+                auto [start, stop] = index.equal_range(mpath);
+
+                std::vector<mount::Entry> ret;
+                std::copy(start, stop, std::back_inserter(ret));
+
+                return {Status::Ok(), mpath, ret};
+            }
+
+            ++start;
+        }
+
+        return {Status::NotFound("Unable to find mount point"), {}, {}};
+    }
+
     mount::Points mpoints_{};
     std::atomic<Storage::Handle> currentHandle_{IVolume::RootHandle + 1};
     mutable std::shared_mutex mpointsLock_;
     std::unordered_map<IEntry::Handle, VirtualEntry*> openedEntries_; // alternative - using dynamic_cast
     std::shared_mutex openedEntriesLock_;
     ThreadPool threadPool_;
+    mutable SpinLock<> claimLock_;
+    IVolume::Token claimToken_{};
+    std::size_t claimCount_{0};
 };
 
 }
