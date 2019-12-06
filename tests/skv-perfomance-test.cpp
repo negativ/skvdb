@@ -85,7 +85,9 @@ protected:
         std::string trackPath = "";
 
         for (const auto& token : tokens) {
-            auto children = root->children();
+            auto [status, children] = root->children();
+
+			ASSERT_TRUE(status.isOk());
 
             trackPath += ("/" + token);
 
@@ -366,8 +368,9 @@ TEST_F(VFSStoragePerfomanceTest, MultipleRecordsMultipleThreadsReadWrite) {
     }
 
     {   // inspecting storage links
-        auto children = proc->children();
+        auto [status, children] = proc->children();
 
+		ASSERT_TRUE(status.isOk());
         ASSERT_EQ(children.size(), N_THREADS);
 
         for (const auto& child : children) {
@@ -377,8 +380,9 @@ TEST_F(VFSStoragePerfomanceTest, MultipleRecordsMultipleThreadsReadWrite) {
 
             ASSERT_NE(chandle, nullptr);
 
-            auto props = chandle->properties();
+            auto [status, props] = chandle->properties();
 
+			ASSERT_TRUE(status.isOk());
             ASSERT_EQ(props.size(), propsPool.size());
 
             for (std::size_t i = 0; i < propsNames.size(); ++i)
@@ -427,7 +431,8 @@ TEST_F(VFSStoragePerfomanceTest, RemovePropertyRecordTest) {
             ASSERT_NE(handle, nullptr);
 
             {
-                const auto &propNames = handle->propertiesNames();
+                auto [status, propNames] = handle->propertiesNames();
+				ASSERT_TRUE(status.isOk());
                 ASSERT_TRUE(propNames.empty());
             }
 
@@ -482,8 +487,9 @@ TEST_F(VFSStoragePerfomanceTest, LinkUnlinkRecordTest) {
     Log::i("CreateRecordTest", "link() elapsed time: ", msElapsed, " ms.");
     Log::i("CreateRecordTest", "link() speed: ", (1000.0 / msElapsed) * LINKS_COUNT, " link/s");
 
-    auto links = proc->children();
+    auto [status, links] = proc->children();
 
+	ASSERT_TRUE(status.isOk());
     ASSERT_EQ(links.size(), LINKS_COUNT);
 
     startTime = steady_clock::now();

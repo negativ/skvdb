@@ -254,7 +254,12 @@ TEST_F(VFSStorageTest, PropertiesGetSetRemoveTest) {
         {
             auto handle = volume1_->entry("/a/b/c/d");
             ASSERT_NE(handle, nullptr);
-            ASSERT_TRUE(handle->hasProperty("combined_property"));
+
+			auto [status, v] = handle->hasProperty("combined_property");
+
+			ASSERT_TRUE(status.isOk());
+            ASSERT_TRUE(v);
+
             {
                 auto [status, value] = handle->property("combined_property");
 
@@ -265,7 +270,11 @@ TEST_F(VFSStorageTest, PropertiesGetSetRemoveTest) {
         {
             auto handle = volume2_->entry("/f/g/h/i");
             ASSERT_NE(handle, nullptr);
-            ASSERT_TRUE(handle->hasProperty("combined_property"));
+
+			auto [status, v] = handle->hasProperty("combined_property");
+
+			ASSERT_TRUE(status.isOk());
+            ASSERT_TRUE(v);
             {
                 auto [status, value] = handle->property("combined_property");
 
