@@ -21,7 +21,7 @@ public:
     Handle handle() const noexcept override;
 
 
-    bool hasProperty(const std::string &prop) const noexcept override;
+    std::tuple<Status, bool> hasProperty(const std::string &prop) const noexcept override;
 
     Status setProperty(const std::string &prop, const Property &value) override;
 
@@ -29,15 +29,15 @@ public:
 
     Status removeProperty(const std::string &prop) override;
 
-    Properties properties() const override;
+    std::tuple<Status, Properties> properties() const override;
 
-    std::set<std::string> propertiesNames() const override;
+    std::tuple<Status, std::set<std::string>> propertiesNames() const override;
 
     Status expireProperty(const std::string &prop, chrono::milliseconds ms) override;
 
     Status cancelPropertyExpiration(const std::string &prop) override;
 
-    std::set<std::string> children() const override;
+    std::tuple<Status, std::set<std::string>> children() const override;
 
     void setDirty(bool dirty);
 

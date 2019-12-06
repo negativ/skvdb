@@ -188,7 +188,8 @@ TEST(VolumeTest, MTTestN2) {
 	auto handle = volume.entry("/test");
 	ASSERT_TRUE(handle != nullptr);
 
-	const auto& properties = handle->properties();
+    const auto& [status, properties] = handle->properties();
+    ASSERT_TRUE(status.isOk());
 	ASSERT_EQ(properties.size(), NRUNS * threads.size());
 
     ASSERT_TRUE(volume.deinitialize().isOk());
@@ -235,7 +236,9 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
         status = volume.link(*root, "usr");
         ASSERT_TRUE(status.isOk());
 
-		auto children = root->children();
+        std::set<std::string> children;
+        std::tie(status, children) = root->children();
+        ASSERT_TRUE(status.isOk());
 		ASSERT_EQ(children.size(), 3);
     }
 
@@ -250,7 +253,9 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
         status = volume.link(*proc, "2");
         ASSERT_TRUE(status.isOk());
 
-		auto children = proc->children();
+        std::set<std::string> children;
+        std::tie(status, children) = proc->children();
+        ASSERT_TRUE(status.isOk());
 		ASSERT_EQ(children.size(), 2);
     }
 
@@ -259,7 +264,9 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
 
 		ASSERT_TRUE(proc != nullptr);
 
-		auto children = proc->children();
+        std::set<std::string> children;
+        std::tie(status, children) = proc->children();
+        ASSERT_TRUE(status.isOk());
 		ASSERT_EQ(children.size(), 2);
 
         status = volume.link(*proc, "self");
@@ -274,7 +281,9 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
 
 		ASSERT_TRUE(self != nullptr);
 
-		auto children = self->children();
+        std::set<std::string> children;
+        std::tie(status, children) = self->children();
+        ASSERT_TRUE(status.isOk());
 		ASSERT_TRUE(children.empty());
 
         ASSERT_TRUE(self->setProperty("int_property", 1).isOk());
@@ -288,13 +297,28 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
 
 		ASSERT_TRUE(self != nullptr);
 
-		auto children = self->children();
+        std::set<std::string> children;
+        std::tie(status, children) = self->children();
+        ASSERT_TRUE(status.isOk());
 		ASSERT_TRUE(children.empty());
 
-        ASSERT_TRUE(self->hasProperty("int_property"));
-		ASSERT_TRUE(self->hasProperty("str_property"));
-		ASSERT_TRUE(self->hasProperty("flt_property"));
-		ASSERT_TRUE(self->hasProperty("dbl_property"));
+        bool v = false;
+
+        std::tie(status, v) = self->hasProperty("int_property");
+        ASSERT_TRUE(status.isOk());
+        ASSERT_TRUE(v);
+
+        std::tie(status, v) = self->hasProperty("str_property");
+        ASSERT_TRUE(status.isOk());
+        ASSERT_TRUE(v);
+
+        std::tie(status, v) = self->hasProperty("flt_property");
+        ASSERT_TRUE(status.isOk());
+        ASSERT_TRUE(v);
+
+        std::tie(status, v) = self->hasProperty("dbl_property");
+        ASSERT_TRUE(status.isOk());
+        ASSERT_TRUE(v);
     }
 
     {

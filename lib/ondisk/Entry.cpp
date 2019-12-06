@@ -14,10 +14,10 @@ IEntry::Handle Entry::handle() const noexcept {
     return record_.handle();
 }
 
-bool Entry::hasProperty(const std::string &prop) const noexcept {
+std::tuple<Status, bool> Entry::hasProperty(const std::string &prop) const noexcept {
     std::shared_lock locker(xLock_);
 
-    return record_.hasProperty(prop);
+    return {Status::Ok(), record_.hasProperty(prop)};
 }
 
 Status Entry::setProperty(const std::string &prop, const Property &value) {
@@ -48,16 +48,16 @@ Status Entry::removeProperty(const std::string &prop) {
     return status;
 }
 
-IEntry::Properties Entry::properties() const {
+std::tuple<Status, IEntry::Properties> Entry::properties() const {
     std::shared_lock locker{xLock_};
 
-    return record_.properties();
+    return {Status::Ok(), record_.properties()};
 }
 
-std::set<std::string> Entry::propertiesNames() const {
+std::tuple<Status, std::set<std::string>> Entry::propertiesNames() const {
     std::shared_lock locker{xLock_};
 
-    return record_.propertiesNames();
+    return {Status::Ok(), record_.propertiesNames()};
 }
 
 Status Entry::expireProperty(const std::string &prop, chrono::milliseconds ms) {
@@ -82,7 +82,7 @@ Status Entry::cancelPropertyExpiration(const std::string &prop) {
     return status;
 }
 
-std::set<std::string> Entry::children() const {
+std::tuple<Status, std::set<std::string> > Entry::children() const {
     std::shared_lock locker{xLock_};
 
     auto children = record_.children();
@@ -97,7 +97,7 @@ std::set<std::string> Entry::children() const {
         ret.insert(name);
     }
 
-    return ret;
+    return {Status::Ok(), ret};
 }
 
 void Entry::setDirty(bool dirty) {

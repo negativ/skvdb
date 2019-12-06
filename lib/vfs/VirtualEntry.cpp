@@ -1,4 +1,5 @@
 #include "VirtualEntry.hpp"
+#include "util/Unused.hpp"
 
 namespace skv::vfs {
 
@@ -15,15 +16,25 @@ IEntry::Handle VirtualEntry::handle() const noexcept {
     return handle_;
 }
 
-bool VirtualEntry::hasProperty(const std::string &prop) const noexcept {
-    auto results = forEachEntry(&IEntry::hasProperty, prop);
+std::tuple<Status, bool> VirtualEntry::hasProperty(const std::string &prop) const noexcept {
+    const auto& [status, results] = forEachEntry(&IEntry::hasProperty, prop);
 
-    return std::any_of(std::cbegin(results), std::cend(results),
-                       [](auto v) { return v; });
+    if (!status.isOk())
+        return {status, false};
+
+    return {Status::Ok(), std::any_of(std::cbegin(results), std::cend(results),
+                                      [](auto result) {
+                                            const auto& [status, v] = result;
+                                            SKV_UNUSED(status);
+                                            return v;
+                                      })};
 }
 
 Status VirtualEntry::setProperty(const std::string &prop, const Property &value) {
-    auto results = forEachEntry(&IEntry::setProperty, prop, value);
+    auto [status, results] = forEachEntry(&IEntry::setProperty, prop, value);
+
+    if (!status.isOk())
+        return status;
 
     auto ok = std::all_of(std::cbegin(results), std::cend(results),
                           [](auto&& status) { return status.isOk(); });
@@ -32,7 +43,10 @@ Status VirtualEntry::setProperty(const std::string &prop, const Property &value)
 }
 
 std::tuple<Status, Property> VirtualEntry::property(const std::string &prop) const {
-    auto results = forEachEntry(&IEntry::property, prop);
+    const auto& [st, results] = forEachEntry(&IEntry::property, prop);
+
+    if (!st.isOk())
+        return {st, {}};
 
     for (const auto& [status, value] : results) {
         if (status.isOk())
@@ -43,7 +57,7 @@ std::tuple<Status, Property> VirtualEntry::property(const std::string &prop) con
 }
 
 Status VirtualEntry::removeProperty(const std::string &prop) {
-    auto results = forEachEntry(&IEntry::removeProperty, prop);
+    const auto& [status, results] = forEachEntry(&IEntry::removeProperty, prop);
 
     auto ok = std::any_of(std::cbegin(results), std::cend(results),
                           [](auto&& status) { return status.isOk(); });
@@ -51,40 +65,55 @@ Status VirtualEntry::removeProperty(const std::string &prop) {
     return ok? Status::Ok() : Status::InvalidArgument("No such property");
 }
 
-IEntry::Properties VirtualEntry::properties() const {
-    auto results = forEachEntry(&IEntry::properties);
+std::tuple<Status, IEntry::Properties> VirtualEntry::properties() const {
+    const auto& [status, results] = forEachEntry(&IEntry::properties);
+
+    if (!status.isOk())
+        return {status, {}};
 
     if (results.empty())
-        return {};
+        return {Status::Ok(), {}};
 
-    Properties ret = std::move(results[0]); // just moving first result to result (properties from entry with highest priority)
+    Properties props;
 
-    for (std::size_t i = 1; i < results.size(); ++i) {
-        for (const auto& p : results[i])
+    for (const auto& [st, ps] : results) {
+        if (!st.isOk())
+            continue;
+
+        for (const auto& p : ps)
+            props.insert(p);
+    }
+
+    return {Status::Ok(), props};
+}
+
+std::tuple<Status, std::set<std::string>> VirtualEntry::propertiesNames() const {
+    const auto& [status, results] = forEachEntry(&IEntry::propertiesNames);
+
+    if (!status.isOk())
+        return {status, {}};
+
+    if (results.empty())
+        return {Status::Ok(), {}};
+
+    std::set<std::string> ret;
+
+    for (const auto& [st, ps] : results) {
+        if (!st.isOk())
+            continue;
+
+        for (const auto& p : ps)
             ret.insert(p);
     }
 
-    return ret;
-}
-
-std::set<std::string> VirtualEntry::propertiesNames() const {
-    auto results = forEachEntry(&IEntry::propertiesNames);
-
-    if (results.empty())
-        return {};
-
-    std::set<std::string> ret = std::move(results[0]); // just moving first result to result (properties from entry with highest priority)
-
-    for (std::size_t i = 1; i < results.size(); ++i) {
-        for (auto& name : results[i])
-            ret.insert(name);
-    }
-
-    return ret;
+    return {Status::Ok(), ret};
 }
 
 Status VirtualEntry::expireProperty(const std::string &prop, chrono::milliseconds ms) {
-    auto results = forEachEntry(&IEntry::expireProperty, prop, ms);
+    const auto& [status, results] = forEachEntry(&IEntry::expireProperty, prop, ms);
+
+    if (!status.isOk())
+        return status;
 
     auto ok = std::any_of(std::cbegin(results), std::cend(results),
                           [](auto&& status) { return status.isOk(); });
@@ -93,7 +122,10 @@ Status VirtualEntry::expireProperty(const std::string &prop, chrono::millisecond
 }
 
 Status VirtualEntry::cancelPropertyExpiration(const std::string &prop) {
-    auto results = forEachEntry(&IEntry::cancelPropertyExpiration, prop);
+    const auto& [status, results] = forEachEntry(&IEntry::cancelPropertyExpiration, prop);
+
+    if (!status.isOk())
+        return status;
 
     auto ok = std::any_of(std::cbegin(results), std::cend(results),
                           [](auto&& status) { return status.isOk(); });
@@ -101,20 +133,26 @@ Status VirtualEntry::cancelPropertyExpiration(const std::string &prop) {
     return ok? Status::Ok() : Status::InvalidArgument("No such property");
 }
 
-std::set<std::string> VirtualEntry::children() const {
-    auto results = forEachEntry(&IEntry::children);
+std::tuple<Status, std::set<std::string>> VirtualEntry::children() const {
+    const auto& [status, results] = forEachEntry(&IEntry::children);
+
+    if (!status.isOk())
+        return {status, {}};
 
     if (results.empty())
         return {};
 
-    std::set<std::string> ret = std::move(results[0]); // just moving first result to result (properties from entry with highest priority)
+    std::set<std::string> ret;
 
-    for (std::size_t i = 1; i < results.size(); ++i) {
-        for (auto& child : results[i])
+    for (const auto& [st, cs] : results) {
+        if (!st.isOk())
+            continue;
+
+        for (const auto& child : cs)
             ret.insert(child);
     }
 
-    return ret;
+    return {Status::Ok(), ret};
 }
 
 VirtualEntry::Volumes &VirtualEntry::volumes() const noexcept {

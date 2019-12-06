@@ -25,7 +25,7 @@ public:
     Handle handle() const noexcept override;
 
 
-    bool hasProperty(const std::string& prop) const noexcept override;
+    std::tuple<Status, bool> hasProperty(const std::string& prop) const noexcept override;
 
     Status setProperty(const std::string& prop, const Property& value) override;
 
@@ -33,9 +33,9 @@ public:
 
     Status removeProperty(const std::string& prop) override;
 
-    Properties properties() const override;
+    std::tuple<Status, Properties> properties() const override;
 
-    std::set<std::string> propertiesNames() const override;
+    std::tuple<Status, std::set<std::string>> propertiesNames() const override;
 
 
     Status expireProperty(const std::string& prop, chrono::milliseconds ms) override;
@@ -43,7 +43,7 @@ public:
     Status cancelPropertyExpiration(const std::string& prop) override;
 
 
-    std::set<std::string> children() const override;
+    std::tuple<Status, std::set<std::string>> children() const override;
 
     Volumes& volumes() const noexcept;
 
@@ -73,7 +73,7 @@ private:
              stop  = std::end(entries_);
 
         if (start == stop)
-            return result_list{};
+            return std::make_tuple(Status::Ok(), result_list{});
 
         result_list results;
         future_list futures;
@@ -88,7 +88,9 @@ private:
             try {
                 futures.emplace_back(threadPool_.get().schedule(std::forward<F>(func), entry.get(), std::forward<Args>(args)...));
             }
-            catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); }
+            catch (...) {
+                return std::make_tuple(Status::Fatal("Exception"), result_list{});
+            }
 
             ++start;
         }
@@ -96,7 +98,9 @@ private:
         try {
             results.emplace_back(std::invoke(std::forward<F>(func), (*it).get(), std::forward<Args>(args)...));
         }
-        catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); }
+        catch (...) {
+            return std::make_tuple(Status::Fatal("Exception"), result_list{});
+        }
 
         waitAllFutures(std::begin(futures), std::end(futures));
 
@@ -104,10 +108,12 @@ private:
             try {
                 results.emplace_back(f.get());
             }
-            catch (...) { Log::e(TAG, "Unknown exception. Ignoring"); }
+            catch (...) {
+                return std::make_tuple(Status::Fatal("Exception"), result_list{});
+            }
         }
 
-        return  results;
+        return std::make_tuple(Status::Ok(), results);
     }
 
     Handle handle_;

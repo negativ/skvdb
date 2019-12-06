@@ -65,7 +65,9 @@ protected:
         std::string trackPath = "";
 
         for (const auto& token : tokens) {
-            auto children = root->children();
+            auto [status, children] = root->children();
+
+            ASSERT_TRUE(status.isOk());
 
             trackPath += ("/" + token);
 
@@ -186,15 +188,27 @@ TEST_F(VFSStorageTest, PropertiesGetSetRemoveTest) {
 
     {
         auto handle = storage_.entry("/combined");
+        bool v = false;
+        Status status;
 
         ASSERT_NE(handle, nullptr);
 
-        ASSERT_TRUE(handle->hasProperty("test_int"));
-        ASSERT_TRUE(handle->hasProperty("test_dbl"));
-        ASSERT_TRUE(handle->hasProperty("v2_test_dbl"));
+        std::tie(status, v) = handle->hasProperty("test_int");
+        ASSERT_TRUE(status.isOk());
+        ASSERT_TRUE(v);
 
-        auto properties = handle->properties();
+        std::tie(status, v) = handle->hasProperty("test_dbl");
+        ASSERT_TRUE(status.isOk());
+        ASSERT_TRUE(v);
 
+        std::tie(status, v) = handle->hasProperty("v2_test_dbl");
+        ASSERT_TRUE(status.isOk());
+        ASSERT_TRUE(v);
+
+        IEntry::Properties properties;
+        std::tie(status, properties) = handle->properties();
+
+        ASSERT_TRUE(status.isOk());
         ASSERT_EQ(properties.size(), 6);
 
         ASSERT_EQ(properties["test_int"], Property{1024 * 1024 * 1024}); // volume 2 has highest priority
@@ -279,8 +293,9 @@ TEST_F(VFSStorageTest, PropertiesGetSetRemoveTest) {
 
             ASSERT_NE(handle, nullptr);
 
-            auto properties = handle->properties();
+            auto [status, properties] = handle->properties();
 
+            ASSERT_TRUE(status.isOk());
             ASSERT_TRUE(properties.empty());
         }
 
@@ -289,8 +304,9 @@ TEST_F(VFSStorageTest, PropertiesGetSetRemoveTest) {
 
             ASSERT_NE(handle, nullptr);
 
-            auto properties = handle->properties();
+            auto [status, properties] = handle->properties();
 
+            ASSERT_TRUE(status.isOk());
             ASSERT_TRUE(properties.empty());
         }
     }
@@ -318,30 +334,45 @@ TEST_F(VFSStorageTest, PropertyExpireTest) {
     ASSERT_TRUE(handle->expireProperty("test_flt", 300ms).isOk());
     ASSERT_TRUE(handle->expireProperty("test_dbl", 400ms).isOk());
 
+    bool v = false;
+    Status status;
+
     std::this_thread::sleep_for(150ms);
 
-    ASSERT_FALSE(handle->hasProperty("test_int"));
+    std::tie(status, v) = handle->hasProperty("test_int");
+    ASSERT_TRUE(status.isOk());
+    ASSERT_FALSE(v);
 
     std::this_thread::sleep_for(100ms);
 
-    ASSERT_FALSE(handle->hasProperty("test_str"));
+    std::tie(status, v) = handle->hasProperty("test_str");
+    ASSERT_TRUE(status.isOk());
+    ASSERT_FALSE(v);
 
     std::this_thread::sleep_for(100ms);
 
-    ASSERT_FALSE(handle->hasProperty("test_flt"));
+    std::tie(status, v) = handle->hasProperty("test_flt");
+    ASSERT_TRUE(status.isOk());
+    ASSERT_FALSE(v);
 
     std::this_thread::sleep_for(100ms);
 
-    ASSERT_FALSE(handle->hasProperty("test_dbl"));
+    std::tie(status, v) = handle->hasProperty("test_dbl");
+    ASSERT_TRUE(status.isOk());
+    ASSERT_FALSE(v);
 
     {
         auto handle = volume1_->entry("/a/b/c/d");
-        ASSERT_TRUE(handle->properties().empty());
+        IEntry::Properties props;
+        std::tie(status, props) = handle->properties();
+        ASSERT_TRUE(props.empty());
     }
 
     {
         auto handle = volume2_->entry("/f/g/h/i");
-        ASSERT_TRUE(handle->properties().empty());
+        IEntry::Properties props;
+        std::tie(status, props) = handle->properties();
+        ASSERT_TRUE(props.empty());
     }
 
     doUnmounts();
@@ -354,8 +385,9 @@ TEST_F(VFSStorageTest, LinkUnlinkTest) {
     ASSERT_NE(handle, nullptr);
 
     {
-        auto links = handle->children();
+        auto [status, links] = handle->children();
 
+        ASSERT_TRUE(status.isOk());
         ASSERT_FALSE(links.empty());
 
         ASSERT_EQ(links.size(), 2);
@@ -370,8 +402,9 @@ TEST_F(VFSStorageTest, LinkUnlinkTest) {
     ASSERT_FALSE(storage_.link(*handle, "x").isOk());
 
     {
-        auto links = handle->children();
+        auto [status, links] = handle->children();
 
+        ASSERT_TRUE(status.isOk());
         ASSERT_FALSE(links.empty());
 
         ASSERT_EQ(links.size(), 4);
@@ -386,8 +419,9 @@ TEST_F(VFSStorageTest, LinkUnlinkTest) {
     ASSERT_FALSE(storage_.unlink(*handle, "e").isOk());
 
     {
-        auto links = handle->children();
+        auto [status, links] = handle->children();
 
+        ASSERT_TRUE(status.isOk());
         ASSERT_FALSE(links.empty());
 
         ASSERT_EQ(links.size(), 3);
