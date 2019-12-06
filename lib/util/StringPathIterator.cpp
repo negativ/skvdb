@@ -40,10 +40,6 @@ bool StringPathIterator::operator!=(const StringPathIterator &other) {
     return valid_ != other.valid_;
 }
 
-StringPathIterator make_path_iterator(std::string path) {
-    return StringPathIterator{std::move(path)};
-}
-
 ReverseStringPathIterator::ReverseStringPathIterator() = default;
 
 ReverseStringPathIterator::ReverseStringPathIterator(std::string path):
@@ -76,10 +72,6 @@ std::string ReverseStringPathIterator::operator*() {
 
 bool ReverseStringPathIterator::operator!=(const ReverseStringPathIterator &other) {
     return valid_ != other.valid_;
-}
-
-ReverseStringPathIterator make_reverse_path_iterator(std::string path) {
-    return ReverseStringPathIterator{std::move(path)};
 }
 
 }
