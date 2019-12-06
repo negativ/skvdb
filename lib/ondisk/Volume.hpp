@@ -7,8 +7,7 @@
 #include <string>
 #include <tuple>
 
-#include <boost/filesystem.hpp>
-
+#include "os/File.hpp"
 #include "vfs/Property.hpp"
 #include "vfs/IVolume.hpp"
 
@@ -18,7 +17,6 @@ using namespace skv::util;
 using namespace skv::vfs;
 
 namespace chrono = std::chrono;
-namespace fs = boost::filesystem;
 
 class Volume final: public vfs::IVolume {
     struct Impl;
@@ -45,7 +43,7 @@ public:
     Volume(Volume&&) noexcept;
     Volume& operator=(Volume&&) = delete;
 
-    [[nodiscard]] Status initialize(const fs::path& directory, const std::string& volumeName);
+    [[nodiscard]] Status initialize(const os::path& directory, const std::string& volumeName);
     [[nodiscard]] Status deinitialize();
 
     [[nodiscard]] bool initialized() const noexcept;

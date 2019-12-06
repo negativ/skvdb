@@ -27,7 +27,7 @@ Volume::Volume(Volume &&other) noexcept{
 
 Volume::~Volume() noexcept = default;
 
-Status Volume::initialize(const fs::path& directory, const std::string &volumeName) {
+Status Volume::initialize(const os::path& directory, const std::string &volumeName) {
     if (initialized())
         return Status::InvalidOperation("Volume already opened");
 

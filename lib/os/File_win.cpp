@@ -6,7 +6,7 @@
 
 namespace skv::os {
 
-    File::Handle File::open(const fs::path& path, std::string_view mode) noexcept {
+    File::Handle File::open(const path& path, std::string_view mode) noexcept {
 		const auto& pathStr = path.string();
 
         return File::Handle{::fopen(pathStr.c_str(), mode.data()),
@@ -49,25 +49,17 @@ namespace skv::os {
         ::fflush(handle.get());
     }
 
-    bool File::unlink(const fs::path& path) noexcept {
+    bool File::unlink(const path& path) noexcept {
 		const auto& pathStr = path.string();
 
         return ::DeleteFile(pathStr.c_str()) != 0;
     }
 
-    bool File::exists(const fs::path& filePath) noexcept {
-        return fs::exists(filePath);
-    }
-
-    bool File::rename(const fs::path& oldName, const fs::path& newName) noexcept {
+    bool File::rename(const path& oldName, const path& newName) noexcept {
 		const auto& oldPathStr = oldName.string();
 		const auto& newPathStr = newName.string();
 
         return ::rename(oldPathStr.c_str(), newPathStr.c_str()) == 0;
-    }
-
-    char File::sep() noexcept {
-        return fs::path::separator;
     }
 
 }

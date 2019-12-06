@@ -11,7 +11,6 @@
 #include <fstream>
 #include <vector>
 
-#include <boost/filesystem.hpp>
 #include <boost/iostreams/stream.hpp>
 
 #include "ContainerStreamDevice.hpp"
@@ -27,8 +26,6 @@
 #include "util/Unused.hpp"
 
 namespace skv::ondisk {
-
-namespace fs = boost::filesystem;
 
 /**
  * @brief Storage engine
@@ -194,7 +191,7 @@ public:
         return Status::Ok();
     }
 
-    [[nodiscard]] Status open(const fs::path& directory, std::string_view storageName, OpenOptions opts = {}) {
+    [[nodiscard]] Status open(const os::path& directory, std::string_view storageName, OpenOptions opts = {}) {
         std::unique_lock locker(xLock_);
 
         openOptions_ = opts;
@@ -288,7 +285,7 @@ private:
         return Status::Fatal("Unknown error");
     }
 
-    [[nodiscard]] Status openDevice(const fs::path& path) {
+    [[nodiscard]] Status openDevice(const os::path& path) {
         typename log_device_type::OpenOption opts;
         opts.BlockSize = openOptions_.LogDeviceBlockSize;
         opts.CreateNewIfNotExist = openOptions_.LogDeviceCreateNewIfNotExist;
@@ -300,7 +297,7 @@ private:
         return logDevice_.close();
     }
 
-    [[nodiscard]] Status openIndexTable(const fs::path& path) {
+    [[nodiscard]] Status openIndexTable(const os::path& path) {
 		const auto& strPath = path.string();
 
         std::fstream stream{strPath.c_str(), std::ios_base::in};
@@ -347,9 +344,9 @@ private:
     }
 
 
-    [[nodiscard]] std::string createPath(const fs::path& directory, std::string_view storageName, std::string_view suffix) {
+    [[nodiscard]] std::string createPath(const os::path& directory, std::string_view storageName, std::string_view suffix) {
         std::stringstream stream;
-        stream << directory.string() << os::File::sep() << storageName << suffix;
+        stream << directory.string() << char(os::fs::path::separator) << storageName << suffix;
 
         return stream.str();
     }
@@ -445,9 +442,9 @@ private:
     index_table_type indexTable_;
     log_device_type logDevice_;
     OpenOptions openOptions_;
-    fs::path directory_;
+    os::path directory_;
     std::string storageName_;
-    fs::path logDevicePath_;
+    os::path logDevicePath_;
     std::string idxtPath_;
     std::shared_mutex xLock_;
     SpinLock<> spLock_;
