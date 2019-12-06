@@ -1,7 +1,6 @@
-#include <deque>
-#include <numeric>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "String.hpp"
 
@@ -9,9 +8,10 @@ namespace skv::util {
 
 std::string simplifyPath(std::string_view path) {
     auto pathStack = skv::util::split(path, '/', true);  // split path by '/' symbol skypping empty parts
-    std::deque<std::string> result;
+    std::vector<std::string> result;
+    result.reserve(pathStack.size());
 
-    for (const auto& d : pathStack) {
+    for (auto&& d : pathStack) {
         if (d.empty() || d == ".")
             continue;
 
@@ -20,15 +20,21 @@ std::string simplifyPath(std::string_view path) {
                 result.pop_back();
         }
         else
-            result.push_back(d);
+            result.emplace_back(std::move(d));
     }
 
     if (result.empty())
         return "/";
 
-    return std::accumulate(result.begin(), result.end(),
-                           std::string{""},
-                           [](auto&& path, auto&& d) {return std::move(path + "/" + d); });
+    std::string ret;
+    ret.reserve(path.size());
+
+    for (auto&& r : result) {
+        ret.append("/");
+        ret.append(std::begin(r), std::end(r));
+    }
+
+    return ret;
 }
 
 }
