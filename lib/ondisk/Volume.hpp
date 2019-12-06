@@ -62,7 +62,7 @@ public:
      * @param name - name of created link
      * @return Status::Ok() on success
      */
-    [[nodiscard]] Status link(IEntry& entry, std::string_view name) override;
+    [[nodiscard]] Status link(IEntry& entry, const std::string& name) override;
 
     /**
      * @brief Remove specified link
@@ -70,7 +70,7 @@ public:
      * @param name - name of link to remove
      * @return Status::Ok() on success
      */
-    [[nodiscard]] Status unlink(IEntry& entry, std::string_view name) override;
+    [[nodiscard]] Status unlink(IEntry& entry, const std::string& name) override;
 
 
     /**

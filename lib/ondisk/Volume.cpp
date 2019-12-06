@@ -52,14 +52,14 @@ std::shared_ptr<IEntry> Volume::entry(const std::string& path) {
     return impl_->entry(path);
 }
 
-Status Volume::link(IEntry &entry, std::string_view name) {
+Status Volume::link(IEntry &entry, const std::string& name) {
     if (!initialized())
         return VolumeNotOpenedStatus;
 
     return impl_->createChild(entry, name);
 }
 
-Status Volume::unlink(IEntry& entry, std::string_view name) {
+Status Volume::unlink(IEntry& entry, const std::string& name) {
     if (!initialized())
         return VolumeNotOpenedStatus;
 

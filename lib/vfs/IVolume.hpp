@@ -2,7 +2,6 @@
 
 #include <memory>
 #include <string>
-#include <string_view>
 
 #include "vfs/IEntry.hpp"
 #include "util/Status.hpp"
@@ -43,7 +42,7 @@ public:
      * @param name - name of created link
      * @return Status::Ok() on success
      */
-    [[nodiscard]] virtual Status link(IEntry& entry, std::string_view name) = 0;
+    [[nodiscard]] virtual Status link(IEntry& entry, const std::string& name) = 0;
 
     /**
      * @brief Remove specified link
@@ -51,7 +50,7 @@ public:
      * @param name - name of link to remove
      * @return Status::Ok() on success
      */
-    [[nodiscard]] virtual Status unlink(IEntry& entry, std::string_view name) = 0;
+    [[nodiscard]] virtual Status unlink(IEntry& entry, const std::string& name) = 0;
 
 
     /**

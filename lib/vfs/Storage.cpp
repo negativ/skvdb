@@ -20,11 +20,11 @@ std::shared_ptr<IEntry> Storage::entry(const std::string &path) {
 
 Storage::~Storage() noexcept = default;
 
-Status Storage::link(IEntry &entry, std::string_view name) {
+Status Storage::link(IEntry &entry, const std::string& name) {
     return impl_->link(entry, name);
 }
 
-Status Storage::unlink(IEntry &entry, std::string_view name) {
+Status Storage::unlink(IEntry &entry, const std::string& name) {
     return impl_->unlink(entry, name);
 }
 
@@ -36,11 +36,11 @@ Status Storage::release(IVolume::Token token) noexcept {
     return impl_->release(token);
 }
 
-Status Storage::mount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath, Storage::Priority prio) {
+Status Storage::mount(const IVolumePtr& volume, const std::string& entryPath, const std::string& mountPath, Storage::Priority prio) {
     return impl_->mount(volume, entryPath, mountPath, prio);
 }
 
-Status Storage::unmount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath) {
+Status Storage::unmount(const IVolumePtr& volume, const std::string& entryPath, const std::string& mountPath) {
     return impl_->unmount(volume, entryPath, mountPath);
 }
 

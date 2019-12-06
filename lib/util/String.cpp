@@ -31,8 +31,4 @@ std::deque<std::string> split(std::string_view str, char delim, bool skipEmptyPa
     return tokens;
 }
 
-std::string to_string(std::string_view v) {
-    return std::string{std::cbegin(v), std::cend(v)};
-}
-
 }

@@ -19,7 +19,7 @@ public:
     static constexpr Priority MinPriority       = std::numeric_limits<Priority>::min();
     static constexpr Priority DefaultPriority   = MinPriority + 1;
 
-    Entry(std::string_view mountPath, std::string_view entryPath, IVolumePtr volume, Priority prio = DefaultPriority);
+    Entry(const std::string& mountPath, const std::string& entryPath, IVolumePtr volume, Priority prio = DefaultPriority);
     ~Entry() noexcept;
 
     Entry(const Entry& other);

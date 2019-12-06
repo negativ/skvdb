@@ -56,7 +56,7 @@ protected:
         SKV_UNUSED(os::File::unlink(VOLUME_DIR + char(os::path::separator) + VOLUME_N2_NAME+ ".index"));
     }
 
-    void createPath(std::shared_ptr<ondisk::Volume>& ptr, std::string_view path) {
+    void createPath(std::shared_ptr<ondisk::Volume>& ptr, const std::string& path) {
         auto root = ptr->entry("/");
 
         ASSERT_NE(root, nullptr);

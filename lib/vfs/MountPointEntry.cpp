@@ -30,7 +30,7 @@ struct Entry::Impl {
     Entry::Priority priority_;
 };
 
-Entry::Entry(std::string_view mountPath, std::string_view entryPath, IVolumePtr volume, Priority prio):
+Entry::Entry(const std::string& mountPath, const std::string& entryPath, IVolumePtr volume, Priority prio):
     impl_{std::make_unique<Impl>(util::simplifyPath(mountPath),
                                  util::simplifyPath(entryPath),
                                  std::move(volume),

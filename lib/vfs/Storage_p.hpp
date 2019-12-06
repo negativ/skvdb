@@ -57,7 +57,7 @@ struct Storage::Impl {
     Impl(Impl&&) noexcept = delete;
     Impl& operator=(Impl&&) noexcept = delete;
 
-    [[nodiscard]] Status childOperation(IEntry &entry, std::string_view name, ChildOp op) {
+    [[nodiscard]] Status childOperation(IEntry &entry, const std::string& name, ChildOp op) {
         using result      = Status;
         using future      = std::future<result>;
         using future_list = std::vector<future>;
@@ -121,7 +121,7 @@ struct Storage::Impl {
         return ok? Status::Ok() : Status::InvalidArgument("Unknown error");
     }
 
-    std::shared_ptr<IEntry> entry(std::string_view path) {
+    std::shared_ptr<IEntry> entry(const std::string& path) {
         using result      = std::shared_ptr<IEntry>;
         using future      = std::future<std::pair<IVolumePtr, result>>;
         using future_list = std::vector<future>;
@@ -181,11 +181,11 @@ struct Storage::Impl {
         return registerEntry(ptr.get())? std::static_pointer_cast<vfs::IEntry>(ptr) : std::shared_ptr<IEntry>{nullptr};
     }
 
-    Status link(IEntry &entry, std::string_view name) {
+    Status link(IEntry &entry, const std::string& name) {
         return childOperation(entry, name, ChildOp::Link);
     }
 
-    Status unlink(IEntry &entry, std::string_view name) {
+    Status unlink(IEntry &entry, const std::string& name) {
         return childOperation(entry, name, ChildOp::Unlink);
     }
 
@@ -224,7 +224,7 @@ struct Storage::Impl {
         return Status::Ok();
     }
 
-    Status mount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath, Storage::Priority prio) {
+    Status mount(const IVolumePtr& volume, const std::string& entryPath, const std::string& mountPath, Storage::Priority prio) {
         if (!volume)
             return InvalidVolumeArgumentStatus;
 
@@ -254,14 +254,14 @@ struct Storage::Impl {
         return Status::Ok();
     }
 
-    Status unmount(IVolumePtr volume, std::string_view entryPath, std::string_view mountPath) {
+    Status unmount(IVolumePtr volume, const std::string& entryPath, const std::string& mountPath) {
         if (!volume)
             return InvalidVolumeArgumentStatus;
 
         std::unique_lock locker(mpointsLock_);
 
         auto& index = mpoints_.get<mount::tags::ByMountPath>();
-        auto [start, stop] = index.equal_range(util::to_string(mountPath));
+        auto [start, stop] = index.equal_range(mountPath);
         auto entryIt = std::find_if(start, stop,
                                     [&](auto&& entry) {
                                         return entry.volume() == volume && entry.entryPath() == entryPath;
@@ -303,7 +303,7 @@ struct Storage::Impl {
         return openedEntries_.erase(entry->handle()) > 0;
     }
 
-    [[nodiscard]] std::tuple<Status, std::string, std::vector<mount::Entry>> searchMountPathFor(std::string_view path) const {
+    [[nodiscard]] std::tuple<Status, std::string, std::vector<mount::Entry>> searchMountPathFor(const std::string& path) const {
         auto searchPath = simplifyPath(path);
         ReverseStringPathIterator start{searchPath},
                                   stop{};
