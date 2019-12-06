@@ -73,7 +73,7 @@ struct Storage::Impl {
         auto* entryPtr = it->second;
         assert(entryPtr != nullptr);
 
-        if (static_cast<IEntry*>(entryPtr) != &entry)
+        if (static_cast<IEntry*>(entryPtr) != std::addressof(entry))
             return Status::InvalidArgument("No such entry");
 
         future_list futures;
