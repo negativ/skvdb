@@ -384,10 +384,11 @@ private:
             return Status::IOError("Unable to open device");
 
         Status compStatus = Status::Ok();
+        buffer_type buffer;
 
         for (const auto& p : indexTable_) {
             auto [key, index] = p;
-            auto [status, buffer] = logDevice_.read(index.blockIndex(), index.bytesCount());
+            auto status = logDevice_.read(index.blockIndex(), buffer, index.bytesCount());
 
             if (!status.isOk()) {
                 compStatus = status;
@@ -395,7 +396,7 @@ private:
                 break;
             }
 
-            auto [appendStatus, blockIndex, blockCount] = device.append(buffer);
+            auto [appendStatus, blockIndex, blockCount] = device.append(buffer, index.bytesCount());
 
             assert(blockCount >= 1);
             SKV_UNUSED(blockCount);
