@@ -80,9 +80,9 @@ int main() {
         handle->setProperty("int_property", vfs::Property{1000});
         handle->setProperty("another_text_property", vfs::Property{"text from VFS"});
 
-        auto properties = storage.properties(handle);
+        auto [status, properties] = storage.properties(handle);
 
-        if (!properties.empty()) {
+        if (status.isOk() && !properties.empty()) {
             std::cout << "/combined has properties: " << std::endl;
 
             for (const auto& [name, value] : properties) {
@@ -91,7 +91,7 @@ int main() {
             }
         }
 
-        if (handle->hasProperty("not_existing")) {
+        if (auto [s, v] = handle->hasProperty("not_existing"); s.isOk() && v) {
             std::cout << "Property \"not_existing\" doesn\'t exists" << std::endl;
         }
 
@@ -107,7 +107,7 @@ int main() {
             std::cout << "Property \"shared_property\" doesn\'t exists" << std::endl;
         }
 
-        if (auto links = storage.links(handle); !links.empty()) {
+        if (auto [status, links] = storage.links(handle); status.isOk() && !links.empty()) {
             std::cout << "/combined has links: " << std::endl;
 
             for (const auto& l : links) {
@@ -126,7 +126,7 @@ int main() {
     {
         auto handle = vol1->open("/");
 
-        if (auto properties = vol1->properties(handle); !properties.empty()) {
+        if (auto [status, properties] = vol1->properties(handle); status.isOk() && !properties.empty()) {
             std::cout << "volume's #1 '/' has properties: " << std::endl;
 
             for (const auto& [name, value] : properties) {
@@ -141,7 +141,7 @@ int main() {
 
         handle->removeProperty("shared_property");
 
-        if (auto properties =  vol2->properties(handle); !properties.empty()) {
+        if (auto [status, properties] = vol2->properties(handle); status.isOk() && !properties.empty()) {
             std::cout << "volume's #2 '/' has properties: " << std::endl;
 
             for (const auto& [name, value] : properties) {
