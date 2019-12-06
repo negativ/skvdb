@@ -27,8 +27,6 @@ private:
     bool valid_{false};
 };
 
-StringPathIterator make_path_iterator(std::string path);
-
 struct ReverseStringPathIterator {
     static constexpr char separator = '/';
 
@@ -46,7 +44,5 @@ private:
 	std::deque<std::string> chunks_;
     bool valid_{ false };
 };
-
-ReverseStringPathIterator make_reverse_path_iterator(std::string path);
 
 }

@@ -7,6 +7,7 @@
 #include <string>
 #include <tuple>
 
+#include "os/File.hpp"
 #include "vfs/Property.hpp"
 #include "vfs/IVolume.hpp"
 
@@ -42,7 +43,7 @@ public:
     Volume(Volume&&) noexcept;
     Volume& operator=(Volume&&) = delete;
 
-    [[nodiscard]] Status initialize(const std::string& directory, const std::string& volumeName);
+    [[nodiscard]] Status initialize(const os::path& directory, const std::string& volumeName);
     [[nodiscard]] Status deinitialize();
 
     [[nodiscard]] bool initialized() const noexcept;
@@ -61,7 +62,7 @@ public:
      * @param name - name of created link
      * @return Status::Ok() on success
      */
-    [[nodiscard]] Status link(IEntry& entry, std::string_view name) override;
+    [[nodiscard]] Status link(IEntry& entry, const std::string& name) override;
 
     /**
      * @brief Remove specified link
@@ -69,7 +70,7 @@ public:
      * @param name - name of link to remove
      * @return Status::Ok() on success
      */
-    [[nodiscard]] Status unlink(IEntry& entry, std::string_view name) override;
+    [[nodiscard]] Status unlink(IEntry& entry, const std::string& name) override;
 
 
     /**

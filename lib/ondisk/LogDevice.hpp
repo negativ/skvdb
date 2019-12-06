@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <memory>
 #include <shared_mutex>
-#include <string_view>
 #include <thread>
 #include <tuple>
 #include <vector>
@@ -37,6 +36,10 @@ public:
     using block_count_type      = std::decay_t<BlockCount>;
     using bytes_count_type      = typename buffer_type::size_type;
 
+    static_assert (std::is_unsigned_v<block_index_type>, "block_index_type should be unsigned");
+    static_assert (std::is_unsigned_v<block_count_type>, "block_count_type should be unsigned");
+    static_assert (std::is_unsigned_v<bytes_count_type>, "bytes_count_type should be unsigned");
+
     struct OpenOption {
         OpenOption() = default;
         std::uint32_t   BlockSize{DEFAULT_BLOCK_SIZE};
@@ -61,13 +64,13 @@ public:
      * @param options
      * @return
      */
-    [[nodiscard]] Status open(std::string_view path, OpenOption options) {
+    [[nodiscard]] Status open(const os::path& path, OpenOption options) {
         if (options.BlockSize % MIN_BLOCK_SIZE != 0)
             return Status::InvalidArgument("Invalid block size");
 
         std::unique_lock lock(lock_);
 
-        const auto exists = os::File::exists(path);
+        const auto exists = os::fs::exists(path);
 
         if (!options.CreateNewIfNotExist && !exists)
             return Status::IOError("File not exists.");
@@ -139,17 +142,44 @@ public:
      * @return {Status::Ok(), data} on success
      */
     [[nodiscard]] std::tuple<Status, buffer_type> read(block_index_type n, bytes_count_type cnt) {
+        if (cnt == 0)
+            return {Status::InvalidArgument("Invalid count"), {}};
+
+        buffer_type buffer;
+        auto status = read(n, buffer, cnt);
+
+        return {status, status.isOk()? buffer : buffer_type{}};
+    }
+
+    /**
+     * @brief Read "cnt" bytes starting from block index "n"
+     * @param n - block index
+     * @param buffer - buffer for data. if buffer.size() < cnt buffer will be reallocated
+     * @param cnt - bytes count
+     * @return {Status::Ok(), data} on success
+     */
+    [[nodiscard]] Status read(block_index_type n, buffer_type& buffer, bytes_count_type cnt) {
         static constexpr std::hash<std::thread::id> hasher;
+
+        if (cnt == 0)
+            return Status::InvalidArgument("Empty buffer");
+
+        if (buffer.size() < cnt) {
+            try {
+                buffer.resize(cnt);
+            }
+            catch (...) {
+                return Status::Fatal("Out of memory");
+            }
+        }
 
         auto totalBlocks = sizeInBlocks();
         auto readBlocks = (cnt / blockSize()) + (cnt % blockSize()? 1 : 0);
 
         if (!opened())
-            return {Status::IOError("Device not opened"), {}};
+            return Status::IOError("Device not opened");
         if ((n + readBlocks) > totalBlocks)
-            return {Status::InvalidArgument(""), {}};
-
-        buffer_type data(cnt, '\0');
+            return Status::InvalidArgument("Out of memory");
 
         const auto readerId = hasher(std::this_thread::get_id()) % MAX_READ_THREADS;
 
@@ -158,15 +188,15 @@ public:
         auto& fhandle = readHandles_[readerId];
 
         if (!fhandle)
-            return {Status::IOError("Device not opened"), {}};
+            return Status::IOError("Device not opened");
 
         if (!os::File::seek(fhandle, std::int64_t(n) * std::int64_t(blockSize()), os::File::Seek::Set))
-            return {Status::IOError("Unable to seek"), {}};
+            return Status::IOError("Unable to seek");
 
-        if (!os::File::read(data.data(), sizeof(buffer_value_type), cnt, fhandle))
-            return {Status::IOError("Unable to seek"), {}};
+        if (!os::File::read(buffer.data(), sizeof(buffer_value_type), cnt, fhandle))
+            return Status::IOError("Unable to seek");
 
-        return {Status::Ok(), data};
+        return Status::Ok();
     }
 
     /**
@@ -174,7 +204,7 @@ public:
      * @param buffer
      * @return {Status::Ok(), index of written block, total written block count} on success
      */
-    [[nodiscard]] std::tuple<Status, block_index_type, block_count_type> append(const buffer_type& buffer) {
+    [[nodiscard]] std::tuple<Status, block_index_type, block_count_type> append(const buffer_type& buffer, bytes_count_type bufferSize = 0) {
         if (buffer.empty())
             return {Status::InvalidArgument("Unable to write empty buffer"), 0, 0};
 
@@ -185,7 +215,11 @@ public:
 
         auto& fhandle = writeHandle_;
         const auto cpos = os::File::tell(fhandle);
-        const auto bufferSize = buffer.size();
+
+        if (bufferSize == 0)
+            bufferSize = buffer.size();
+        else
+            bufferSize = std::min(bufferSize, buffer.size());
 
         if (os::File::write(buffer.data(), sizeof(buffer_value_type), bufferSize, fhandle) != bufferSize)
             return {Status::Fatal("Unable to write."), 0, 0};
@@ -256,7 +290,7 @@ private:
         return true;
     }
 
-    std::string path_;
+    os::path path_;
     OpenOption openOption_;
     std::atomic<block_count_type> blocks_{0};
     bool opened_{false};

@@ -43,7 +43,7 @@ public:
      * @param name - name of created link
      * @return Status::Ok() on success
      */
-    [[nodiscard]] Status link(IEntry &entry, std::string_view name) override;
+    [[nodiscard]] Status link(IEntry &entry, const std::string& name) override;
 
     /**
      * @brief Remove specified link
@@ -51,7 +51,7 @@ public:
      * @param name - name of link to remove
      * @return Status::Ok() on success
      */
-    [[nodiscard]] Status unlink(IEntry &entry, std::string_view name) override;
+    [[nodiscard]] Status unlink(IEntry &entry, const std::string& name) override;
 
     /**
      * @brief Claiming by VFS. Can be called more than once
@@ -75,7 +75,7 @@ public:
      * @param prio - priority of mount point
      * @return Status::Ok() on success
      */
-    [[nodiscard]] Status mount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath, Priority prio = DefaultPriority);
+    [[nodiscard]] Status mount(const IVolumePtr& volume, const std::string& entryPath, const std::string& mountPath, Priority prio = DefaultPriority);
 
     /**
      * @brief Unmount volume entry path from VFS storage
@@ -84,7 +84,7 @@ public:
      * @param mountPath - mount point path
      * @return Status::Ok() on success
      */
-    [[nodiscard]] Status unmount(const IVolumePtr& volume, std::string_view entryPath, std::string_view mountPath);
+    [[nodiscard]] Status unmount(const IVolumePtr& volume, const std::string& entryPath, const std::string& mountPath);
 
 private:
     std::unique_ptr<Impl> impl_;

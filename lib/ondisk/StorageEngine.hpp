@@ -191,7 +191,7 @@ public:
         return Status::Ok();
     }
 
-    [[nodiscard]] Status open(std::string_view directory, std::string_view storageName, OpenOptions opts = {}) {
+    [[nodiscard]] Status open(const os::path& directory, std::string_view storageName, OpenOptions opts = {}) {
         std::unique_lock locker(xLock_);
 
         openOptions_ = opts;
@@ -285,7 +285,7 @@ private:
         return Status::Fatal("Unknown error");
     }
 
-    [[nodiscard]] Status openDevice(std::string_view path) {
+    [[nodiscard]] Status openDevice(const os::path& path) {
         typename log_device_type::OpenOption opts;
         opts.BlockSize = openOptions_.LogDeviceBlockSize;
         opts.CreateNewIfNotExist = openOptions_.LogDeviceCreateNewIfNotExist;
@@ -297,8 +297,10 @@ private:
         return logDevice_.close();
     }
 
-    [[nodiscard]] Status openIndexTable(std::string_view path) {
-        std::fstream stream{path.data(), std::ios_base::in};
+    [[nodiscard]] Status openIndexTable(const os::path& path) {
+		const auto& strPath = path.string();
+
+        std::fstream stream{strPath.c_str(), std::ios_base::in};
 
         indexTable_.setBlockSize(openOptions_.LogDeviceBlockSize);
 
@@ -342,9 +344,9 @@ private:
     }
 
 
-    [[nodiscard]] std::string createPath(std::string_view directory, std::string_view storageName, std::string_view suffix) {
+    [[nodiscard]] std::string createPath(const os::path& directory, std::string_view storageName, std::string_view suffix) {
         std::stringstream stream;
-        stream << directory << os::File::sep() << storageName << suffix;
+        stream << directory.string() << char(os::fs::path::separator) << storageName << suffix;
 
         return stream.str();
     }
@@ -382,10 +384,11 @@ private:
             return Status::IOError("Unable to open device");
 
         Status compStatus = Status::Ok();
+        buffer_type buffer;
 
         for (const auto& p : indexTable_) {
             auto [key, index] = p;
-            auto [status, buffer] = logDevice_.read(index.blockIndex(), index.bytesCount());
+            auto status = logDevice_.read(index.blockIndex(), buffer, index.bytesCount());
 
             if (!status.isOk()) {
                 compStatus = status;
@@ -393,7 +396,7 @@ private:
                 break;
             }
 
-            auto [appendStatus, blockIndex, blockCount] = device.append(buffer);
+            auto [appendStatus, blockIndex, blockCount] = device.append(buffer, index.bytesCount());
 
             assert(blockCount >= 1);
             SKV_UNUSED(blockCount);
@@ -440,9 +443,9 @@ private:
     index_table_type indexTable_;
     log_device_type logDevice_;
     OpenOptions openOptions_;
-    std::string directory_;
+    os::path directory_;
     std::string storageName_;
-    std::string logDevicePath_;
+    os::path logDevicePath_;
     std::string idxtPath_;
     std::shared_mutex xLock_;
     SpinLock<> spLock_;

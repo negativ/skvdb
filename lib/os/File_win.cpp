@@ -6,8 +6,10 @@
 
 namespace skv::os {
 
-    File::Handle File::open(std::string_view path, std::string_view mode) noexcept {
-        return File::Handle{::fopen(path.data(), mode.data()),
+    File::Handle File::open(const path& path, std::string_view mode) noexcept {
+		const auto& pathStr = path.string();
+
+        return File::Handle{::fopen(pathStr.c_str(), mode.data()),
                             [](FILE* f) -> int {
                                 if (f)
                                     return ::fclose(f);
@@ -47,23 +49,17 @@ namespace skv::os {
         ::fflush(handle.get());
     }
 
-    bool File::unlink(std::string_view filePath) noexcept {
-        return ::DeleteFile(filePath.data()) != 0;
+    bool File::unlink(const path& path) noexcept {
+		const auto& pathStr = path.string();
+
+        return ::DeleteFile(pathStr.c_str()) != 0;
     }
 
-    bool File::exists(std::string_view filePath) noexcept {
-        DWORD dwAttrib = GetFileAttributes(filePath.data());
+    bool File::rename(const path& oldName, const path& newName) noexcept {
+		const auto& oldPathStr = oldName.string();
+		const auto& newPathStr = newName.string();
 
-        return (dwAttrib != INVALID_FILE_ATTRIBUTES &&
-                !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
-    }
-
-    bool File::rename(std::string_view oldName, std::string newName) noexcept {
-        return ::rename(oldName.data(), newName.data()) == 0;
-    }
-
-    char File::sep() noexcept {
-        return '\\';
+        return ::rename(oldPathStr.c_str(), newPathStr.c_str()) == 0;
     }
 
 }

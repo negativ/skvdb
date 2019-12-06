@@ -19,9 +19,9 @@ const std::string STORAGE_NAME = "test_storage";
 }
 
 TEST(StorageTest, OpenClose) {
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd"));
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index"));
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logdc"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".logd"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".index"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".logdc"));
 
     StorageEngine<> storage;
 
@@ -40,15 +40,15 @@ TEST(StorageTest, OpenClose) {
 
     ASSERT_TRUE(storage.close().isOk());
 
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd"));
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index"));
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logdc"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".logd"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".index"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".logdc"));
 }
 
 TEST(StorageTest, Compaction) {
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd"));
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index"));
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logdc"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".logd"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".index"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".logdc"));
 
     StorageEngine<> storage;
 
@@ -98,9 +98,9 @@ TEST(StorageTest, Compaction) {
         ASSERT_TRUE(storage.close().isOk());
     }
 
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd"));
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index"));
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logdc"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".logd"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".index"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".logdc"));
 }
 
 int main(int argc, char** argv) {

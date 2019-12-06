@@ -27,7 +27,7 @@ Volume::Volume(Volume &&other) noexcept{
 
 Volume::~Volume() noexcept = default;
 
-Status Volume::initialize(const std::string &directory, const std::string &volumeName) {
+Status Volume::initialize(const os::path& directory, const std::string &volumeName) {
     if (initialized())
         return Status::InvalidOperation("Volume already opened");
 
@@ -52,14 +52,14 @@ std::shared_ptr<IEntry> Volume::entry(const std::string& path) {
     return impl_->entry(path);
 }
 
-Status Volume::link(IEntry &entry, std::string_view name) {
+Status Volume::link(IEntry &entry, const std::string& name) {
     if (!initialized())
         return VolumeNotOpenedStatus;
 
     return impl_->createChild(entry, name);
 }
 
-Status Volume::unlink(IEntry& entry, std::string_view name) {
+Status Volume::unlink(IEntry& entry, const std::string& name) {
     if (!initialized())
         return VolumeNotOpenedStatus;
 

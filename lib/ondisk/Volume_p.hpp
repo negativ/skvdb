@@ -54,7 +54,7 @@ struct Volume::Impl {
     Impl(Impl&&) noexcept = delete;
     Impl& operator=(Impl&&) noexcept = delete;
 
-    [[nodiscard]] Status initialize(const std::string& directory, const std::string& volumeName) {
+    [[nodiscard]] Status initialize(const os::path& directory, const std::string& volumeName) {
         storage_type::OpenOptions storageOpts;
 
         storageOpts.CompactionRatio = opts_.CompactionRatio;
@@ -132,7 +132,7 @@ struct Volume::Impl {
         return std::static_pointer_cast<vfs::IEntry>(createEntryForHandle(handle));
     }
 
-    [[nodiscard]] Status createChild(IEntry& e, std::string_view name) {
+    [[nodiscard]] Status createChild(IEntry& e, const std::string& name) {
         auto it = std::find(std::cbegin(name), std::cend(name),
                             StringPathIterator::separator);
 
@@ -163,7 +163,7 @@ struct Volume::Impl {
         if (cit != std::cend(children))
             return Status::InvalidArgument("Entry already exists");
 
-        Record child{storage_->newKey(), util::to_string(name)};
+        Record child{storage_->newKey(), name};
 
         auto status = record.addChild(child);
 
@@ -188,7 +188,7 @@ struct Volume::Impl {
         return Status::Ok();
     }
 
-    [[nodiscard]] Status removeChild(IEntry& e, std::string_view name) {
+    [[nodiscard]] Status removeChild(IEntry& e, const std::string& name) {
         auto entry = getEntry(e.handle());
 
         if (!entry)
@@ -228,7 +228,7 @@ struct Volume::Impl {
                 return Status::InvalidArgument("Child entry not empty");
         }
 
-        Record child{cid, util::to_string(name)};
+        Record child{cid, name};
         auto status = record.removeChild(child);
 
         if (!status.isOk())

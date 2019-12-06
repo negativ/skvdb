@@ -72,8 +72,8 @@ TEST(VolumeTest, MTTestN1) {
 
     Volume volume;
 
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd"));
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".logd"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".index"));
 
     auto status = volume.initialize(STORAGE_DIR, STORAGE_NAME);
 
@@ -106,8 +106,8 @@ TEST(VolumeTest, MTTestN1) {
 
     std::this_thread::sleep_for(20ms);
 
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd"));
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".logd"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".index"));
 }
 
 void mtTestRoutineN2(std::reference_wrapper<Volume> v) {
@@ -150,8 +150,8 @@ TEST(VolumeTest, MTTestN2) {
 
     Volume volume;
 
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd"));
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".logd"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".index"));
 
     auto opened = volume.initialize(STORAGE_DIR, STORAGE_NAME);
 
@@ -196,15 +196,15 @@ TEST(VolumeTest, MTTestN2) {
 
     std::this_thread::sleep_for(20ms);
 
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd"));
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".logd"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".index"));
 }
 
 TEST(VolumeTest, OpenCloseLinkClaim) {
     Volume volume;
 
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd"));
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".logd"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".index"));
 
     auto status = volume.initialize(STORAGE_DIR, STORAGE_NAME);
 
@@ -324,8 +324,8 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
     ASSERT_TRUE(volume.deinitialize().isOk());
     ASSERT_FALSE(volume.initialized());
 
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".logd"));
-    SKV_UNUSED(os::File::unlink(STORAGE_DIR + os::File::sep() + STORAGE_NAME + ".index"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".logd"));
+    SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".index"));
 }
 
 int main(int argc, char** argv) {
