@@ -32,20 +32,20 @@ public:
 
     virtual ~IEntry() noexcept = default;
 
-    virtual Handle handle() const noexcept = 0;
+    [[nodiscard]] virtual Handle handle() const noexcept = 0;
 
 
-    virtual std::tuple<Status, bool> hasProperty(const std::string& prop) const noexcept = 0;
+    [[nodiscard]] virtual std::tuple<Status, bool> hasProperty(const std::string& prop) const noexcept = 0;
 
     virtual Status setProperty(const std::string& prop, const Property& value) = 0;
 
-    virtual std::tuple<Status, Property> property(const std::string& prop) const = 0;
+    [[nodiscard]] virtual std::tuple<Status, Property> property(const std::string& prop) const = 0;
 
     virtual Status removeProperty(const std::string& prop) = 0;
 
-    virtual std::tuple<Status, Properties> properties() const  = 0;
+    [[nodiscard]] virtual std::tuple<Status, Properties> properties() const  = 0;
 
-    virtual std::tuple<Status, std::set<std::string>> propertiesNames() const  = 0;
+    [[nodiscard]] virtual std::tuple<Status, std::set<std::string>> propertiesNames() const  = 0;
 
 
     virtual Status expireProperty(const std::string& prop, std::chrono::milliseconds ms) = 0;
@@ -53,7 +53,7 @@ public:
     virtual Status cancelPropertyExpiration(const std::string& prop) = 0;
 
 
-    virtual std::tuple<Status, std::set<std::string>> children() const = 0;
+    [[nodiscard]] virtual std::tuple<Status, std::set<std::string>> children() const = 0;
 };
 
 }

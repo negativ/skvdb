@@ -17,6 +17,8 @@ public:
     Entry(const Entry&) = delete;
     Entry& operator=(const Entry&) = delete;
 
+    Entry(Entry&&) = delete;
+    Entry& operator=(Entry&&) = delete;
 
     Handle handle() const noexcept override;
 

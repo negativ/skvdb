@@ -21,6 +21,8 @@ public:
     VirtualEntry(const VirtualEntry&) = delete;
     VirtualEntry& operator=(const VirtualEntry&) = delete;
 
+    VirtualEntry(VirtualEntry&&) = delete;
+    VirtualEntry& operator=(VirtualEntry&&) = delete;
 
     Handle handle() const noexcept override;
 
