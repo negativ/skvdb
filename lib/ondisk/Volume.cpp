@@ -1,13 +1,17 @@
 #include "Volume.hpp"
 #include "Volume_p.hpp"
+#include "util/Log.hpp"
 
 namespace {
 
 const skv::util::Status VolumeNotOpenedStatus = skv::util::Status::InvalidOperation("Volume not opened");
+const char * const TAG = "ondisk::Volume";
 
 }
 
 namespace skv::ondisk {
+
+using namespace skv::util;
 
 Volume::Volume():
     Volume(OpenOptions{})
@@ -31,14 +35,34 @@ Status Volume::initialize(const os::path& directory, const std::string &volumeNa
     if (initialized())
         return Status::InvalidOperation("Volume already opened");
 
-    return impl_->initialize(directory, volumeName);
+    try {
+        return impl_->initialize(directory, volumeName);
+    }
+    catch (const std::exception& e) {
+        Log::e(TAG, "ondisk::Volume::initialize(): got exception: ", e.what());
+    }
+    catch (...) {
+        Log::e(TAG, "ondisk::Volume::initialize(): unknown exception");
+    }
+
+    return Status::Fatal("Exception");
 }
 
 Status Volume::deinitialize() {
     if (!initialized())
         return VolumeNotOpenedStatus;
 
-    return impl_->deinitialize();
+    try {
+        return impl_->deinitialize();
+    }
+    catch (const std::exception& e) {
+        Log::e(TAG, "ondisk::Volume::deinitialize(): got exception: ", e.what());
+    }
+    catch (...) {
+        Log::e(TAG, "ondisk::Volume::deinitialize(): unknown exception");
+    }
+
+    return Status::Fatal("Exception");
 }
 
 bool Volume::initialized() const noexcept {
@@ -49,21 +73,51 @@ std::shared_ptr<IEntry> Volume::entry(const std::string& path) {
     if (!initialized())
         return {};
 
-    return impl_->entry(path);
+    try {
+        return impl_->entry(path);
+    }
+    catch (const std::exception& e) {
+        Log::e(TAG, "ondisk::Volume::entry(): got exception: ", e.what());
+    }
+    catch (...) {
+        Log::e(TAG, "ondisk::Volume::entry(): unknown exception");
+    }
+
+    return {};
 }
 
 Status Volume::link(IEntry &entry, const std::string& name) {
     if (!initialized())
         return VolumeNotOpenedStatus;
 
-    return impl_->createChild(entry, name);
+    try {
+        return impl_->createChild(entry, name);
+    }
+    catch (const std::exception& e) {
+        Log::e(TAG, "ondisK::Volume::link(): got exception: ", e.what());
+    }
+    catch (...) {
+        Log::e(TAG, "ondisK::Volume::link(): unknown exception");
+    }
+
+    return Status::Fatal("Exception");
 }
 
 Status Volume::unlink(IEntry& entry, const std::string& name) {
     if (!initialized())
         return VolumeNotOpenedStatus;
 
-    return impl_->removeChild(entry, name);
+    try {
+        return impl_->removeChild(entry, name);
+    }
+    catch (const std::exception& e) {
+        Log::e(TAG, "ondisK::Volume::unlink(): got exception: ", e.what());
+    }
+    catch (...) {
+        Log::e(TAG, "ondisK::Volume::unlink(): unknown exception");
+    }
+
+    return Status::Fatal("Exception");
 }
 
 Status Volume::claim(IVolume::Token token) noexcept {
