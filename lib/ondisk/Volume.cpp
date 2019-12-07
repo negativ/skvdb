@@ -38,13 +38,15 @@ Status Volume::initialize(const os::path& directory, const std::string &volumeNa
     try {
         return impl_->initialize(directory, volumeName);
     }
+    catch (const std::bad_alloc&) {
+        // it's not safe to call any function, just return
+    }
     catch (const std::exception& e) {
         Log::e(TAG, "ondisk::Volume::initialize(): got exception: ", e.what());
     }
     catch (...) {
         Log::e(TAG, "ondisk::Volume::initialize(): unknown exception");
     }
-
     return Status::Fatal("Exception");
 }
 
@@ -54,6 +56,9 @@ Status Volume::deinitialize() {
 
     try {
         return impl_->deinitialize();
+    }
+    catch (const std::bad_alloc&) {
+        // it's not safe to call any function, just return
     }
     catch (const std::exception& e) {
         Log::e(TAG, "ondisk::Volume::deinitialize(): got exception: ", e.what());
@@ -76,6 +81,9 @@ std::shared_ptr<IEntry> Volume::entry(const std::string& path) {
     try {
         return impl_->entry(path);
     }
+    catch (const std::bad_alloc&) {
+        // it's not safe to call any function, just return empty ptr and pray (shared_ptr should have noexcept default constructor)
+    }
     catch (const std::exception& e) {
         Log::e(TAG, "ondisk::Volume::entry(): got exception: ", e.what());
     }
@@ -93,6 +101,9 @@ Status Volume::link(IEntry &entry, const std::string& name) {
     try {
         return impl_->createChild(entry, name);
     }
+    catch (const std::bad_alloc&) {
+        // it's not safe to call any function, just return
+    }
     catch (const std::exception& e) {
         Log::e(TAG, "ondisK::Volume::link(): got exception: ", e.what());
     }
@@ -109,6 +120,9 @@ Status Volume::unlink(IEntry& entry, const std::string& name) {
 
     try {
         return impl_->removeChild(entry, name);
+    }
+    catch (const std::bad_alloc&) {
+        // it's not safe to call any function, just return
     }
     catch (const std::exception& e) {
         Log::e(TAG, "ondisK::Volume::unlink(): got exception: ", e.what());
