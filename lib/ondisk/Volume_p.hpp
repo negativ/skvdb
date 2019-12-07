@@ -31,13 +31,10 @@ struct Volume::Impl {
 
     using EntryPtr  = std::shared_ptr<Entry>;
     using EntryWPtr = std::weak_ptr<Entry>;
-    using storage_type       = StorageEngine<IVolume::Handle,          // key type
-                                             std::uint32_t,            // block index type
+    using storage_type       = StorageEngine<std::uint32_t,            // block index type
                                              std::uint32_t,            // bytes count in one record (4GB now)
-                                             IEntry::Properties,       // type of properties container
-                                             std::chrono::system_clock,// type of used clock (system/steady,etc.)
-                                             Volume::InvalidHandle,    // key value of invalid entry
-                                             Volume::RootHandle>;      // key value of root entry
+                                             IVolume::InvalidHandle,    // key value of invalid entry
+                                             IVolume::RootHandle>;      // key value of root entry
 
     Impl(Volume::OpenOptions opts):
         storage_{std::make_unique<storage_type>()},
