@@ -59,6 +59,9 @@ std::tuple<Status, Property> VirtualEntry::property(const std::string &prop) con
 Status VirtualEntry::removeProperty(const std::string &prop) {
     const auto& [status, results] = forEachEntry(&IEntry::removeProperty, prop);
 
+    if (!status.isOk())
+        return status;
+
     auto ok = std::any_of(std::cbegin(results), std::cend(results),
                           [](auto&& status) { return status.isOk(); });
 
@@ -74,17 +77,22 @@ std::tuple<Status, IEntry::Properties> VirtualEntry::properties() const {
     if (results.empty())
         return {Status::Ok(), {}};
 
-    Properties props;
+    try {
+        Properties props;
 
-    for (const auto& [st, ps] : results) {
-        if (!st.isOk())
-            continue;
+        for (const auto& [st, ps] : results) {
+            if (!st.isOk())
+                continue;
 
-        for (const auto& p : ps)
-            props.insert(p);
+            for (const auto& p : ps)
+                props.insert(p);
+        }
+
+        return {Status::Ok(), props};
     }
-
-    return {Status::Ok(), props};
+    catch (...) {                               // only std::bad_alloc can be thrown here
+        return {Status::Fatal("Exception"), {}};// so it's not safe to call any function, just return
+    }
 }
 
 std::tuple<Status, std::set<std::string>> VirtualEntry::propertiesNames() const {
@@ -96,17 +104,22 @@ std::tuple<Status, std::set<std::string>> VirtualEntry::propertiesNames() const 
     if (results.empty())
         return {Status::Ok(), {}};
 
-    std::set<std::string> ret;
+    try {
+        std::set<std::string> ret;
 
-    for (const auto& [st, ps] : results) {
-        if (!st.isOk())
-            continue;
+        for (const auto& [st, ps] : results) {
+            if (!st.isOk())
+                continue;
 
-        for (const auto& p : ps)
-            ret.insert(p);
+            for (const auto& p : ps)
+                ret.insert(p);
+        }
+
+        return {Status::Ok(), ret};
     }
-
-    return {Status::Ok(), ret};
+    catch (...) {                               // only std::bad_alloc can be thrown here
+        return {Status::Fatal("Exception"), {}};// so it's not safe to call any function, just return
+    }
 }
 
 Status VirtualEntry::expireProperty(const std::string &prop, chrono::milliseconds ms) {
@@ -142,17 +155,22 @@ std::tuple<Status, std::set<std::string>> VirtualEntry::children() const {
     if (results.empty())
         return {};
 
-    std::set<std::string> ret;
+    try {
+        std::set<std::string> ret;
 
-    for (const auto& [st, cs] : results) {
-        if (!st.isOk())
-            continue;
+        for (const auto& [st, cs] : results) {
+            if (!st.isOk())
+                continue;
 
-        for (const auto& child : cs)
-            ret.insert(child);
+            for (const auto& child : cs)
+                ret.insert(child);
+        }
+
+        return {Status::Ok(), ret};
     }
-
-    return {Status::Ok(), ret};
+    catch (...) {                               // only std::bad_alloc can be thrown here
+        return {Status::Fatal("Exception"), {}};// so it's not safe to call any function, just return
+    }
 }
 
 VirtualEntry::Volumes &VirtualEntry::volumes() const noexcept {

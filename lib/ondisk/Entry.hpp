@@ -17,6 +17,8 @@ public:
     Entry(const Entry&) = delete;
     Entry& operator=(const Entry&) = delete;
 
+    Entry(Entry&&) = delete;
+    Entry& operator=(Entry&&) = delete;
 
     Handle handle() const noexcept override;
 
@@ -39,7 +41,7 @@ public:
 
     std::tuple<Status, std::set<std::string>> children() const override;
 
-    void setDirty(bool dirty);
+    void setDirty(bool dirty) noexcept;
 
     [[nodiscard]] bool dirty() const noexcept;
 

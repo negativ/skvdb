@@ -18,6 +18,7 @@
 #include "IndexTable.hpp"
 #include "LogDevice.hpp"
 #include "os/File.hpp"
+#include "vfs/IEntry.hpp"
 #include "util/Log.hpp"
 #include "util/Serialization.hpp"
 #include "util/SpinLock.hpp"
@@ -30,31 +31,24 @@ namespace skv::ondisk {
 /**
  * @brief Storage engine
  */
-template <typename KeyT          = std::uint64_t,
-          typename BlockIndexT   = std::uint32_t,
+template <typename BlockIndexT   = std::uint32_t,
           typename BytesCountT   = std::uint32_t,
-          typename PropContainerT= std::map<std::string, Property>,
-          typename ClockT        = std::chrono::system_clock,
-          KeyT _InvalidKey       = 0,
-          KeyT _RootKey          = 1>
+          IEntry::Handle _InvalidKey = 0,
+          IEntry::Handle _RootKey    = 1>
 class StorageEngine final {
     const skv::util::Status DeviceNotOpenedStatus = skv::util::Status::IOError("Device not opened");
 
 public:
-    using key_type = std::decay_t<KeyT>;
-
-    static constexpr key_type InvalidEntryId = _InvalidKey;
-    static constexpr key_type RootEntryId = _RootKey;
+    static constexpr IEntry::Handle InvalidEntryId = _InvalidKey;
+    static constexpr IEntry::Handle RootEntryId = _RootKey;
 
     using block_index_type  = std::decay_t<BlockIndexT>;
     using bytes_count_type  = std::decay_t<BytesCountT>;
-    using index_table_type  = IndexTable<key_type, block_index_type, bytes_count_type>;
+    using index_table_type  = IndexTable<IEntry::Handle, block_index_type, bytes_count_type>;
     using index_record_type = typename index_table_type::index_record_type;
     using buffer_type       = std::vector<char>;
     using log_device_type   = LogDevice<block_index_type, block_index_type, buffer_type>;
-    using record_type       = Record;
 
-    static_assert (std::is_integral_v<key_type>,            "Key type should be integral");
     static_assert (std::is_unsigned_v<block_index_type>,    "Block index type should be unsigned");
     static_assert (std::is_unsigned_v<bytes_count_type>,    "Bytes count type should be unsigned");
     static_assert (sizeof (block_index_type) >= sizeof(std::uint32_t), "Block index type should be at least 32 bits long");
@@ -83,11 +77,11 @@ public:
     StorageEngine(StorageEngine&&) = delete;
     StorageEngine& operator=(StorageEngine&&) = delete;
 
-    [[nodiscard]] std::tuple<Status, record_type> load(const record_type& e) {
+    [[nodiscard]] std::tuple<Status, Record> load(const Record& e) {
         return load(e.handle());
     }
 
-    [[nodiscard]] std::tuple<Status, record_type> load(const key_type& key) {
+    [[nodiscard]] std::tuple<Status, Record> load(IEntry::Handle key) {
         namespace io = boost::iostreams;
 
         if (key == InvalidEntryId)
@@ -112,7 +106,7 @@ public:
                 return {status, {}};
 
             io::stream<ContainerStreamDevice<buffer_type>> stream(buffer);
-            record_type e;
+            Record e;
 
             stream.seekg(0, BOOST_IOS::beg);
             stream >> e;
@@ -126,7 +120,7 @@ public:
         return {Status::Fatal("Unknown error"), {}};
     }
 
-    [[nodiscard]] Status save(const record_type& e) {
+    [[nodiscard]] Status save(const Record& e) {
         namespace io = boost::iostreams;
 
         if (e.handle() == InvalidEntryId)
@@ -171,11 +165,11 @@ public:
         return insertIndexRecord(index_record_type{e.handle(), blockIndex, bytes_count_type(buffer.size())});
     }
 
-    [[nodiscard]] Status remove(const record_type& e) {
+    [[nodiscard]] Status remove(const Record& e) {
         return remove(e.handle());
     }
 
-    [[nodiscard]] Status remove(const key_type& key) {
+    [[nodiscard]] Status remove(IEntry::Handle key) {
         std::unique_lock locker(xLock_);
 
         if (!opened())
@@ -252,13 +246,13 @@ public:
         return opened_;
     }
 
-    [[nodiscard]] key_type newKey() noexcept {
+    [[nodiscard]] IEntry::Handle newKey() noexcept {
         std::lock_guard locker(spLock_);
 
         return (keyCounter_++);
     }
 
-    void reuseKey(key_type key) {
+    void reuseKey(IEntry::Handle key) {
         // TODO: implement key reusage
 
         static_cast<void>(key);
@@ -269,7 +263,7 @@ private:
     const std::string LOG_DEVICE_SUFFIX        = ".logd";
     const std::string LOG_DEVICE_COMP_SUFFIX   = ".logdc";
 
-    [[nodiscard]] std::tuple<Status, index_record_type> getIndexRecord(key_type key) const {
+    [[nodiscard]] std::tuple<Status, index_record_type> getIndexRecord(IEntry::Handle key) const {
         auto it = indexTable_.find(key);
 
         if (it == std::cend(indexTable_))
@@ -338,7 +332,7 @@ private:
     [[nodiscard]] Status createRootIndex() {
         resetKeyCounter();
 
-        record_type root{newKey(), ""};
+        Record root{newKey(), ""};
 
         return save(root);
     }
@@ -449,7 +443,7 @@ private:
     std::string idxtPath_;
     std::shared_mutex xLock_;
     SpinLock<> spLock_;
-    key_type keyCounter_{0};
+    IEntry::Handle keyCounter_{0};
     bool opened_{false};
 };
 
