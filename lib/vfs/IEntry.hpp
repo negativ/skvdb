@@ -30,7 +30,6 @@ public:
     IEntry& operator=(const IEntry&) = delete;
     IEntry& operator=(IEntry&&) = delete;
 
-    virtual ~IEntry() noexcept = default;
 
     [[nodiscard]] virtual Handle handle() const noexcept = 0;
 
@@ -54,6 +53,9 @@ public:
 
 
     [[nodiscard]] virtual std::tuple<Status, std::set<std::string>> children() const = 0;
+
+protected:
+    virtual ~IEntry() noexcept = default;
 };
 
 }
