@@ -75,12 +75,13 @@ private:
         if (start == stop)
             return std::make_tuple(Status::Ok(), result_list{});
 
-        result_list results;
-        future_list futures;
+        result_list results; // default constructors should not throw
+        future_list futures; //
 
         auto it = start;
+        bool exceptionThrown{false};
 
-        std::advance(start, 1); // first call in current thread context
+        std::advance(start, 1); // first call would be in current thread context
 
         while (start != stop) {
             auto& entry = (*start);
@@ -89,17 +90,20 @@ private:
                 futures.emplace_back(threadPool_.get().schedule(std::forward<F>(func), entry.get(), std::forward<Args>(args)...));
             }
             catch (...) {
-                return std::make_tuple(Status::Fatal("Exception"), result_list{});
+                exceptionThrown = true;
+                break;
             }
 
             ++start;
         }
 
-        try {
-            results.emplace_back(std::invoke(std::forward<F>(func), (*it).get(), std::forward<Args>(args)...));
-        }
-        catch (...) {
-            return std::make_tuple(Status::Fatal("Exception"), result_list{});
+        if (!exceptionThrown) { // no need to make call in current thread - Status::Fatal would be returned
+            try {
+                results.emplace_back(std::invoke(std::forward<F>(func), (*it).get(), std::forward<Args>(args)...));
+            }
+            catch (...) {
+                exceptionThrown = true;
+            }
         }
 
         waitAllFutures(std::begin(futures), std::end(futures));
@@ -109,9 +113,12 @@ private:
                 results.emplace_back(f.get());
             }
             catch (...) {
-                return std::make_tuple(Status::Fatal("Exception"), result_list{});
+                exceptionThrown = true; // keep unwinding future list
             }
         }
+
+        if (exceptionThrown)
+            return std::make_tuple(Status::Fatal("Exception"), result_list{});
 
         return std::make_tuple(Status::Ok(), results);
     }
