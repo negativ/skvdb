@@ -59,6 +59,9 @@ std::tuple<Status, Property> VirtualEntry::property(const std::string &prop) con
 Status VirtualEntry::removeProperty(const std::string &prop) {
     const auto& [status, results] = forEachEntry(&IEntry::removeProperty, prop);
 
+    if (!status.isOk())
+        return status;
+
     auto ok = std::any_of(std::cbegin(results), std::cend(results),
                           [](auto&& status) { return status.isOk(); });
 
