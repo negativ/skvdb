@@ -141,7 +141,7 @@ struct Volume::Impl {
         if (!entry)
             return NoSuchEntryStatus;
 
-        if (std::addressof(e) != static_cast<IEntry*>(entry.get()))
+        if (&e != static_cast<IEntry*>(entry.get()))
             return Status::InvalidArgument("Invalid entry");
 
         std::unique_lock locker(entry->xLock());
@@ -191,7 +191,7 @@ struct Volume::Impl {
         if (!entry)
             return NoSuchEntryStatus;
 
-        if (std::addressof(e) != static_cast<IEntry*>(entry.get()))
+        if (&e != static_cast<IEntry*>(entry.get()))
             return Status::InvalidArgument("Invalid entry");
 
         std::unique_lock locker(entry->xLock());
