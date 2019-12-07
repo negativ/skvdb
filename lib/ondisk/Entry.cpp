@@ -23,84 +23,124 @@ std::tuple<Status, bool> Entry::hasProperty(const std::string &prop) const noexc
 Status Entry::setProperty(const std::string &prop, const Property &value) {
     std::unique_lock locker{xLock_};
 
-    auto status = record_.setProperty(prop, value);
+    try {
+        auto status = record_.setProperty(prop, value);
 
-    if (status.isOk())
-        setDirty(true);
+        if (status.isOk())
+            setDirty(true);
 
-    return status;
+        return status;
+    }
+    catch (...) {                           // Record::setProperty() can throw only std::bad_alloc
+        return Status::Fatal("Exception");  // so it's not safe to call any function, just return
+    }
 }
 
 std::tuple<Status, Property> Entry::property(const std::string &prop) const {
     std::shared_lock locker{xLock_};
 
-    return record_.property(prop);
+    try {
+        return record_.property(prop);
+    }
+    catch (...) {                                 // Record::property() can throw only std::bad_alloc
+        return {Status::Fatal("Exception"), {}};  // so it's not safe to call any function, just return
+    }
 }
 
 Status Entry::removeProperty(const std::string &prop) {
     std::unique_lock locker{xLock_};
 
-    auto status = record_.removeProperty(prop);
+    try {
+        auto status = record_.removeProperty(prop);
 
-    if (status.isOk())
-        setDirty(true);
+        if (status.isOk())
+            setDirty(true);
 
-    return status;
+        return status;
+    }
+    catch (...) {                           // Record::removeProperty() can throw only std::bad_alloc
+        return Status::Fatal("Exception");  // so it's not safe to call any function, just return
+    }
 }
 
 std::tuple<Status, IEntry::Properties> Entry::properties() const {
     std::shared_lock locker{xLock_};
 
-    return {Status::Ok(), record_.properties()};
+    try {
+        return {Status::Ok(), record_.properties()};
+    }
+    catch (...) {                                 // Record::properties() can throw only std::bad_alloc
+        return {Status::Fatal("Exception"), {}};  // so it's not safe to call any function, just return
+    }
 }
 
 std::tuple<Status, std::set<std::string>> Entry::propertiesNames() const {
     std::shared_lock locker{xLock_};
 
-    return {Status::Ok(), record_.propertiesNames()};
+    try {
+        return {Status::Ok(), record_.propertiesNames()};
+    }
+    catch (...) {                                 // Record::propertiesNames() can throw only std::bad_alloc
+        return {Status::Fatal("Exception"), {}};  // so it's not safe to call any function, just return
+    }
 }
 
 Status Entry::expireProperty(const std::string &prop, chrono::milliseconds ms) {
     std::unique_lock locker{xLock_};
 
-    auto status = record_.expireProperty(prop, ms);
+    try {
+        auto status = record_.expireProperty(prop, ms);
 
-    if (status.isOk())
-        setDirty(true);
+        if (status.isOk())
+            setDirty(true);
 
-    return status;
+        return status;
+    }
+    catch (...) {                           // Record::expireProperty() can throw only std::bad_alloc
+        return Status::Fatal("Exception");  // so it's not safe to call any function, just return
+    }
 }
 
 Status Entry::cancelPropertyExpiration(const std::string &prop) {
     std::unique_lock locker{xLock_};
 
-    auto status = record_.cancelPropertyExpiration(prop);
+    try {
+        auto status = record_.cancelPropertyExpiration(prop);
 
-    if (status.isOk())
-        setDirty(true);
+        if (status.isOk())
+            setDirty(true);
 
-    return status;
+        return status;
+    }
+    catch (...) {                           // Record::cancelPropertyExpiration() can throw only std::bad_alloc
+        return Status::Fatal("Exception");  // so it's not safe to call any function, just return
+    }
 }
 
 std::tuple<Status, std::set<std::string> > Entry::children() const {
     std::shared_lock locker{xLock_};
 
-    auto children = record_.children();
+    try {
+        auto children = record_.children();  // can throw here
 
-    locker.unlock();
+        locker.unlock();
 
-    std::set<std::string> ret;
+        std::set<std::string> ret;          // or here
 
-    for (const auto& [name, handle] : children) {
-        SKV_UNUSED(handle);
+        for (const auto& [name, handle] : children) {
+            SKV_UNUSED(handle);
 
-        ret.insert(name);
+            ret.insert(name);               // or here
+        }
+
+        return {Status::Ok(), ret};
     }
-
-    return {Status::Ok(), ret};
+    catch (...) {
+        return {Status::Fatal("Exception"), {}};  // it's not safe to call any function, just return
+    }
 }
 
-void Entry::setDirty(bool dirty) {
+void Entry::setDirty(bool dirty) noexcept {
     dirty_ = dirty;
 }
 
