@@ -37,6 +37,9 @@ Status Storage::release(IVolume::Token token) noexcept {
 }
 
 Status Storage::mount(const IVolumePtr& volume, const std::string& entryPath, const std::string& mountPath, Storage::Priority prio) {
+    if (volume.get() == static_cast<IVolume*>(this))
+        return Status::InvalidOperation("Invalid volume");
+
     return impl_->mount(volume, entryPath, mountPath, prio);
 }
 
