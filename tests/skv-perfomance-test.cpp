@@ -40,11 +40,23 @@ protected:
     static constexpr std::size_t LINKS_COUNT = 1000;
 
     void SetUp() override {
+        ASSERT_TRUE(storageStatus.isOk());
+
         removeFiles();
 
-        volume1_ = std::make_shared<ondisk::Volume>();
-        volume2_ = std::make_shared<ondisk::Volume>();
-        volume3_ = std::make_shared<ondisk::Volume>();
+        Status status;
+
+        volume1_ = std::make_shared<ondisk::Volume>(status);
+
+        ASSERT_TRUE(status.isOk());
+
+        volume2_ = std::make_shared<ondisk::Volume>(status);
+
+        ASSERT_TRUE(status.isOk());
+
+        volume3_ = std::make_shared<ondisk::Volume>(status);
+
+        ASSERT_TRUE(status.isOk());
 
         ASSERT_NE(volume1_, nullptr);
         ASSERT_NE(volume2_, nullptr);
@@ -141,7 +153,8 @@ protected:
     std::shared_ptr<ondisk::Volume> volume1_;
     std::shared_ptr<ondisk::Volume> volume2_;
     std::shared_ptr<ondisk::Volume> volume3_;
-    vfs::Storage storage_;
+    Status storageStatus;
+    vfs::Storage storage_{storageStatus};
 
     std::array<Property, 7> propsPool{Property{123.0f},
                                       Property{956.0},

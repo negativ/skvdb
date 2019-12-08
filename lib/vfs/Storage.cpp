@@ -13,9 +13,14 @@ namespace skv::vfs {
 
 using namespace skv::util;
 
-Storage::Storage():
+Storage::Storage(Status& status) noexcept try:
     impl_{std::make_unique<Impl>()}
 {
+    status = Status::Ok();
+}
+catch (...)
+{
+    status = Status::Fatal("Exception");
 }
 
 Storage::Storage(Storage &&other) noexcept {
@@ -23,6 +28,9 @@ Storage::Storage(Storage &&other) noexcept {
 }
 
 std::shared_ptr<IEntry> Storage::entry(const std::string &path) {
+    if (!impl_)
+        return {};
+
     try {
         return impl_->entry(path);
     }
@@ -42,6 +50,9 @@ std::shared_ptr<IEntry> Storage::entry(const std::string &path) {
 Storage::~Storage() noexcept = default;
 
 Status Storage::link(IEntry &entry, const std::string& name) {
+    if (!impl_)
+        return Status::Fatal("Not constructed");
+
     try {
         return impl_->link(entry, name);
     }
@@ -59,6 +70,9 @@ Status Storage::link(IEntry &entry, const std::string& name) {
 }
 
 Status Storage::unlink(IEntry &entry, const std::string& name) {
+    if (!impl_)
+        return Status::Fatal("Not constructed");
+
     try {
         return impl_->unlink(entry, name);
     }
@@ -76,14 +90,23 @@ Status Storage::unlink(IEntry &entry, const std::string& name) {
 }
 
 Status Storage::claim(IVolume::Token token) noexcept {
+    if (!impl_)
+        return Status::Fatal("Not constructed");
+
     return impl_->claim(token);
 }
 
 Status Storage::release(IVolume::Token token) noexcept {
+    if (!impl_)
+        return Status::Fatal("Not constructed");
+
     return impl_->release(token);
 }
 
 Status Storage::mount(const IVolumePtr& volume, const std::string& entryPath, const std::string& mountPath, Storage::Priority prio) {
+    if (!impl_)
+        return Status::Fatal("Not constructed");
+
     if (volume.get() == static_cast<IVolume*>(this))
         return Status::InvalidOperation("Invalid volume");
 
@@ -104,6 +127,9 @@ Status Storage::mount(const IVolumePtr& volume, const std::string& entryPath, co
 }
 
 Status Storage::unmount(const IVolumePtr& volume, const std::string& entryPath, const std::string& mountPath) {
+    if (!impl_)
+        return Status::Fatal("Not constructed");
+
     try {
         return impl_->unmount(volume, entryPath, mountPath);
     }

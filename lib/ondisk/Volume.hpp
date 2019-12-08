@@ -33,8 +33,8 @@ public:
         bool            LogDeviceCreateNewIfNotExist{true};
     };
 
-    Volume();
-    Volume(OpenOptions opts);
+    Volume(Status &status) noexcept;
+    Volume(Status &status, OpenOptions opts) noexcept;
     ~Volume() noexcept override;
 
     Volume(const Volume&) = delete;
