@@ -6,10 +6,6 @@ const char* Status::message() const noexcept {
     return message_.data();
 }
 
-Status Status::Ok() {
-    return Status{Code::Ok, ""};
-}
-
 Status::Code Status::code() const noexcept {
     return code_;
 }
