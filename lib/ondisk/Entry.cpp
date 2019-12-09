@@ -2,7 +2,7 @@
 
 namespace skv::ondisk {
 
-Entry::Entry(Record &&record):
+Entry::Entry(Record &&record) noexcept:
     record_{record}
 {
 
