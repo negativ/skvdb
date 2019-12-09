@@ -4,6 +4,7 @@
 #include <functional>
 #include <iostream>
 #include <vector>
+#include <type_traits>
 
 #include <boost/iostreams/categories.hpp>
 #include <boost/iostreams/positioning.hpp>
@@ -21,8 +22,9 @@ public:
     using container_type    = std::decay_t<Container>;
     using char_type         = typename Container::value_type;
     using category          = io::seekable_device_tag;
+    using reference         = std::reference_wrapper<container_type>;
 
-    ContainerStreamDevice(Container& container) noexcept
+    ContainerStreamDevice(Container& container) noexcept(std::is_nothrow_constructible_v<reference>)
         : container_(std::ref(container)), pos_(0)
     { }
 
@@ -95,7 +97,7 @@ public:
     }
 
 private:
-    std::reference_wrapper<container_type> container_;
+    reference container_;
     typename container_type::size_type pos_;
 };
 

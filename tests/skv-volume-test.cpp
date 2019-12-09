@@ -70,12 +70,15 @@ TEST(VolumeTest, MTTestN1) {
     using namespace std::chrono;
     using namespace std::literals;
 
-    Volume volume;
+    Status status;
+    Volume volume{status};
+
+    ASSERT_TRUE(status.isOk());
 
     SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".logd"));
     SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".index"));
 
-    auto status = volume.initialize(STORAGE_DIR, STORAGE_NAME);
+    status = volume.initialize(STORAGE_DIR, STORAGE_NAME);
 
     ASSERT_TRUE(status.isOk());
     ASSERT_TRUE(volume.initialized());
@@ -148,7 +151,10 @@ TEST(VolumeTest, MTTestN2) {
     using namespace std::chrono;
     using namespace std::literals;
 
-    Volume volume;
+    Status createStatus;
+    Volume volume{createStatus};
+
+    ASSERT_TRUE(createStatus.isOk());
 
     SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".logd"));
     SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".index"));
@@ -202,12 +208,15 @@ TEST(VolumeTest, MTTestN2) {
 }
 
 TEST(VolumeTest, OpenCloseLinkClaim) {
-    Volume volume;
+    Status status;
+    Volume volume{status};
+
+    ASSERT_TRUE(status.isOk());
 
     SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".logd"));
     SKV_UNUSED(os::File::unlink(STORAGE_DIR + char(os::path::separator) + STORAGE_NAME + ".index"));
 
-    auto status = volume.initialize(STORAGE_DIR, STORAGE_NAME);
+    status = volume.initialize(STORAGE_DIR, STORAGE_NAME);
 
     ASSERT_TRUE(status.isOk());
     ASSERT_TRUE(volume.initialized());

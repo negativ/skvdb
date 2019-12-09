@@ -13,16 +13,19 @@ namespace skv::ondisk {
 
 using namespace skv::util;
 
-Volume::Volume():
-    Volume(OpenOptions{})
+Volume::Volume(Status& status) noexcept:
+    Volume(status, OpenOptions{})
 {
 
 }
 
-Volume::Volume(OpenOptions opts):
+Volume::Volume(Status& status, OpenOptions opts) noexcept try :
     impl_{std::make_unique<Impl>(opts)}
 {
-
+    status = Status::Ok();
+}
+catch (...) {
+    status = Status::Fatal("Exception");
 }
 
 Volume::Volume(Volume &&other) noexcept{
@@ -39,7 +42,7 @@ Status Volume::initialize(const os::path& directory, const std::string &volumeNa
         return impl_->initialize(directory, volumeName);
     }
     catch (const std::bad_alloc&) {
-        // it's not safe to call any function, just return
+        return Status::Fatal("bad alloc"); // it's not safe to call any function, just return
     }
     catch (const std::exception& e) {
         Log::e(TAG, "ondisk::Volume::initialize(): got exception: ", e.what());
@@ -58,7 +61,7 @@ Status Volume::deinitialize() {
         return impl_->deinitialize();
     }
     catch (const std::bad_alloc&) {
-        // it's not safe to call any function, just return
+        return Status::Fatal("bad alloc"); // it's not safe to call any function, just return
     }
     catch (const std::exception& e) {
         Log::e(TAG, "ondisk::Volume::deinitialize(): got exception: ", e.what());
@@ -71,7 +74,7 @@ Status Volume::deinitialize() {
 }
 
 bool Volume::initialized() const noexcept {
-    return impl_->initialized();
+    return impl_ && impl_->initialized();
 }
 
 std::shared_ptr<IEntry> Volume::entry(const std::string& path) {
@@ -102,7 +105,7 @@ Status Volume::link(IEntry &entry, const std::string& name) {
         return impl_->createChild(entry, name);
     }
     catch (const std::bad_alloc&) {
-        // it's not safe to call any function, just return
+        return Status::Fatal("bad alloc"); // it's not safe to call any function, just return
     }
     catch (const std::exception& e) {
         Log::e(TAG, "ondisK::Volume::link(): got exception: ", e.what());
@@ -122,7 +125,7 @@ Status Volume::unlink(IEntry& entry, const std::string& name) {
         return impl_->removeChild(entry, name);
     }
     catch (const std::bad_alloc&) {
-        // it's not safe to call any function, just return
+        return Status::Fatal("bad alloc"); // it's not safe to call any function, just return
     }
     catch (const std::exception& e) {
         Log::e(TAG, "ondisK::Volume::unlink(): got exception: ", e.what());

@@ -236,7 +236,7 @@ struct Storage::Impl {
         if (!entry.open()) {
             SKV_UNUSED(volume->release(this));
 
-            return Status::InvalidArgument("Unable to create mount point");
+            return Status::InvalidArgument("Unable to mount");
         }
 
         std::unique_lock locker(mpointsLock_);
@@ -248,7 +248,7 @@ struct Storage::Impl {
             SKV_UNUSED(volume->release(this));
             entry.close();
 
-            return Status::InvalidArgument("Mount point entry already exist");
+            return Status::InvalidArgument("Already mounted");
         }
 
         return Status::Ok();

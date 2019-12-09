@@ -10,7 +10,7 @@ namespace skv::ondisk {
 
 class Entry final: public skv::vfs::IEntry {
 public:
-    Entry(ondisk::Record&& record);
+    Entry(ondisk::Record&& record) noexcept;
 
     ~Entry() noexcept override = default;
 

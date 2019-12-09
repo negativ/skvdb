@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 
 namespace skv::util {
 
@@ -8,7 +9,7 @@ namespace skv::util {
  * @brief Operation status indication
  */
 class Status final {
-    enum class Code: unsigned {
+    enum class Code: std::uint8_t {
         Ok,
         IOError,
         InvalidArgument,
@@ -18,10 +19,35 @@ class Status final {
         Undefined
     };
 
-    static constexpr std::size_t MAX_MESSAGE_LEN = 36;
+    static constexpr std::size_t MAX_MESSAGE_LEN = 31;
+
+    template<std::size_t N>
+    [[nodiscard]] static inline constexpr Status create(Code code, const char (&m)[N]) {
+        static_assert(N < MAX_MESSAGE_LEN, "Message too long. Max length is 31 chars");
+
+        return Status{code, m};
+    }
+
+    template<typename Array, typename String, std::size_t... I>
+    constexpr void str2array(Array& a, const String& s, std::index_sequence<I...>)
+    {
+        ((a[I] = s[I]), ...);
+    }
+
+    template<std::size_t N, typename Indices = std::make_index_sequence<N>>
+    constexpr Status(Code code, const char (&m)[N]) noexcept:
+        code_(code)
+    {
+        str2array(message_, m, Indices{});
+    }
+
+    std::array<char, MAX_MESSAGE_LEN> message_{0};
+    Code code_{Code::Undefined};
 
 public:
-    [[nodiscard]] static Status Ok();
+    [[nodiscard]] static constexpr Status Ok() {
+        return create(Code::Ok, "");
+    }
 
     template<typename T>
     [[nodiscard]] static constexpr Status IOError(T&& m) {
@@ -67,30 +93,6 @@ public:
     [[nodiscard]] bool isNotFound() const noexcept;
     [[nodiscard]] bool isFatal() const noexcept;
     [[nodiscard]] bool isInvalidOperation() const noexcept;
-
-private:
-    template<std::size_t N>
-    [[nodiscard]] static inline constexpr Status create(Code code, const char (&m)[N]) {
-        static_assert(N < MAX_MESSAGE_LEN, "Message too long. Max length is 36 chars");
-
-        return Status{code, m};
-    }
-
-    template<typename Array, typename String, std::size_t... I>
-    constexpr void str2array(Array& a, const String& s, std::index_sequence<I...>)
-    {
-        ((a[I] = s[I]), ...);
-    }
-
-    template<std::size_t N, typename Indices = std::make_index_sequence<N>>
-    constexpr Status(Code code, const char (&m)[N]) noexcept:
-        code_(code)
-    {
-        str2array(message_, m, Indices{});
-    }
-
-    Code code_{Code::Undefined};
-    std::array<char, MAX_MESSAGE_LEN> message_{0};
 };
 
 }

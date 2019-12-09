@@ -21,7 +21,7 @@ public:
     static constexpr Priority MinPriority       = mount::Entry::MinPriority;
     static constexpr Priority DefaultPriority   = mount::Entry::DefaultPriority;
 
-    Storage();
+    Storage(Status& status) noexcept;
     ~Storage() noexcept override;
 
     Storage(const Storage&) = delete;
