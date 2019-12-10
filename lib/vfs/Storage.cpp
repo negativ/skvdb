@@ -57,7 +57,7 @@ Status Storage::link(IEntry &entry, const std::string& name) {
         return impl_->link(entry, name);
     }
     catch (const std::bad_alloc&) {
-        // it's not safe to call any function, just return
+        return Status::Fatal("bad alloc"); // it's not safe to call any function, just return
     }
     catch (const std::exception& e) {
         Log::e(TAG, "vfs::Storage::link(): got exception: ", e.what());
@@ -77,7 +77,7 @@ Status Storage::unlink(IEntry &entry, const std::string& name) {
         return impl_->unlink(entry, name);
     }
     catch (const std::bad_alloc&) {
-        // it's not safe to call any function, just return
+        return Status::Fatal("bad alloc"); // it's not safe to call any function, just return
     }
     catch (const std::exception& e) {
         Log::e(TAG, "vfs::Storage::unlink(): got exception: ", e.what());
@@ -114,7 +114,7 @@ Status Storage::mount(const IVolumePtr& volume, const std::string& entryPath, co
         return impl_->mount(volume, entryPath, mountPath, prio);
     }
     catch (const std::bad_alloc&) {
-        // it's not safe to call any function, just return
+        return Status::Fatal("bad alloc"); // it's not safe to call any function, just return
     }
     catch (const std::exception& e) {
         Log::e(TAG, "vfs::Storage::mount(): got exception: ", e.what());
@@ -134,7 +134,7 @@ Status Storage::unmount(const IVolumePtr& volume, const std::string& entryPath, 
         return impl_->unmount(volume, entryPath, mountPath);
     }
     catch (const std::bad_alloc&) {
-        // it's not safe to call any function, just return
+        return Status::Fatal("bad alloc"); // it's not safe to call any function, just return
     }
     catch (const std::exception& e) {
         Log::e(TAG, "vfs::Storage::unmount(): got exception: ", e.what());
