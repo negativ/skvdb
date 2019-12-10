@@ -13,14 +13,13 @@ namespace skv::vfs {
 
 using namespace skv::util;
 
-Storage::Storage(Status& status) noexcept try:
-    impl_{std::make_unique<Impl>()}
-{
-    status = Status::Ok();
-}
-catch (...)
-{
-    status = Status::Fatal("Exception");
+Storage::Storage(Status& status) noexcept {
+    try {
+        impl_.reset(new Impl{});
+        status = Status::Ok();
+    } catch (...) {
+        status = Status::Fatal("Exception");
+    }
 }
 
 Storage::Storage(Storage &&other) noexcept {
