@@ -6,12 +6,7 @@ os:
   - linux
 
 compiler:
-  - clang
   - gcc
-
-env:
-  - BUILD_CONFIGURATION=Debug
-  - BUILD_CONFIGURATION=Release
 
 matrix:
   include:
@@ -24,17 +19,6 @@ matrix:
             - g++-7
       env:
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-bionic-8
-          packages:
-            - clang-8
-            - libstdc++8
-      env:
-        - MATRIX_EVAL="CC=clang-8 && CXX=clang++-8"
 
 addons:
   apt:
@@ -45,7 +29,7 @@ addons:
 
 before_install:
     - eval "${MATRIX_EVAL}"
-    - sudo apt-get -y install libboost-all-dev libgtest-dev build-essential
+    - sudo apt-get -y install libboost-filesystem-dev libboost-system-dev libgtest-dev build-essential
     - mkdir build-gtest
     - cd build-gtest
     - cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release /usr/src/gtest/
@@ -55,6 +39,6 @@ before_install:
 script:
   - mkdir build
   - cd build
-  - cmake -DCMAKE_BUILD_TYPE=$BUILD_CONFIGURATION .. 
+  - cmake -DCMAKE_BUILD_TYPE=Release .. 
   - make
   - ctest --output-on-failure
