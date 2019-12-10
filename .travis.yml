@@ -10,10 +10,8 @@ compiler:
   - gcc
 
 env:
-  - TARGET_CPU=amd64 BUILD_CONFIGURATION=Debug
-  - TARGET_CPU=amd64 BUILD_CONFIGURATION=Release
-  - TARGET_CPU=x86 BUILD_CONFIGURATION=Debug
-  - TARGET_CPU=x86 BUILD_CONFIGURATION=Release
+  - BUILD_CONFIGURATION=Debug
+  - BUILD_CONFIGURATION=Release
 
 matrix:
   include:
@@ -45,6 +43,7 @@ addons:
       - cmake
 
 before_install:
+    - eval "${MATRIX_EVAL}"
     - sudo apt-get -y install libboost-all-dev libgtest-dev build-essential
     - mkdir build-gtest
     - cd build-gtest
@@ -55,6 +54,6 @@ before_install:
 script:
   - mkdir build
   - cd build
-  - cmake -DCMAKE_BUILD_TYPE=$BUILD_CONFIGURATION -DTARGET_CPU=$TARGET_CPU .. 
+  - cmake -DCMAKE_BUILD_TYPE=$BUILD_CONFIGURATION .. 
   - make
   - ctest --output-on-failure
