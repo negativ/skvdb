@@ -246,7 +246,7 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
         ASSERT_TRUE(status.isOk());
 
         std::set<std::string> children;
-        std::tie(status, children) = root->children();
+        std::tie(status, children) = root->links();
         ASSERT_TRUE(status.isOk());
 		ASSERT_EQ(children.size(), 3);
     }
@@ -263,7 +263,7 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
         ASSERT_TRUE(status.isOk());
 
         std::set<std::string> children;
-        std::tie(status, children) = proc->children();
+        std::tie(status, children) = proc->links();
         ASSERT_TRUE(status.isOk());
 		ASSERT_EQ(children.size(), 2);
     }
@@ -274,7 +274,7 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
 		ASSERT_TRUE(proc != nullptr);
 
         std::set<std::string> children;
-        std::tie(status, children) = proc->children();
+        std::tie(status, children) = proc->links();
         ASSERT_TRUE(status.isOk());
 		ASSERT_EQ(children.size(), 2);
 
@@ -291,7 +291,7 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
 		ASSERT_TRUE(self != nullptr);
 
         std::set<std::string> children;
-        std::tie(status, children) = self->children();
+        std::tie(status, children) = self->links();
         ASSERT_TRUE(status.isOk());
 		ASSERT_TRUE(children.empty());
 
@@ -307,7 +307,7 @@ TEST(VolumeTest, OpenCloseLinkClaim) {
 		ASSERT_TRUE(self != nullptr);
 
         std::set<std::string> children;
-        std::tie(status, children) = self->children();
+        std::tie(status, children) = self->links();
         ASSERT_TRUE(status.isOk());
 		ASSERT_TRUE(children.empty());
 

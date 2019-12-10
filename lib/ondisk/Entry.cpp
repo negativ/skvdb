@@ -117,7 +117,7 @@ Status Entry::cancelPropertyExpiration(const std::string &prop) {
     }
 }
 
-std::tuple<Status, std::set<std::string> > Entry::children() const {
+std::tuple<Status, std::set<std::string> > Entry::links() const {
     std::shared_lock locker{xLock_};
 
     try {

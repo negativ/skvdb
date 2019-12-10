@@ -73,7 +73,7 @@ protected:
         std::string trackPath = "";
 
         for (const auto& token : tokens) {
-            auto [status, children] = root->children();
+            auto [status, children] = root->links();
 
             ASSERT_TRUE(status.isOk());
 
@@ -403,7 +403,7 @@ TEST_F(VFSStorageTest, LinkUnlinkTest) {
     ASSERT_NE(handle, nullptr);
 
     {
-        auto [status, links] = handle->children();
+        auto [status, links] = handle->links();
 
         ASSERT_TRUE(status.isOk());
         ASSERT_FALSE(links.empty());
@@ -420,7 +420,7 @@ TEST_F(VFSStorageTest, LinkUnlinkTest) {
     ASSERT_FALSE(storage_.link(*handle, "x").isOk());
 
     {
-        auto [status, links] = handle->children();
+        auto [status, links] = handle->links();
 
         ASSERT_TRUE(status.isOk());
         ASSERT_FALSE(links.empty());
@@ -437,7 +437,7 @@ TEST_F(VFSStorageTest, LinkUnlinkTest) {
     ASSERT_FALSE(storage_.unlink(*handle, "e").isOk());
 
     {
-        auto [status, links] = handle->children();
+        auto [status, links] = handle->links();
 
         ASSERT_TRUE(status.isOk());
         ASSERT_FALSE(links.empty());

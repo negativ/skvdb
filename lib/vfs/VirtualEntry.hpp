@@ -45,7 +45,7 @@ public:
     Status cancelPropertyExpiration(const std::string& prop) override;
 
 
-    std::tuple<Status, std::set<std::string>> children() const override;
+    std::tuple<Status, std::set<std::string>> links() const override;
 
     Volumes& volumes() const noexcept;
 

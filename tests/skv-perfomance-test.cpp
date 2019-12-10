@@ -97,7 +97,7 @@ protected:
         std::string trackPath = "";
 
         for (const auto& token : tokens) {
-            auto [status, children] = root->children();
+            auto [status, children] = root->links();
 
 			ASSERT_TRUE(status.isOk());
 
@@ -381,7 +381,7 @@ TEST_F(VFSStoragePerfomanceTest, MultipleRecordsMultipleThreadsReadWrite) {
     }
 
     {   // inspecting storage links
-        auto [status, children] = proc->children();
+        auto [status, children] = proc->links();
 
 		ASSERT_TRUE(status.isOk());
         ASSERT_EQ(children.size(), N_THREADS);
@@ -500,7 +500,7 @@ TEST_F(VFSStoragePerfomanceTest, LinkUnlinkRecordTest) {
     Log::i("CreateRecordTest", "link() elapsed time: ", msElapsed, " ms.");
     Log::i("CreateRecordTest", "link() speed: ", (1000.0 / msElapsed) * LINKS_COUNT, " link/s");
 
-    auto [status, links] = proc->children();
+    auto [status, links] = proc->links();
 
 	ASSERT_TRUE(status.isOk());
     ASSERT_EQ(links.size(), LINKS_COUNT);

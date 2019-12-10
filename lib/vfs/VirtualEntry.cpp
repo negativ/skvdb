@@ -146,8 +146,8 @@ Status VirtualEntry::cancelPropertyExpiration(const std::string &prop) {
     return ok? Status::Ok() : Status::InvalidArgument("No such property");
 }
 
-std::tuple<Status, std::set<std::string>> VirtualEntry::children() const {
-    const auto& [status, results] = forEachEntry(&IEntry::children);
+std::tuple<Status, std::set<std::string>> VirtualEntry::links() const {
+    const auto& [status, results] = forEachEntry(&IEntry::links);
 
     if (!status.isOk())
         return {status, {}};
