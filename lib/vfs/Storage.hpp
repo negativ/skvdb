@@ -87,7 +87,7 @@ public:
     [[nodiscard]] Status unmount(const IVolumePtr& volume, const std::string& entryPath, const std::string& mountPath);
 
 private:
-    std::unique_ptr<Impl> impl_{nullptr};
+    std::unique_ptr<Impl> impl_;
 };
 
 }

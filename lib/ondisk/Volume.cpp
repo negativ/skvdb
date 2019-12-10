@@ -24,6 +24,7 @@ Volume::Volume(Status& status, OpenOptions opts) noexcept {
         impl_.reset(new Impl{opts});
         status = Status::Ok();
     } catch (...) {
+        impl_.reset();
         status = Status::Fatal("Exception");
     }
 }

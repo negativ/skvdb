@@ -18,6 +18,7 @@ Storage::Storage(Status& status) noexcept {
         impl_.reset(new Impl{});
         status = Status::Ok();
     } catch (...) {
+        impl_.reset();
         status = Status::Fatal("Exception");
     }
 }

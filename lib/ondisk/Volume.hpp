@@ -88,7 +88,7 @@ public:
     [[nodiscard]] Status release(Token token) noexcept override;
 
 private:
-    std::unique_ptr<Impl> impl_{nullptr};
+    std::unique_ptr<Impl> impl_;
 };
 
 }
