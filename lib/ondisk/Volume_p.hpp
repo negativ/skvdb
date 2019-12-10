@@ -40,7 +40,6 @@ struct Volume::Impl {
         storage_{std::make_unique<storage_type>()},
         opts_{opts}
     {
-
     }
 
     ~Impl() noexcept = default;

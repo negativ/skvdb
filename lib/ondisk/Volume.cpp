@@ -19,13 +19,14 @@ Volume::Volume(Status& status) noexcept:
 
 }
 
-Volume::Volume(Status& status, OpenOptions opts) noexcept try :
-    impl_{std::make_unique<Impl>(opts)}
-{
-    status = Status::Ok();
-}
-catch (...) {
-    status = Status::Fatal("Exception");
+Volume::Volume(Status& status, OpenOptions opts) noexcept {
+    try {
+        impl_.reset(new Impl{opts});
+        status = Status::Ok();
+    }
+    catch (...) {
+        status = Status::Fatal("Exception");
+    }
 }
 
 Volume::Volume(Volume &&other) noexcept{
