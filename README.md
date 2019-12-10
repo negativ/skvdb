@@ -7,7 +7,7 @@ Embedded simple key-value database library written in C++17.
 
 # How to build
 
-On Ubuntu-like distro install C++17-compatible compiler (like G++ or Clang), CMake, Google Test and Boost libraries with command like:
+On Ubuntu-like distro install C++17-compatible compiler (like G++ or Clang), CMake, Google Test and Boost (filesystem, system) libraries with command like:
 
 ```bash
 $ sudo apt install g++ cmake cmake-data cmake-extras libgtest-dev googletest libboost1.65-dev
@@ -36,10 +36,11 @@ The simplest way to build library on Windows is to install Microsoft Visual Stud
 
 int main() {
     using namespace std::literals;
-
-    vfs::Storage storage;
-    auto vol1 = std::make_shared<ondisk::Volume>();
-    auto vol2 = std::make_shared<ondisk::Volume>();
+    
+    Status initStatus;
+    vfs::Storage storage{initStatus};
+    auto vol1 = std::make_shared<ondisk::Volume>(initStatus);
+    auto vol2 = std::make_shared<ondisk::Volume>(initStatus);
 
     if (!(vol1->initialize("/tmp", "volume1").isOk() &&
           vol2->initialize("/tmp", "volume2").isOk())) {
