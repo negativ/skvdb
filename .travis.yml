@@ -32,6 +32,7 @@ matrix:
             - llvm-toolchain-bionic-8
           packages:
             - clang-8
+            - libstdc++8
       env:
         - MATRIX_EVAL="CC=clang-8 && CXX=clang++-8"
 
