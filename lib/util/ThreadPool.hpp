@@ -128,7 +128,7 @@ private:
         return !taskQueue_.empty();
     }
 
-    [[nodiscard]] std::tuple<Status, function*> nextTask() {
+    [[nodiscard]] std::tuple<Status, function_ptr> nextTask() {
         function_ptr cw;
 
         if (taskQueue_.pop(cw))
