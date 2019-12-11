@@ -21,10 +21,11 @@ Volume::Volume(Status& status) noexcept:
 
 Volume::Volume(Status& status, OpenOptions opts) noexcept {
     try {
-        impl_.reset(new Impl{opts});
+        auto ptr = std::make_unique<Impl>(opts);
+        impl_.swap(ptr);
+
         status = Status::Ok();
     } catch (...) {
-        impl_.reset();
         status = Status::Fatal("Exception");
     }
 }

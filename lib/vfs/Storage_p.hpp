@@ -331,6 +331,7 @@ struct Storage::Impl {
         return {Status::NotFound("Unable to find mount point"), {}, {}};
     }
 
+private:
     mount::Points mpoints_{};
     std::atomic<Storage::Handle> currentHandle_{IVolume::RootHandle + 1};
     mutable std::shared_mutex mpointsLock_;

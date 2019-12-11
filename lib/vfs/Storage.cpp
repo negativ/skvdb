@@ -15,10 +15,11 @@ using namespace skv::util;
 
 Storage::Storage(Status& status) noexcept {
     try {
-        impl_.reset(new Impl{});
+        auto ptr = std::make_unique<Impl>();
+        impl_.swap(ptr);
+
         status = Status::Ok();
     } catch (...) {
-        impl_.reset();
         status = Status::Fatal("Exception");
     }
 }
