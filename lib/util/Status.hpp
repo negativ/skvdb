@@ -22,15 +22,14 @@ class Status final {
     static constexpr std::size_t MAX_MESSAGE_LEN = 31;
 
     template<std::size_t N>
-    [[nodiscard]] static inline constexpr Status create(Code code, const char (&m)[N]) {
+    [[nodiscard]] static constexpr Status create(Code code, const char (&m)[N]) noexcept {
         static_assert(N < MAX_MESSAGE_LEN, "Message too long. Max length is 31 chars");
 
         return Status{code, m};
     }
 
     template<typename Array, typename String, std::size_t... I>
-    constexpr void str2array(Array& a, const String& s, std::index_sequence<I...>)
-    {
+    static constexpr void str2array(Array& a, const String& s, std::index_sequence<I...>) noexcept {
         ((a[I] = s[I]), ...);
     }
 
@@ -45,40 +44,40 @@ class Status final {
     Code code_{Code::Undefined};
 
 public:
-    [[nodiscard]] static constexpr Status Ok() {
+    [[nodiscard]] static constexpr Status Ok() noexcept {
         return create(Code::Ok, "");
     }
 
     template<typename T>
-    [[nodiscard]] static constexpr Status IOError(T&& m) {
+    [[nodiscard]] static constexpr Status IOError(T&& m) noexcept {
         return create(Code::IOError, std::forward<T>(m));
     }
 
     template<typename T>
-    [[nodiscard]] static constexpr Status InvalidArgument(T&& m) {
+    [[nodiscard]] static constexpr Status InvalidArgument(T&& m) noexcept {
         return create(Code::InvalidArgument, std::forward<T>(m));
     }
 
     template<typename T>
-    [[nodiscard]] static constexpr Status NotFound(T&& m) {
+    [[nodiscard]] static constexpr Status NotFound(T&& m) noexcept {
         return create(Code::NotFound, std::forward<T>(m));
     }
 
     template<typename T>
-    [[nodiscard]] static constexpr Status Fatal(T&& m) {
+    [[nodiscard]] static constexpr Status Fatal(T&& m) noexcept {
         return create(Code::Fatal, std::forward<T>(m));
     }
 
     template<typename T>
-    [[nodiscard]] static constexpr Status InvalidOperation(T&& m) {
+    [[nodiscard]] static constexpr Status InvalidOperation(T&& m) noexcept {
         return create(Code::InvalidOp, std::forward<T>(m));
     }
 
-    constexpr Status() = default;
-    ~Status() = default;
+    constexpr Status() noexcept = default;
+    ~Status() noexcept = default;
 
-    Status(const Status&) = default;
-    Status& operator=(const Status&) = default;
+    Status(const Status&) noexcept = default;
+    Status& operator=(const Status&) noexcept = default;
 
     Status(Status&&) noexcept = default;
     Status& operator=(Status&&) noexcept = default;
