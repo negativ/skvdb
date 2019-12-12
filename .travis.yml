@@ -7,6 +7,11 @@ os:
 
 compiler:
   - gcc
+  - clang
+  
+env:
+  - BUILD_CONFIGURATION=Debug
+  - BUILD_CONFIGURATION=Release
 
 matrix:
   include:
@@ -37,8 +42,9 @@ before_install:
     - cd ..
 
 script:
+  - eval "${MATRIX_EVAL}"
   - mkdir build
   - cd build
-  - cmake -DCMAKE_BUILD_TYPE=Release .. 
+  - cmake -DCMAKE_BUILD_TYPE=$BUILD_CONFIGURATION .. 
   - make
   - ctest --output-on-failure
