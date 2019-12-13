@@ -104,7 +104,7 @@ Status Storage::release(IVolume::Token token) noexcept {
     return impl_->release(token);
 }
 
-Status Storage::mount(const IVolumePtr& volume, const std::string& entryPath, const std::string& mountPath, Storage::Priority prio) {
+Status Storage::mount(const std::shared_ptr<IVolume>& volume, const std::string& entryPath, const std::string& mountPath, Storage::Priority prio) {
     if (!impl_)
         return Status::Fatal("Not constructed");
 
@@ -127,7 +127,7 @@ Status Storage::mount(const IVolumePtr& volume, const std::string& entryPath, co
     return Status::Fatal("Exception");
 }
 
-Status Storage::unmount(const IVolumePtr& volume, const std::string& entryPath, const std::string& mountPath) {
+Status Storage::unmount(const std::shared_ptr<IVolume>& volume, const std::string& entryPath, const std::string& mountPath) {
     if (!impl_)
         return Status::Fatal("Not constructed");
 

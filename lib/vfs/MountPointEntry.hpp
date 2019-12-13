@@ -19,7 +19,7 @@ public:
     static constexpr Priority MinPriority       = std::numeric_limits<Priority>::min();
     static constexpr Priority DefaultPriority   = MinPriority + 1;
 
-    Entry(const std::string& mountPath, const std::string& entryPath, IVolumePtr volume, Priority prio = DefaultPriority);
+    Entry(const std::string& mountPath, const std::string& entryPath, std::shared_ptr<IVolume> volume, Priority prio = DefaultPriority);
     ~Entry() noexcept;
 
     Entry(const Entry& other);
@@ -44,7 +44,7 @@ public:
      * @brief Mounted volume
      * @return
      */
-    [[nodiscard]] IVolumePtr volume() const;
+    [[nodiscard]] std::shared_ptr<IVolume> volume() const;
 
     /**
      * @brief Handle of the entry

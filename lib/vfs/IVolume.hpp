@@ -68,7 +68,4 @@ public:
     [[nodiscard]] virtual Status release(Token token) noexcept = 0;
 };
 
-using IVolumePtr = std::shared_ptr<IVolume>;
-using IVolumeWPtr = std::weak_ptr<IVolume>;
-
 }

@@ -13,7 +13,7 @@ using ThreadPool = util::ThreadPool<>;
 class VirtualEntry final : public vfs::IEntry {
 public:
     using Entries = std::vector<std::shared_ptr<IEntry>>;
-    using Volumes = std::vector<IVolumePtr>;
+    using Volumes = std::vector<std::shared_ptr<IVolume>>;
 
     VirtualEntry(Handle handle, Entries&& entries, Volumes&& volumes, ThreadPool& threadPool);
     ~VirtualEntry() noexcept override = default;

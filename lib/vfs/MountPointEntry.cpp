@@ -7,7 +7,7 @@
 namespace skv::vfs::mount {
 
 struct Entry::Impl {
-    Impl(std::string mp, std::string ep, IVolumePtr volume, Entry::Priority prio):
+    Impl(std::string mp, std::string ep, std::shared_ptr<IVolume> volume, Entry::Priority prio):
         mountPath_(std::move(mp)),
         entryPath_(std::move(ep)),
         volume_(std::move(volume)),
@@ -25,12 +25,12 @@ struct Entry::Impl {
 
     std::string mountPath_;
     std::string entryPath_;
-    IVolumePtr volume_;
+    std::shared_ptr<IVolume> volume_;
     std::shared_ptr<vfs::IEntry> entry_;
     Entry::Priority priority_;
 };
 
-Entry::Entry(const std::string& mountPath, const std::string& entryPath, IVolumePtr volume, Priority prio):
+Entry::Entry(const std::string& mountPath, const std::string& entryPath, std::shared_ptr<IVolume> volume, Priority prio):
     impl_{std::make_unique<Impl>(util::simplifyPath(mountPath),
                                  util::simplifyPath(entryPath),
                                  std::move(volume),
@@ -82,7 +82,7 @@ std::string Entry::entryPath() const
     return impl_->entryPath_;
 }
 
-IVolumePtr Entry::volume() const {
+std::shared_ptr<IVolume> Entry::volume() const {
     return impl_->volume_;
 }
 

@@ -123,7 +123,7 @@ struct Storage::Impl {
 
     std::shared_ptr<IEntry> entry(const std::string& path) {
         using result      = std::shared_ptr<IEntry>;
-        using future      = std::future<std::pair<IVolumePtr, result>>;
+        using future      = std::future<std::pair<std::shared_ptr<IVolume>, result>>;
         using future_list = std::vector<future>;
         using result_list = std::vector<result>;
 
@@ -140,7 +140,7 @@ struct Storage::Impl {
 
         try {
 			for (auto& mentry : mountEntries) {
-                futures.emplace_back(threadPool_.schedule([&]() -> std::pair<IVolumePtr, result> {
+                futures.emplace_back(threadPool_.schedule([&]() -> std::pair<std::shared_ptr<IVolume>, result> {
 															auto volume = mentry.volume();
                                                             auto subpath = simplifyPath(mentry.entryPath() + "/" + subvpath);
                                                             return {volume, volume->entry(subpath)};
@@ -224,7 +224,7 @@ struct Storage::Impl {
         return Status::Ok();
     }
 
-    Status mount(const IVolumePtr& volume, const std::string& entryPath, const std::string& mountPath, Storage::Priority prio) {
+    Status mount(const std::shared_ptr<IVolume>& volume, const std::string& entryPath, const std::string& mountPath, Storage::Priority prio) {
         if (!volume)
             return InvalidVolumeArgumentStatus;
 
@@ -254,7 +254,7 @@ struct Storage::Impl {
         return Status::Ok();
     }
 
-    Status unmount(IVolumePtr volume, const std::string& entryPath, const std::string& mountPath) {
+    Status unmount(std::shared_ptr<IVolume> volume, const std::string& entryPath, const std::string& mountPath) {
         if (!volume)
             return InvalidVolumeArgumentStatus;
 

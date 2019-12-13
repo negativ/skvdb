@@ -31,7 +31,7 @@ using Points = multi_index_container<Entry,
                                                 hashed_unique<tag<tags::ByAll>,
                                                               composite_key<Entry,
                                                                             const_mem_fun<Entry, std::string, &Entry::entryPath>,
-                                                                            const_mem_fun<Entry, IVolumePtr, &Entry::volume>,
+                                                                            const_mem_fun<Entry, std::shared_ptr<IVolume>, &Entry::volume>,
                                                                             const_mem_fun<Entry, std::string, &Entry::mountPath>>>>>;
 
 }
