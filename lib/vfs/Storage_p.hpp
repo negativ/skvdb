@@ -112,7 +112,9 @@ struct Storage::Impl {
             try {
                 results.emplace_back(f.get());
             }
-            catch (...) { Log::e(TAG, "Ignoring exception"); }
+            catch (const std::bad_alloc&) {} // just ignore bad_alloc
+            catch (const std::exception& e) { Log::e(TAG, "Storage::childOperation() exception: ", e.what()); }
+            catch (...) { Log::e(TAG, "Storage::childOperation() unknown exception"); }
         }
 
         auto ok = std::any_of(std::cbegin(results), std::cend(results),
@@ -147,6 +149,7 @@ struct Storage::Impl {
 														 }));
 			}
         }
+        catch (const std::bad_alloc&) { return {};  }// it's not to safe to call any function
         catch (const std::exception &e) {
 			Log::e(TAG, e.what());
 
@@ -165,7 +168,9 @@ struct Storage::Impl {
                 volumes.emplace_back(std::move(volume));
                 results.emplace_back(std::move(entry));
 			}
-            catch (...) { Log::e(TAG, "Ignoring exception"); }
+            catch (const std::bad_alloc&) {} // just ignore bad_alloc
+            catch (const std::exception& e) { Log::e(TAG, "Storage::entry() exception: ", e.what()); }
+            catch (...) { Log::e(TAG, "Storage::entry(): unknown exception"); }
 		}
 
         if (results.empty() || (volumes.size() != results.size()))
