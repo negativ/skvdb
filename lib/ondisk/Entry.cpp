@@ -1,5 +1,9 @@
 #include "Entry.hpp"
 
+namespace {
+constexpr auto exceptionThrownStatus = skv::util::Status::Fatal("Exception");
+}
+
 namespace skv::ondisk {
 
 Entry::Entry(Record &&record) noexcept:
@@ -31,8 +35,8 @@ Status Entry::setProperty(const std::string &prop, const Property &value) {
 
         return status;
     }
-    catch (...) {                           // Record::setProperty() can throw only std::bad_alloc
-        return Status::Fatal("Exception");  // so it's not safe to call any function, just return
+    catch (...) {                      // Record::setProperty() can throw only std::bad_alloc
+        return exceptionThrownStatus;  // so it's not safe to call any function, just return
     }
 }
 
@@ -42,8 +46,8 @@ std::tuple<Status, Property> Entry::property(const std::string &prop) const {
     try {
         return record_.property(prop);
     }
-    catch (...) {                                 // Record::property() can throw only std::bad_alloc
-        return {Status::Fatal("Exception"), {}};  // so it's not safe to call any function, just return
+    catch (...) {                            // Record::property() can throw only std::bad_alloc
+        return {exceptionThrownStatus, {}};  // so it's not safe to call any function, just return
     }
 }
 
@@ -58,8 +62,8 @@ Status Entry::removeProperty(const std::string &prop) {
 
         return status;
     }
-    catch (...) {                           // Record::removeProperty() can throw only std::bad_alloc
-        return Status::Fatal("Exception");  // so it's not safe to call any function, just return
+    catch (...) {                      // Record::removeProperty() can throw only std::bad_alloc
+        return exceptionThrownStatus;  // so it's not safe to call any function, just return
     }
 }
 
@@ -69,8 +73,8 @@ std::tuple<Status, IEntry::Properties> Entry::properties() const {
     try {
         return {Status::Ok(), record_.properties()};
     }
-    catch (...) {                                 // Record::properties() can throw only std::bad_alloc
-        return {Status::Fatal("Exception"), {}};  // so it's not safe to call any function, just return
+    catch (...) {                            // Record::properties() can throw only std::bad_alloc
+        return {exceptionThrownStatus, {}};  // so it's not safe to call any function, just return
     }
 }
 
@@ -80,8 +84,8 @@ std::tuple<Status, std::set<std::string>> Entry::propertiesNames() const {
     try {
         return {Status::Ok(), record_.propertiesNames()};
     }
-    catch (...) {                                 // Record::propertiesNames() can throw only std::bad_alloc
-        return {Status::Fatal("Exception"), {}};  // so it's not safe to call any function, just return
+    catch (...) {                            // Record::propertiesNames() can throw only std::bad_alloc
+        return {exceptionThrownStatus, {}};  // so it's not safe to call any function, just return
     }
 }
 
@@ -96,8 +100,8 @@ Status Entry::expireProperty(const std::string &prop, chrono::milliseconds ms) {
 
         return status;
     }
-    catch (...) {                           // Record::expireProperty() can throw only std::bad_alloc
-        return Status::Fatal("Exception");  // so it's not safe to call any function, just return
+    catch (...) {                      // Record::expireProperty() can throw only std::bad_alloc
+        return exceptionThrownStatus;  // so it's not safe to call any function, just return
     }
 }
 
@@ -112,8 +116,8 @@ Status Entry::cancelPropertyExpiration(const std::string &prop) {
 
         return status;
     }
-    catch (...) {                           // Record::cancelPropertyExpiration() can throw only std::bad_alloc
-        return Status::Fatal("Exception");  // so it's not safe to call any function, just return
+    catch (...) {                      // Record::cancelPropertyExpiration() can throw only std::bad_alloc
+        return exceptionThrownStatus;  // so it's not safe to call any function, just return
     }
 }
 
@@ -136,7 +140,7 @@ std::tuple<Status, std::set<std::string> > Entry::links() const {
         return {Status::Ok(), ret};
     }
     catch (...) {
-        return {Status::Fatal("Exception"), {}};  // it's not safe to call any function, just return
+        return {exceptionThrownStatus, {}};  // it's not safe to call any function, just return
     }
 }
 
