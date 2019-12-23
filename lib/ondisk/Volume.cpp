@@ -66,7 +66,7 @@ Status Volume::deinitialize() {
         return impl_->deinitialize();
     }
     catch (const std::bad_alloc&) {
-        return Status::Fatal("bad alloc"); // it's not safe to call any function, just return
+        return BadAllocThrownStatus; // it's not safe to call any function, just return
     }
     catch (const std::exception& e) {
         Log::e(TAG, "ondisk::Volume::deinitialize(): got exception: ", e.what());
