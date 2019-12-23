@@ -4,7 +4,9 @@
 
 namespace {
 
-const skv::util::Status VolumeNotOpenedStatus = skv::util::Status::InvalidOperation("Volume not opened");
+constexpr auto ExceptionThrownStatus = skv::util::Status::Fatal("Exception");
+constexpr auto BadAllocThrownStatus  = skv::util::Status::Fatal("bad_alloc");
+constexpr auto VolumeNotOpenedStatus = skv::util::Status::InvalidOperation("Volume not opened");
 const char * const TAG = "ondisk::Volume";
 
 }
@@ -26,7 +28,7 @@ Volume::Volume(Status& status, OpenOptions opts) noexcept {
 
         status = Status::Ok();
     } catch (...) {
-        status = Status::Fatal("Exception");
+        status = ExceptionThrownStatus;
     }
 }
 
@@ -45,7 +47,7 @@ Status Volume::initialize(const os::path& directory, const std::string &volumeNa
         return impl_->initialize(directory, volumeName);
     }
     catch (const std::bad_alloc&) {
-        return Status::Fatal("bad alloc"); // it's not safe to call any function, just return
+        return BadAllocThrownStatus; // it's not safe to call any function, just return
     }
     catch (const std::exception& e) {
         Log::e(TAG, "ondisk::Volume::initialize(): got exception: ", e.what());
@@ -53,7 +55,7 @@ Status Volume::initialize(const os::path& directory, const std::string &volumeNa
     catch (...) {
         Log::e(TAG, "ondisk::Volume::initialize(): unknown exception");
     }
-    return Status::Fatal("Exception");
+    return ExceptionThrownStatus;
 }
 
 Status Volume::deinitialize() {
@@ -73,7 +75,7 @@ Status Volume::deinitialize() {
         Log::e(TAG, "ondisk::Volume::deinitialize(): unknown exception");
     }
 
-    return Status::Fatal("Exception");
+    return ExceptionThrownStatus;
 }
 
 bool Volume::initialized() const noexcept {
@@ -108,7 +110,7 @@ Status Volume::link(IEntry &entry, const std::string& name) {
         return impl_->createChild(entry, name);
     }
     catch (const std::bad_alloc&) {
-        return Status::Fatal("bad alloc"); // it's not safe to call any function, just return
+        return BadAllocThrownStatus; // it's not safe to call any function, just return
     }
     catch (const std::exception& e) {
         Log::e(TAG, "ondisK::Volume::link(): got exception: ", e.what());
@@ -117,7 +119,7 @@ Status Volume::link(IEntry &entry, const std::string& name) {
         Log::e(TAG, "ondisK::Volume::link(): unknown exception");
     }
 
-    return Status::Fatal("Exception");
+    return ExceptionThrownStatus;
 }
 
 Status Volume::unlink(IEntry& entry, const std::string& name) {
@@ -128,7 +130,7 @@ Status Volume::unlink(IEntry& entry, const std::string& name) {
         return impl_->removeChild(entry, name);
     }
     catch (const std::bad_alloc&) {
-        return Status::Fatal("bad alloc"); // it's not safe to call any function, just return
+        return BadAllocThrownStatus; // it's not safe to call any function, just return
     }
     catch (const std::exception& e) {
         Log::e(TAG, "ondisK::Volume::unlink(): got exception: ", e.what());
@@ -137,7 +139,7 @@ Status Volume::unlink(IEntry& entry, const std::string& name) {
         Log::e(TAG, "ondisK::Volume::unlink(): unknown exception");
     }
 
-    return Status::Fatal("Exception");
+    return ExceptionThrownStatus;
 }
 
 Status Volume::claim(IVolume::Token token) noexcept {
