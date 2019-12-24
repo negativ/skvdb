@@ -113,9 +113,9 @@ public:
 
             return {Status::Ok(), e};
         }
-        catch (const std::exception& e) {
-            Log::e("StoreEngine", "Exception when loading entry: ", e.what());
-        }
+        catch (const std::bad_alloc&) { return {Status::Fatal("bad_alloc"), {}}; }
+        catch (const std::exception& e) { Log::e("StoreEngine", "load(): Exception when loading entry: ", e.what()); }
+        catch (...) { Log::e("StoreEngine", "load(): Unknown exception"); }
 
         return {Status::Fatal("Unknown error"), {}};
     }
@@ -143,8 +143,14 @@ public:
                     return  Status::IOError("Entry to big");
             }
         }
+        catch (const std::bad_alloc&) { return Status::Fatal("bad_alloc"); }
         catch (const std::exception& e) {
             Log::e("StoreEngine", "Exception when saving entry: ", e.what());
+
+            return Status::Fatal("Exception");
+        }
+        catch (...) {
+            Log::e("StoreEngine", "save(): Unknown exception");
 
             return Status::Fatal("Exception");
         }
