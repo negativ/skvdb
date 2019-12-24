@@ -36,7 +36,9 @@ template <typename BlockIndexT   = std::uint32_t,
           IEntry::Handle _InvalidKey = 0,
           IEntry::Handle _RootKey    = 1>
 class StorageEngine final {
-    const skv::util::Status DeviceNotOpenedStatus = skv::util::Status::IOError("Device not opened");
+    static constexpr auto DeviceNotOpenedStatus = skv::util::Status::IOError("Device not opened");
+    static constexpr auto ExceptionThrownStatus = skv::util::Status::Fatal("Exception");
+    static constexpr auto BadAllocThrownStatus  = skv::util::Status::Fatal("bad_alloc");
 
 public:
     static constexpr IEntry::Handle InvalidEntryId = _InvalidKey;
@@ -113,11 +115,19 @@ public:
 
             return {Status::Ok(), e};
         }
-        catch (const std::bad_alloc&) { return {Status::Fatal("bad_alloc"), {}}; }
-        catch (const std::exception& e) { Log::e("StoreEngine", "load(): Exception when loading entry: ", e.what()); }
-        catch (...) { Log::e("StoreEngine", "load(): Unknown exception"); }
+        catch (const std::bad_alloc&) {
+            return {BadAllocThrownStatus, {}};
+        }
+        catch (const std::exception& e) {
+            Log::e("StoreEngine", "load(): Exception when loading entry: ", e.what());
 
-        return {Status::Fatal("Unknown error"), {}};
+            return {ExceptionThrownStatus, {}};
+        }
+        catch (...) {
+            Log::e("StoreEngine", "load(): Unknown exception");
+
+            return {ExceptionThrownStatus, {}};
+        }
     }
 
     [[nodiscard]] Status save(const Record& e) {
@@ -143,16 +153,18 @@ public:
                     return  Status::IOError("Entry to big");
             }
         }
-        catch (const std::bad_alloc&) { return Status::Fatal("bad_alloc"); }
+        catch (const std::bad_alloc&) {
+            return BadAllocThrownStatus;
+        }
         catch (const std::exception& e) {
             Log::e("StoreEngine", "Exception when saving entry: ", e.what());
 
-            return Status::Fatal("Exception");
+            return ExceptionThrownStatus;
         }
         catch (...) {
             Log::e("StoreEngine", "save(): Unknown exception");
 
-            return Status::Fatal("Exception");
+            return ExceptionThrownStatus;
         }
 
         std::unique_lock locker(xLock_);
@@ -186,7 +198,12 @@ public:
         if (it == std::end(indexTable_))
             return Status::InvalidArgument("Key doesnt exist");
 
-        static_cast<void>(indexTable_.erase(it));
+        try {
+            SKV_UNUSED(indexTable_.erase(it));
+        }
+        catch (...) {
+            return ExceptionThrownStatus;
+        }
 
         return Status::Ok();
     }
@@ -259,9 +276,7 @@ public:
     }
 
     void reuseKey(IEntry::Handle key) {
-        // TODO: implement key reusage
-
-        static_cast<void>(key);
+        SKV_UNUSED(key);
     }
 
 private:
