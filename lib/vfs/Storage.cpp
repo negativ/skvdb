@@ -24,9 +24,9 @@ Storage::Storage(Status& status) noexcept {
         impl_.swap(ptr);
 
         status = Status::Ok();
-    } catch (...) {
-        status = ExceptionThrownStatus;
     }
+    catch (const std::bad_alloc&) { status = BadAllocThrownStatus; }
+    catch (...) { status = ExceptionThrownStatus; }
 }
 
 Storage::Storage(Storage &&other) noexcept {
