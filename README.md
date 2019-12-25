@@ -39,8 +39,22 @@ int main() {
     
     Status initStatus;
     vfs::Storage storage{initStatus};
-    auto vol1 = std::make_shared<ondisk::Volume>(initStatus);
-    auto vol2 = std::make_shared<ondisk::Volume>(initStatus);
+
+    if (!initStatus.isOk()) {
+        std::cerr << "Unable to create vfs::Storage" << std::endl;
+        
+        return 1;
+    }
+    
+    Status v1Status, v2Status;
+    auto vol1 = std::make_shared<ondisk::Volume>(v1Status);
+    auto vol2 = std::make_shared<ondisk::Volume>(v2Status);
+
+    if (!(v1Status.isOk() && v2Status.isOk())) {
+        std::cerr << "Unable to create volumes!" << std::endl;
+        
+        return 1;
+    }
 
     if (!(vol1->initialize("/tmp", "volume1").isOk() &&
           vol2->initialize("/tmp", "volume2").isOk())) {
