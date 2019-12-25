@@ -70,7 +70,7 @@ public:
     StorageEngine() = default;
 
     ~StorageEngine() noexcept {
-        static_cast<void>(close());
+        SKV_UNUSED(close());
     }
 
     StorageEngine(const StorageEngine&) = delete;

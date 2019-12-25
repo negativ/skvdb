@@ -202,7 +202,7 @@ struct Volume::Impl {
         auto it = std::find_if(std::cbegin(children), std::cend(children),
                                [&name](auto&& p) {
                                     const auto& [cname, cid] = p;
-                                    static_cast<void>(cid);
+                                    SKV_UNUSED(cid);
 
                                     return (cname == name);
                                });

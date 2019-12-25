@@ -49,7 +49,7 @@ public:
     LogDevice() = default;
 
     ~LogDevice() noexcept {
-        static_cast<void>(close());
+        SKV_UNUSED(close());
     }
 
     LogDevice(const LogDevice&) = delete;
@@ -100,7 +100,7 @@ public:
         if (!initReaders()) {
             lock_.unlock();
 
-            static_cast<void>(close().isOk());
+            SKV_UNUSED(close());
 
             return Status::IOError("Unable to open device");
         }

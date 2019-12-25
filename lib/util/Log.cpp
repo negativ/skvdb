@@ -1,5 +1,5 @@
 #include "Log.hpp"
-
+#include "Unused.hpp"
 #include <iostream>
 
 namespace skv::util {
@@ -8,8 +8,8 @@ void Log::d_(std::string_view tag, std::string_view msg) {
 #ifndef NDEBUG
     std::cout << "[" << tag.data() << "/D]: " << msg << std::endl;
 #else
-    static_cast<void>(tag);
-    static_cast<void>(msg);
+    SKV_UNUSED(tag);
+    SKV_UNUSED(msg);
 #endif
 }
 

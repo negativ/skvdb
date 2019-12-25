@@ -109,7 +109,7 @@ public:
 
     Status setProperty(const std::string& prop, const Property& value)  {
         if (propertyExpired(prop))
-            static_cast<void>(cancelPropertyExpiration(prop).isOk()); // undo expiration
+            SKV_UNUSED(cancelPropertyExpiration(prop)); // undo expiration
 
         impl_->properties_[prop] = value;
 
@@ -129,7 +129,7 @@ public:
     }
 
     [[nodiscard]] Status removeProperty(const std::string& prop)  {
-        static_cast<void>(cancelPropertyExpiration(prop).isOk());
+        SKV_UNUSED(cancelPropertyExpiration(prop));
 
         if  (impl_->properties_.erase(prop) > 0)
             return Status::Ok();
