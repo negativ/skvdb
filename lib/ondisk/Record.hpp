@@ -108,8 +108,7 @@ public:
     }
 
     Status setProperty(const std::string& prop, const Property& value)  {
-        if (propertyExpired(prop))
-            SKV_UNUSED(cancelPropertyExpiration(prop)); // undo expiration
+        SKV_UNUSED(cancelPropertyExpiration(prop)); // undo expiration
 
         impl_->properties_[prop] = value;
 
@@ -118,28 +117,28 @@ public:
 
     [[nodiscard]] std::tuple<Status, Property> property(const std::string& prop) const  {
         if (propertyExpired(prop))
-            return {Status::InvalidArgument("No such property"), {}};
+            return {Status::NotFound("No such property"), {}};
 
         auto it = impl_->properties_.find(prop);
 
         if (it != std::cend(impl_->properties_))
             return {Status::Ok(), it->second};
 
-        return {Status::InvalidArgument("No such property"), {}};
+        return {Status::NotFound("No such property"), {}};
     }
 
     [[nodiscard]] Status removeProperty(const std::string& prop)  {
         SKV_UNUSED(cancelPropertyExpiration(prop));
 
-        if  (impl_->properties_.erase(prop) > 0)
+        if (impl_->properties_.erase(prop) > 0)
             return Status::Ok();
 
-        return Status::InvalidArgument("No such property");
+        return Status::NotFound("No such property");
     }
 
     [[nodiscard]] Status expireProperty(const std::string& prop, chrono::milliseconds tp)  {
         if (!hasProperty(prop))
-            return Status::InvalidArgument("No such property");
+            return Status::NotFound("No such property");
 
         auto nowms = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch());
 
