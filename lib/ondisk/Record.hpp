@@ -108,7 +108,7 @@ public:
     }
 
     Status setProperty(const std::string& prop, const Property& value)  {
-        SKV_UNUSED(cancelPropertyExpiration(prop)); // undo expiration
+        cancelPropertyExpiration(prop); // undo expiration
 
         impl_->properties_[prop] = value;
 
@@ -127,8 +127,8 @@ public:
         return {Status::NotFound("No such property"), {}};
     }
 
-    [[nodiscard]] Status removeProperty(const std::string& prop)  {
-        SKV_UNUSED(cancelPropertyExpiration(prop));
+    Status removeProperty(const std::string& prop)  {
+        cancelPropertyExpiration(prop);
 
         if (impl_->properties_.erase(prop) > 0)
             return Status::Ok();
@@ -136,7 +136,7 @@ public:
         return Status::NotFound("No such property");
     }
 
-    [[nodiscard]] Status expireProperty(const std::string& prop, chrono::milliseconds tp)  {
+    Status expireProperty(const std::string& prop, chrono::milliseconds tp)  {
         if (!hasProperty(prop))
             return Status::NotFound("No such property");
 
@@ -147,7 +147,7 @@ public:
         return Status::Ok();
     }
 
-    [[nodiscard]] Status cancelPropertyExpiration(const std::string& prop)  {
+    Status cancelPropertyExpiration(const std::string& prop)  {
         impl_->propertyExpireMap_.erase(prop);
 
         return  Status::Ok();
@@ -256,7 +256,7 @@ private:
         }
 
         for (const auto& prop : expired)
-            SKV_UNUSED(removeProperty(prop));
+            removeProperty(prop);
     }
 
     [[nodiscard]] bool propertyExpired(const std::string& prop) const noexcept {

@@ -1,15 +1,12 @@
 #include "Log.hpp"
-#include "Unused.hpp"
 #include <iostream>
 
 namespace skv::util {
 
-void Log::d_(std::string_view tag, std::string_view msg) {
+void Log::d_([[maybe_unused]] std::string_view tag, [[maybe_unused]] std::string_view msg) {
 #ifndef NDEBUG
     std::cout << "[" << tag.data() << "/D]: " << msg << std::endl;
 #else
-    SKV_UNUSED(tag);
-    SKV_UNUSED(msg);
 #endif
 }
 

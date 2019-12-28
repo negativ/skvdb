@@ -70,7 +70,7 @@ public:
     StorageEngine() = default;
 
     ~StorageEngine() noexcept {
-        SKV_UNUSED(close());
+        close();
     }
 
     StorageEngine(const StorageEngine&) = delete;
@@ -172,10 +172,9 @@ public:
         if (!opened())
             return DeviceNotOpenedStatus;
 
-        auto [status, blockIndex, blockCount] = logDevice_.append(buffer);
+        [[maybe_unused]] auto [status, blockIndex, blockCount] = logDevice_.append(buffer);
 
         assert(blockCount >= 1);
-        SKV_UNUSED(blockCount);
 
         if (!status.isOk())
             return status;
@@ -230,9 +229,7 @@ public:
         storageName_ = storageName;
 
         Status status = Status::Ok();
-        auto [istatus, index] = getIndexRecord(RootEntryId);
-
-        SKV_UNUSED(index);
+        [[maybe_unused]] auto [istatus, index] = getIndexRecord(RootEntryId);
 
         if (!istatus.isOk()) {// creating root index if needed
             locker.unlock();
@@ -248,7 +245,7 @@ public:
         return status;
     }
 
-    [[nodiscard]] Status close() {
+    Status close() {
         std::unique_lock locker(xLock_);
 
         if (!opened())
@@ -275,8 +272,7 @@ public:
         return (keyCounter_++);
     }
 
-    void reuseKey(IEntry::Handle key) {
-        SKV_UNUSED(key);
+    void reuseKey([[maybe_unused]] IEntry::Handle key) {
     }
 
 private:
@@ -284,7 +280,7 @@ private:
     const std::string LOG_DEVICE_SUFFIX        = ".logd";
     const std::string LOG_DEVICE_COMP_SUFFIX   = ".logdc";
 
-    [[nodiscard]] std::tuple<Status, index_record_type> getIndexRecord(IEntry::Handle key) const {
+    std::tuple<Status, index_record_type> getIndexRecord(IEntry::Handle key) const {
         auto it = indexTable_.find(key);
 
         if (it == std::cend(indexTable_))
@@ -293,14 +289,14 @@ private:
         return {Status::Ok(), it->second};
     }
 
-    [[nodiscard]] Status insertIndexRecord(const index_record_type& index) {
+    Status insertIndexRecord(const index_record_type& index) {
         if (indexTable_.insert(index))
             return Status::Ok();
 
         return Status::Fatal("Unknown error");
     }
 
-    [[nodiscard]] Status openDevice(const os::path& path) {
+    Status openDevice(const os::path& path) {
         typename log_device_type::OpenOption opts;
         opts.BlockSize = openOptions_.LogDeviceBlockSize;
         opts.CreateNewIfNotExist = openOptions_.LogDeviceCreateNewIfNotExist;
@@ -308,11 +304,11 @@ private:
         return logDevice_.open(path, opts);
     }
 
-    [[nodiscard]] Status closeDevice() {
+    Status closeDevice() {
         return logDevice_.close();
     }
 
-    [[nodiscard]] Status openIndexTable(const os::path& path) {
+    Status openIndexTable(const os::path& path) {
 		const auto& strPath = path.string();
 
         std::fstream stream{strPath.c_str(), std::ios_base::in};
@@ -332,7 +328,7 @@ private:
         return Status::Ok();
     }
 
-    [[nodiscard]] Status closeIndexTable() {
+    Status closeIndexTable() {
         std::fstream stream{createPath(directory_, storageName_, INDEX_TABLE_SUFFIX), std::ios_base::out};
 
         if (stream.is_open()) {
@@ -350,7 +346,7 @@ private:
         return Status::IOError("Unable to save index table");
     }
 
-    [[nodiscard]] Status createRootIndex() {
+    Status createRootIndex() {
         resetKeyCounter();
 
         Record root{newKey(), ""};
@@ -359,7 +355,7 @@ private:
     }
 
 
-    [[nodiscard]] std::string createPath(const os::path& directory, std::string_view storageName, std::string_view suffix) {
+    std::string createPath(const os::path& directory, std::string_view storageName, std::string_view suffix) {
         std::stringstream stream;
         stream << directory.string() << char(os::fs::path::separator) << storageName << suffix;
 
@@ -372,7 +368,7 @@ private:
         keyCounter_ = RootEntryId;
     }
 
-    [[nodiscard]] Status doOfflineCompaction() {
+    Status doOfflineCompaction() {
         if (logDevice_.sizeInBytes() < openOptions_.CompactionDeviceMinSize)
             return Status::Ok();
 
@@ -411,10 +407,9 @@ private:
                 break;
             }
 
-            auto [appendStatus, blockIndex, blockCount] = device.append(buffer, index.bytesCount());
+            [[maybe_unused]] auto [appendStatus, blockIndex, blockCount] = device.append(buffer, index.bytesCount());
 
             assert(blockCount >= 1);
-            SKV_UNUSED(blockCount);
 
             if (!appendStatus.isOk()) {
                 compStatus = status;
@@ -422,20 +417,19 @@ private:
                 break;
             }
 
-            auto inserted = idxtCompacted.insert(index_record_type{key, blockIndex, bytes_count_type(buffer.size())});
-            SKV_UNUSED(inserted);
+            [[maybe_unused]] auto inserted = idxtCompacted.insert(index_record_type{key, blockIndex, bytes_count_type(buffer.size())});
         }
 
         if (!compStatus.isOk()) {
-            SKV_UNUSED(device.close());
+            device.close();
 
             SKV_UNUSED(os::File::unlink(path));
 
             return Status::IOError("Unable to compact device");
         }
 
-        SKV_UNUSED(logDevice_.close());
-        SKV_UNUSED(device.close());
+        logDevice_.close();
+        device.close();
 
         if (!os::File::unlink(logDevicePath_)) {
             SKV_UNUSED(os::File::unlink(path));

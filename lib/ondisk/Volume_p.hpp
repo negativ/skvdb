@@ -151,8 +151,7 @@ struct Volume::Impl {
 
         auto cit = std::find_if(std::cbegin(children), std::cend(children),
                                 [&name](auto&& p) {
-                                    const auto& [cname, cid] = p;
-                                    SKV_UNUSED(cid);
+                                    [[maybe_unused]] const auto& [cname, cid] = p;
 
                                     return (cname == name);
                                 });
@@ -201,8 +200,7 @@ struct Volume::Impl {
 
         auto it = std::find_if(std::cbegin(children), std::cend(children),
                                [&name](auto&& p) {
-                                    const auto& [cname, cid] = p;
-                                    SKV_UNUSED(cid);
+                                    [[maybe_unused]] const auto& [cname, cid] = p;
 
                                     return (cname == name);
                                });
@@ -309,10 +307,8 @@ struct Volume::Impl {
             openedEntries_.erase(entry->record().handle());
         }
 
-        if (entry->dirty()) {
-            auto r = syncRecord(entry->record());
-            SKV_UNUSED(r);
-        }
+        if (entry->dirty())
+            syncRecord(entry->record());
 
         delete entry;
     }
@@ -328,7 +324,7 @@ struct Volume::Impl {
         return {};
     }
 
-    [[nodiscard]] Status syncRecord(Record& r) {
+    Status syncRecord(Record& r) {
         return storage_->save(r);
     }
 
@@ -339,7 +335,7 @@ struct Volume::Impl {
             SKV_UNUSED(handle);
 
             if (auto e = ewptr.lock(); e && e->dirty())
-                SKV_UNUSED(syncRecord(e->record()));
+                syncRecord(e->record());
         }
 
         openedEntries_.clear();

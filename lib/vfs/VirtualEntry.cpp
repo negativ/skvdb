@@ -1,5 +1,4 @@
 #include "VirtualEntry.hpp"
-#include "util/Unused.hpp"
 
 namespace skv::vfs {
 
@@ -24,8 +23,7 @@ std::tuple<Status, bool> VirtualEntry::hasProperty(const std::string &prop) cons
 
     return {Status::Ok(), std::any_of(std::cbegin(results), std::cend(results),
                                       [](auto result) {
-                                            const auto& [status, v] = result;
-                                            SKV_UNUSED(status);
+                                            [[maybe_unused]] const auto& [status, v] = result;
                                             return v;
                                       })};
 }

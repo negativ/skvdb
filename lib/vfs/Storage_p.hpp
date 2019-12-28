@@ -178,7 +178,7 @@ struct Storage::Impl {
 
         auto ptr = std::shared_ptr<VirtualEntry>(new VirtualEntry{newHandle(), std::move(results), std::move(volumes), threadPool_},
                                                  [this](VirtualEntry* ptr) {
-                                                     SKV_UNUSED(unregisterEntry(ptr));
+                                                     unregisterEntry(ptr);
 
                                                      delete ptr;
                                                  });
@@ -299,7 +299,7 @@ struct Storage::Impl {
         return openedEntries_.insert(std::make_pair(entry->handle(), entry)).second;
     }
 
-    [[nodiscard]] bool unregisterEntry(VirtualEntry* entry) {
+    bool unregisterEntry(VirtualEntry* entry) {
         if (!entry)
             return false;
 

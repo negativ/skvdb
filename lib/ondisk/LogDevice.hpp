@@ -49,7 +49,7 @@ public:
     LogDevice() = default;
 
     ~LogDevice() noexcept {
-        SKV_UNUSED(close());
+        close();
     }
 
     LogDevice(const LogDevice&) = delete;
@@ -100,7 +100,7 @@ public:
         if (!initReaders()) {
             lock_.unlock();
 
-            SKV_UNUSED(close());
+            close();
 
             return Status::IOError("Unable to open device");
         }
@@ -111,7 +111,7 @@ public:
     /**
      * @brief Close block device file
      */
-    [[nodiscard]] Status close() {
+    Status close() {
         std::unique_lock lock(lock_);
 
         if (!opened())
