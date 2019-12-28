@@ -5,6 +5,6 @@
 
 namespace skv::util {
 
-[[nodiscard]] std::string simplifyPath(std::string_view path);
+[[nodiscard]] std::string simplifyPath(const std::string& path);
 
 }

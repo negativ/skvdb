@@ -6,7 +6,7 @@
 
 namespace skv::util {
 
-std::string simplifyPath(std::string_view path) {
+std::string simplifyPath(const std::string &path) {
     auto pathStack = skv::util::split(path, '/', true);  // split path by '/' symbol skypping empty parts
     std::vector<std::string> result;
     result.reserve(pathStack.size());
