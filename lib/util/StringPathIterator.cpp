@@ -60,14 +60,14 @@ ReverseStringPathIterator &ReverseStringPathIterator::operator++() {
 }
 
 std::string ReverseStringPathIterator::operator*() {
-    return std::accumulate(std::cbegin(chunks_), std::cend(chunks_),
-        std::string{ separator },
-        [](auto&& path, auto&& chunk) {
-            if (path.size() == 1)
-                return path + chunk;
+    std::string path{};
 
-            return path + separator + chunk;
-        });
+    for (const auto& chunk : chunks_) {
+        path += separator;
+        path += chunk;
+    }
+
+    return path;
 }
 
 bool ReverseStringPathIterator::operator!=(const ReverseStringPathIterator &other) {
