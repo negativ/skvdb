@@ -5,7 +5,6 @@
 
 namespace {
 
-constexpr auto ExceptionThrownStatus = skv::util::Status::Fatal("Exception");
 constexpr auto VolumeNotOpenedStatus = skv::util::Status::InvalidOperation("Volume not opened");
 
 }

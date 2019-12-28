@@ -1,16 +1,12 @@
 #include "Storage.hpp"
 #include "Storage_p.hpp"
 
-#include <stdexcept>
-
+#include "util/ExceptionBoundary.hpp"
 #include "util/Log.hpp"
 
 namespace {
 
-constexpr auto ExceptionThrownStatus = skv::util::Status::Fatal("Exception");
-constexpr auto BadAllocThrownStatus  = skv::util::Status::Fatal("bad_alloc");
 constexpr auto NotConstructedStatus  = skv::util::Status::Fatal("Not constructed");
-const char * const TAG = "vfs::Storage";
 
 }
 
@@ -19,14 +15,16 @@ namespace skv::vfs {
 using namespace skv::util;
 
 Storage::Storage(Status& status) noexcept {
-    try {
-        auto ptr = std::make_unique<Impl>();
-        impl_.swap(ptr);
+    auto r = exceptionBoundary("Storage::Storage",
+                               [&] {
+                                   auto ptr = std::make_unique<Impl>();
+                                   impl_.swap(ptr);
 
-        status = Status::Ok();
-    }
-    catch (const std::bad_alloc&) { status = BadAllocThrownStatus; }
-    catch (...) { status = ExceptionThrownStatus; }
+                                   status = Status::Ok();
+                               });
+
+    if (!r.isOk())
+        status = r;
 }
 
 Storage::Storage(Storage &&other) noexcept {
@@ -37,20 +35,13 @@ std::shared_ptr<IEntry> Storage::entry(const std::string &path) {
     if (!impl_)
         return {};
 
-    try {
-        return impl_->entry(path);
-    }
-    catch (const std::bad_alloc&) {
-        // it's not safe to call any function, just return empty ptr and pray (shared_ptr should have noexcept default constructor)
-    }
-    catch (const std::exception& e) {
-        Log::e(TAG, "vfs::Storage::entry(): got exception: ", e.what());
-    }
-    catch (...) {
-        Log::e(TAG, "vfs::Storage::entry(): unknown exception");
-    }
+    std::shared_ptr<IEntry> ret;
+    exceptionBoundary("Storage::entry",
+                      [&] {
+                          ret = impl_->entry(path);
+                      });
 
-    return {};
+    return ret;
 }
 
 Storage::~Storage() noexcept = default;
@@ -59,40 +50,26 @@ Status Storage::link(IEntry &entry, const std::string& name) {
     if (!impl_)
         return NotConstructedStatus;
 
-    try {
-        return impl_->link(entry, name);
-    }
-    catch (const std::bad_alloc&) {
-        return BadAllocThrownStatus; // it's not safe to call any function, just return
-    }
-    catch (const std::exception& e) {
-        Log::e(TAG, "vfs::Storage::link(): got exception: ", e.what());
-    }
-    catch (...) {
-        Log::e(TAG, "vfs::Storage::link(): unknown exception");
-    }
+    Status ret;
+    auto status = exceptionBoundary("Storage::link",
+                                    [&] {
+                                        ret = impl_->link(entry, name);
+                                    });
 
-    return ExceptionThrownStatus;
+    return status.isOk()? ret : status;
 }
 
 Status Storage::unlink(IEntry &entry, const std::string& name) {
     if (!impl_)
         return NotConstructedStatus;
 
-    try {
-        return impl_->unlink(entry, name);
-    }
-    catch (const std::bad_alloc&) {
-        return BadAllocThrownStatus; // it's not safe to call any function, just return
-    }
-    catch (const std::exception& e) {
-        Log::e(TAG, "vfs::Storage::unlink(): got exception: ", e.what());
-    }
-    catch (...) {
-        Log::e(TAG, "vfs::Storage::unlink(): unknown exception");
-    }
+    Status ret;
+    auto status = exceptionBoundary("Storage::unlink",
+                                    [&] {
+                                        ret = impl_->unlink(entry, name);
+                                    });
 
-    return ExceptionThrownStatus;
+    return status.isOk()? ret : status;
 }
 
 Status Storage::claim(IVolume::Token token) noexcept {
@@ -116,40 +93,26 @@ Status Storage::mount(const std::shared_ptr<IVolume>& volume, const std::string&
     if (volume.get() == static_cast<IVolume*>(this))
         return Status::InvalidOperation("Invalid volume");
 
-    try {
-        return impl_->mount(volume, entryPath, mountPath, prio);
-    }
-    catch (const std::bad_alloc&) {
-        return BadAllocThrownStatus; // it's not safe to call any function, just return
-    }
-    catch (const std::exception& e) {
-        Log::e(TAG, "vfs::Storage::mount(): got exception: ", e.what());
-    }
-    catch (...) {
-        Log::e(TAG, "vfs::Storage::mount(): unknown exception");
-    }
+    Status ret;
+    auto status = exceptionBoundary("Storage::mount",
+                                    [&] {
+                                        ret = impl_->mount(volume, entryPath, mountPath, prio);
+                                    });
 
-    return ExceptionThrownStatus;
+    return status.isOk()? ret : status;
 }
 
 Status Storage::unmount(const std::shared_ptr<IVolume>& volume, const std::string& entryPath, const std::string& mountPath) {
     if (!impl_)
         return NotConstructedStatus;
 
-    try {
-        return impl_->unmount(volume, entryPath, mountPath);
-    }
-    catch (const std::bad_alloc&) {
-        return BadAllocThrownStatus; // it's not safe to call any function, just return
-    }
-    catch (const std::exception& e) {
-        Log::e(TAG, "vfs::Storage::unmount(): got exception: ", e.what());
-    }
-    catch (...) {
-        Log::e(TAG, "vfs::Storage::unmount(): unknown exception");
-    }
+    Status ret;
+    auto status = exceptionBoundary("Storage::unmount",
+                                    [&] {
+                                        ret = impl_->unmount(volume, entryPath, mountPath);
+                                    });
 
-    return ExceptionThrownStatus;
+    return status.isOk()? ret : status;
 }
 
 }
