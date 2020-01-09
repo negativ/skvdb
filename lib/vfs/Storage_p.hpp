@@ -239,7 +239,7 @@ struct Storage::Impl {
         mount::Entry entry(mountPath, entryPath, volume, prio);
 
         if (!entry.open()) {
-            SKV_UNUSED(volume->release(this));
+            volume->release(this);
 
             return Status::InvalidArgument("Unable to mount");
         }
@@ -250,7 +250,7 @@ struct Storage::Impl {
         auto retp = index.insert(entry);
 
         if (!retp.second) {
-            SKV_UNUSED(volume->release(this));
+            volume->release(this);
             entry.close();
 
             return Status::InvalidArgument("Already mounted");

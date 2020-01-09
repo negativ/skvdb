@@ -192,7 +192,7 @@ inline std::istream& operator>>(std::istream& _is, IndexTable<Key, BlockIndex, B
 
         ds >> idx;
 
-        SKV_UNUSED(p.insert(idx));
+        p.insert(idx);
 
         p.diskFootprint_ += idx.bytesCount();
 

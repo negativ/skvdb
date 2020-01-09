@@ -259,7 +259,7 @@ private:
             removeProperty(prop);
     }
 
-    [[nodiscard]] bool propertyExpired(const std::string& prop) const noexcept {
+    bool propertyExpired(const std::string& prop) const noexcept {
         auto it = impl_->propertyExpireMap_.find(prop);
 
         if (it == std::cend(impl_->propertyExpireMap_))

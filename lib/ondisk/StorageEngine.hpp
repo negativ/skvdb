@@ -198,7 +198,7 @@ public:
             return Status::InvalidArgument("Key doesnt exist");
 
         try {
-            SKV_UNUSED(indexTable_.erase(it));
+            indexTable_.erase(it);
         }
         catch (...) {
             return ExceptionThrownStatus;
