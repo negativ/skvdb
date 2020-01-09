@@ -182,11 +182,11 @@ public:
         return insertIndexRecord(index_record_type{e.handle(), blockIndex, bytes_count_type(buffer.size())});
     }
 
-    [[nodiscard]] Status remove(const Record& e) {
+    Status remove(const Record& e) {
         return remove(e.handle());
     }
 
-    [[nodiscard]] Status remove(IEntry::Handle key) {
+    Status remove(IEntry::Handle key) {
         std::unique_lock locker(xLock_);
 
         if (!opened())
@@ -207,7 +207,7 @@ public:
         return Status::Ok();
     }
 
-    [[nodiscard]] Status open(const os::path& directory, std::string_view storageName, OpenOptions opts = {}) {
+    Status open(const os::path& directory, std::string_view storageName, OpenOptions opts = {}) {
         std::unique_lock locker(xLock_);
 
         openOptions_ = opts;
@@ -262,11 +262,11 @@ public:
         return status2;
     }
 
-    [[nodiscard]] bool opened() const noexcept {
+    bool opened() const noexcept {
         return opened_;
     }
 
-    [[nodiscard]] IEntry::Handle newKey() noexcept {
+    IEntry::Handle newKey() noexcept {
         std::lock_guard locker(spLock_);
 
         return (keyCounter_++);

@@ -57,7 +57,7 @@ public:
             cache_.pop_back();
     }
 
-    [[nodiscard]] bool lookup(const key_type& key, value_type& value) {
+    bool lookup(const key_type& key, value_type& value) {
         std::lock_guard locker(xLock_);
 
         auto& index = cache_.template get<ByKey>();
@@ -80,7 +80,7 @@ public:
         return true;
     }
 
-    [[nodiscard]] bool remove(const key_type& key) {
+    bool remove(const key_type& key) {
         std::lock_guard locker(xLock_);
 
         auto& index = cache_.template get<ByKey>();
@@ -95,7 +95,7 @@ public:
         return true;
     }
 
-    [[nodiscard]] std::size_t size() const noexcept {
+    std::size_t size() const noexcept {
         std::lock_guard locker(xLock_);
 
         return cache_.size();
@@ -105,15 +105,15 @@ public:
         cache_.clear();
     }
 
-    [[nodiscard]] constexpr std::size_t capacity() const noexcept {
+    constexpr std::size_t capacity() const noexcept {
         return capacity_value;
     }
 
-    [[nodiscard]] std::uint64_t cacheHitCount() const noexcept {
+    std::uint64_t cacheHitCount() const noexcept {
         return cacheHitCount_;
     }
 
-    [[nodiscard]] std::uint64_t cacheMissCount() const noexcept {
+    std::uint64_t cacheMissCount() const noexcept {
         return cacheHitCount_;
     }
 

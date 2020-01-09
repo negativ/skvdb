@@ -245,7 +245,7 @@ public:
      * @brief sizeInBytes
      * @return
      */
-    [[nodiscard]] std::uint64_t sizeInBytes() const noexcept {
+    std::uint64_t sizeInBytes() const noexcept {
         return uint64_t(openOption_.BlockSize) * sizeInBlocks();
     }
 
@@ -253,7 +253,7 @@ public:
      * @brief sizeInBlocks
      * @return
      */
-    [[nodiscard]] block_count_type sizeInBlocks() const noexcept {
+    block_count_type sizeInBlocks() const noexcept {
         return blocks_.load();
     }
 
@@ -261,7 +261,7 @@ public:
      * @brief Block size in bytes
      * @return
      */
-    [[nodiscard]] std::uint32_t blockSize() const noexcept {
+    std::uint32_t blockSize() const noexcept {
         return openOption_.BlockSize;
     }
 

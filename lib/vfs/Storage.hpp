@@ -58,14 +58,14 @@ public:
      * @param token
      * @return Status::Ok() on success
      */
-    [[nodiscard]] Status claim(Token token) noexcept override;
+    Status claim(Token token) noexcept override;
 
     /**
      * @brief Realising volume by VFS. If call count to release() eq. count of claim()'s then volume can be used by another VFS instance
      * @param token
      * @return
      */
-    [[nodiscard]] Status release(Token token) noexcept override;
+    Status release(Token token) noexcept override;
 
     /**
      * @brief Mount volume entry path to VFS storage
@@ -75,7 +75,7 @@ public:
      * @param prio - priority of mount point
      * @return Status::Ok() on success
      */
-    [[nodiscard]] Status mount(const std::shared_ptr<IVolume>& volume, const std::string& entryPath, const std::string& mountPath, Priority prio = DefaultPriority);
+    Status mount(const std::shared_ptr<IVolume>& volume, const std::string& entryPath, const std::string& mountPath, Priority prio = DefaultPriority);
 
     /**
      * @brief Unmount volume entry path from VFS storage
@@ -84,7 +84,7 @@ public:
      * @param mountPath - mount point path
      * @return Status::Ok() on success
      */
-    [[nodiscard]] Status unmount(const std::shared_ptr<IVolume>& volume, const std::string& entryPath, const std::string& mountPath);
+    Status unmount(const std::shared_ptr<IVolume>& volume, const std::string& entryPath, const std::string& mountPath);
 
 private:
     std::unique_ptr<Impl> impl_;

@@ -43,10 +43,10 @@ public:
     Volume(Volume&&) noexcept;
     Volume& operator=(Volume&&) = delete;
 
-    [[nodiscard]] Status initialize(const os::path& directory, const std::string& volumeName);
-    [[nodiscard]] Status deinitialize();
+    Status initialize(const os::path& directory, const std::string& volumeName);
+    Status deinitialize();
 
-    [[nodiscard]] bool initialized() const noexcept;
+    bool initialized() const noexcept;
 
     /**
      * @brief Get entry at specified path
@@ -78,14 +78,14 @@ public:
      * @param token
      * @return Status::Ok() on success
      */
-    [[nodiscard]] Status claim(Token token) noexcept override;
+    Status claim(Token token) noexcept override;
 
     /**
      * @brief Realising volume by VFS. If call count to release() eq. count of claim()'s then volume can be used by another VFS instance
      * @param token
      * @return
      */
-    [[nodiscard]] Status release(Token token) noexcept override;
+    Status release(Token token) noexcept override;
 
 private:
     std::unique_ptr<Impl> impl_;

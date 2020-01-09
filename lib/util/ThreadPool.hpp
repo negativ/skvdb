@@ -124,7 +124,7 @@ private:
         }
     }
 
-    [[nodiscard]] bool hasTasks() const noexcept {
+    bool hasTasks() const noexcept {
         return !taskQueue_.empty();
     }
 

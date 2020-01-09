@@ -36,7 +36,7 @@ public:
     ContainerStreamDevice(ContainerStreamDevice&&) noexcept = delete;
     ContainerStreamDevice& operator=(ContainerStreamDevice&&) noexcept = delete;
 
-    [[nodiscard]] std::streamsize read(char_type* s, std::streamsize n) {
+    std::streamsize read(char_type* s, std::streamsize n) {
         auto& container = container_.get();
         auto amt = static_cast<std::streamsize>(container.size() - pos_);
         auto result = std::min(n, amt);
@@ -54,7 +54,7 @@ public:
         return -1;
     }
 
-    [[nodiscard]] std::streamsize write(const char_type* s, std::streamsize n) {
+    std::streamsize write(const char_type* s, std::streamsize n) {
         std::streamsize result = 0;
         auto& container = container_.get();
 
@@ -76,7 +76,7 @@ public:
         return n;
     }
 
-    [[nodiscard]] io::stream_offset seek(io::stream_offset off, std::ios_base::seekdir way) {
+    io::stream_offset seek(io::stream_offset off, std::ios_base::seekdir way) {
         io::stream_offset next;
         auto& container = container_.get();
 

@@ -17,7 +17,7 @@ struct StringPathIterator {
 
     StringPathIterator &operator++();
 
-    [[nodiscard]] std::string operator*();
+    std::string operator*();
 
     [[nodiscard]] bool operator!=(const StringPathIterator& other);
 
@@ -36,7 +36,7 @@ struct ReverseStringPathIterator {
 
     ReverseStringPathIterator &operator++();
 
-    [[nodiscard]] std::string operator*();
+    std::string operator*();
 
     [[nodiscard]] bool operator!=(const ReverseStringPathIterator& other);
 

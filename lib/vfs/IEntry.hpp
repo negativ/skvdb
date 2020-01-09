@@ -35,7 +35,7 @@ public:
      * @brief handle Internal handle of item
      * @return
      */
-    [[nodiscard]] virtual Handle handle() const noexcept = 0;
+    virtual Handle handle() const noexcept = 0;
 
 
     /**
@@ -43,7 +43,7 @@ public:
      * @param prop Property name
      * @return
      */
-    [[nodiscard]] virtual std::tuple<Status, bool> hasProperty(const std::string& prop) const noexcept = 0;
+    virtual std::tuple<Status, bool> hasProperty(const std::string& prop) const noexcept = 0;
 
     /**
      * @brief setProperty Set property value
@@ -58,7 +58,7 @@ public:
      * @param prop Property name
      * @return
      */
-    [[nodiscard]] virtual std::tuple<Status, Property> property(const std::string& prop) const = 0;
+    virtual std::tuple<Status, Property> property(const std::string& prop) const = 0;
 
     /**
      * @brief removeProperty Remove specified property
@@ -71,13 +71,13 @@ public:
      * @brief properties Get all properties
      * @return
      */
-    [[nodiscard]] virtual std::tuple<Status, Properties> properties() const  = 0;
+    virtual std::tuple<Status, Properties> properties() const  = 0;
 
     /**
      * @brief propertiesNames Get all properties names
      * @return
      */
-    [[nodiscard]] virtual std::tuple<Status, std::set<std::string>> propertiesNames() const  = 0;
+    virtual std::tuple<Status, std::set<std::string>> propertiesNames() const  = 0;
 
 
     /**
@@ -100,7 +100,7 @@ public:
      * @brief children Retrieve names of child entries
      * @return
      */
-    [[nodiscard]] virtual std::tuple<Status, std::set<std::string>> links() const = 0;
+    virtual std::tuple<Status, std::set<std::string>> links() const = 0;
 
 protected:
     virtual ~IEntry() noexcept = default;

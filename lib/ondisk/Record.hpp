@@ -88,19 +88,19 @@ public:
         return *this;
     }
 
-    [[nodiscard]] IEntry::Handle handle() const noexcept  {
+    IEntry::Handle handle() const noexcept  {
         return impl_->key_;
     }
 
-    [[nodiscard]] IEntry::Handle parent() const noexcept {
+    IEntry::Handle parent() const noexcept {
         return impl_->parent_;
     }
 
-    [[nodiscard]] std::string name() const  {
+    std::string name() const  {
         return impl_->name_;
     }
 
-    [[nodiscard]] bool hasProperty(const std::string& prop) const noexcept  {
+    bool hasProperty(const std::string& prop) const noexcept  {
         if (propertyExpired(prop))
             return false;
 
@@ -115,7 +115,7 @@ public:
         return Status::Ok();
     }
 
-    [[nodiscard]] std::tuple<Status, Property> property(const std::string& prop) const  {
+    std::tuple<Status, Property> property(const std::string& prop) const  {
         if (propertyExpired(prop))
             return {Status::NotFound("No such property"), {}};
 
@@ -153,7 +153,7 @@ public:
         return  Status::Ok();
     }
 
-    [[nodiscard]] IEntry::Properties properties() const  {
+    IEntry::Properties properties() const  {
         IEntry::Properties ret;
 
         for (const auto& [prop, value] : impl_->properties_) {
@@ -164,7 +164,7 @@ public:
         return ret;
     }
 
-    [[nodiscard]] std::set<std::string> propertiesNames() const  {
+    std::set<std::string> propertiesNames() const  {
         std::set<std::string> ret;
 
         for (const auto& [prop, value] : impl_->properties_) {
@@ -177,7 +177,7 @@ public:
         return ret;
     }
 
-    [[nodiscard]] Status addChild(Record& e) {
+    Status addChild(Record& e) {
         if (e.parent() != IVolume::InvalidHandle)
             return Status::InvalidArgument("Entry already has a parent");
 
@@ -192,7 +192,7 @@ public:
         return Status::InvalidArgument("Duplicate entry");
     }
 
-    [[nodiscard]] Status removeChild(Record& e) {
+    Status removeChild(Record& e) {
         auto& index = impl_->children_.template get<typename Impl::ChildByKey>();
 
         auto it = index.find(e.handle());
@@ -206,7 +206,7 @@ public:
         return Status::Ok();
     }
 
-    [[nodiscard]] Children children() const {
+    Children children() const {
         auto& index = impl_->children_.template get<typename Impl::ChildByKey>();
         Children ret;
 

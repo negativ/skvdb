@@ -51,7 +51,7 @@ struct Volume::Impl {
     Impl(Impl&&) noexcept = delete;
     Impl& operator=(Impl&&) noexcept = delete;
 
-    [[nodiscard]] Status initialize(const os::path& directory, const std::string& volumeName) {
+    Status initialize(const os::path& directory, const std::string& volumeName) {
         storage_type::OpenOptions storageOpts;
 
         storageOpts.CompactionRatio = opts_.CompactionRatio;
@@ -62,7 +62,7 @@ struct Volume::Impl {
         return storage_->open(directory, volumeName, storageOpts);
     }
 
-    [[nodiscard]] Status deinitialize() {
+    Status deinitialize() {
         if (claimed())
             return Status::InvalidOperation("Storage claimed");
 
@@ -72,7 +72,7 @@ struct Volume::Impl {
         return storage_->close();
     }
 
-    [[nodiscard]] bool initialized() const noexcept {
+    bool initialized() const noexcept {
         return storage_->opened();
     }
 
@@ -129,7 +129,7 @@ struct Volume::Impl {
         return std::static_pointer_cast<vfs::IEntry>(createEntryForHandle(handle));
     }
 
-    [[nodiscard]] Status createChild(IEntry& e, const std::string& name) {
+    Status createChild(IEntry& e, const std::string& name) {
         auto it = std::find(std::cbegin(name), std::cend(name),
                             StringPathIterator::separator);
 
@@ -184,7 +184,7 @@ struct Volume::Impl {
         return Status::Ok();
     }
 
-    [[nodiscard]] Status removeChild(IEntry& e, const std::string& name) {
+    Status removeChild(IEntry& e, const std::string& name) {
         auto entry = getEntry(e.handle());
 
         if (!entry)
@@ -234,7 +234,7 @@ struct Volume::Impl {
         return storage_->remove(child);
     }
 
-    [[nodiscard]] std::tuple<Status, Volume::Handle, std::string> searchCachedPathEntry(const std::string& path) {
+    std::tuple<Status, Volume::Handle, std::string> searchCachedPathEntry(const std::string& path) {
         ReverseStringPathIterator start{path},
                                   stop{};
 
@@ -254,7 +254,7 @@ struct Volume::Impl {
         pathCache_.insert(path, h);
     }
 
-    [[nodiscard]] bool invalidatePathCacheEntry(const std::string& path) {
+    bool invalidatePathCacheEntry(const std::string& path) {
         return pathCache_.remove(path);
     }
 
@@ -262,7 +262,7 @@ struct Volume::Impl {
         pathCache_.clear();
     }
 
-    [[nodiscard]] EntryPtr createEntryForHandle(Volume::Handle handle) {
+    EntryPtr createEntryForHandle(Volume::Handle handle) {
         std::unique_lock locker{openedEntriesLock_};
 
         auto it = openedEntries_.find(handle);
@@ -280,7 +280,7 @@ struct Volume::Impl {
         return createEntryForHandle(handle, std::move(entry));
     }
 
-    [[nodiscard]] EntryPtr createEntryForHandle(Volume::Handle handle, Record&& record) {
+    EntryPtr createEntryForHandle(Volume::Handle handle, Record&& record) {
         std::unique_lock locker{openedEntriesLock_};
 
         auto it = openedEntries_.find(handle);
@@ -313,7 +313,7 @@ struct Volume::Impl {
         delete entry;
     }
 
-    [[nodiscard]] EntryPtr getEntry(Volume::Handle handle) {
+    EntryPtr getEntry(Volume::Handle handle) {
         std::shared_lock locker{openedEntriesLock_};
 
         auto it = openedEntries_.find(handle);
@@ -341,7 +341,7 @@ struct Volume::Impl {
         openedEntries_.clear();
     }
 
-    [[nodiscard]] Status claim(Volume::Token token) noexcept {
+    Status claim(Volume::Token token) noexcept {
         std::unique_lock locker(claimLock_);
 
         if (claimToken_ != Volume::Token{} &&
@@ -359,7 +359,7 @@ struct Volume::Impl {
         return Status::Ok();
     }
 
-    [[nodiscard]] Status release(Volume::Token token) noexcept {
+    Status release(Volume::Token token) noexcept {
         std::unique_lock locker(claimLock_);
 
         if (claimToken_ == Volume::Token{})
@@ -376,7 +376,7 @@ struct Volume::Impl {
         return Status::Ok();
     }
 
-    [[nodiscard]] bool claimed() const noexcept {
+    bool claimed() const noexcept {
         std::unique_lock locker(claimLock_);
 
         return claimCount_ != 0;

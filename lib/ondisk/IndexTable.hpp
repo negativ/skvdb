@@ -59,19 +59,19 @@ public:
     IndexTable(IndexTable&&) noexcept(std::is_nothrow_move_constructible_v<table_type>) = default;
     IndexTable& operator=(IndexTable&&) noexcept(std::is_nothrow_move_assignable_v<table_type>) = default;
 
-    [[nodiscard]] iterator begin() noexcept(std::is_nothrow_copy_constructible_v<iterator>) {
+    iterator begin() noexcept(std::is_nothrow_copy_constructible_v<iterator>) {
         return table_.begin();
     }
 
-    [[nodiscard]] const_iterator begin() const noexcept(std::is_nothrow_copy_constructible_v<const_iterator>) {
+    const_iterator begin() const noexcept(std::is_nothrow_copy_constructible_v<const_iterator>) {
         return table_.begin();
     }
 
-    [[nodiscard]] iterator end() noexcept(std::is_nothrow_copy_constructible_v<iterator>) {
+    iterator end() noexcept(std::is_nothrow_copy_constructible_v<iterator>) {
         return table_.end();
     }
 
-    [[nodiscard]] const_iterator end() const noexcept(std::is_nothrow_copy_constructible_v<const_iterator>) {
+    const_iterator end() const noexcept(std::is_nothrow_copy_constructible_v<const_iterator>) {
         return table_.end();
     }
 
@@ -87,24 +87,24 @@ public:
         return begin() == end();
     }
 
-    [[nodiscard]] bool insert(const index_record_type& idx) {
+    bool insert(const index_record_type& idx) {
         table_[idx.key()] = idx;
 
         return true;
     }
 
-    [[nodiscard]] iterator erase(iterator it) {
+    iterator erase(iterator it) {
         return table_.erase(it);
     }
 
-    [[nodiscard]] iterator erase(const key_type& k) {
+    iterator erase(const key_type& k) {
         if (auto it = find(k); it != end())
             return table_.erase(it);
 
         return end();
     }
 
-    [[nodiscard]] std::size_t size() const noexcept {
+    std::size_t size() const noexcept {
         return table_.size();
     }
 
@@ -112,7 +112,7 @@ public:
      * @brief Size of all records on disk (in bytes). Updates only on loading index table from disk. Used for calulation of compaction rate.
      * @return
      */
-    [[nodiscard]] std::uint64_t diskFootprint() const noexcept {
+    std::uint64_t diskFootprint() const noexcept {
         return diskFootprint_;
     }
 
@@ -120,7 +120,7 @@ public:
      * @brief Size of all records on disk (in blocks). Updates only on loading index table from disk. Used for calulation of compaction rate.
      * @return
      */
-    [[nodiscard]] std::uint64_t blockFootprint() const noexcept {
+    std::uint64_t blockFootprint() const noexcept {
         return blockFootprint_;
     }
 
@@ -128,7 +128,7 @@ public:
      * @brief Size of disk block
      * @return
      */
-    [[nodiscard]] std::uint32_t blockSize() const noexcept {
+    std::uint32_t blockSize() const noexcept {
         return blockSize_;
     }
 
@@ -140,7 +140,7 @@ public:
         blockSize_ = bs;
     }
 
-    bool operator==(const IndexTable& other) const noexcept {
+    [[nodiscard]] bool operator==(const IndexTable& other) const noexcept {
         // disk & block footprint ignored when comparing index tables
 
         return table_ == other.table_ &&

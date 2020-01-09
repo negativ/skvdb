@@ -58,14 +58,14 @@ public:
      * @param token
      * @return Status::Ok() on success
      */
-    [[nodiscard]] virtual Status claim(Token token) noexcept = 0;
+    virtual Status claim(Token token) noexcept = 0;
 
     /**
      * @brief Realising volume by VFS. If call count to release() eq. count of claim()'s then volume can be used by another VFS instance
      * @param token
      * @return
      */
-    [[nodiscard]] virtual Status release(Token token) noexcept = 0;
+    virtual Status release(Token token) noexcept = 0;
 };
 
 }

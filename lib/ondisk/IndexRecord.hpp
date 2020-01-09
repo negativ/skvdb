@@ -38,11 +38,11 @@ public:
     IndexRecord(IndexRecord&&) noexcept = default;
     IndexRecord& operator=(IndexRecord&&) noexcept = default;
 
-    [[nodiscard]] constexpr key_type key() const noexcept { return key_; }
+    constexpr key_type key() const noexcept { return key_; }
 
-    [[nodiscard]] constexpr block_index_type  blockIndex() const noexcept { return blockIndex_; }
+    constexpr block_index_type  blockIndex() const noexcept { return blockIndex_; }
 
-    [[nodiscard]] constexpr bytes_count_type bytesCount() const noexcept { return bytesCount_; }
+    constexpr bytes_count_type bytesCount() const noexcept { return bytesCount_; }
 
     [[nodiscard]] bool operator==(const IndexRecord& other) const noexcept {
         return key_ == other.key_ &&

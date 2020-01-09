@@ -57,7 +57,7 @@ struct Storage::Impl {
     Impl(Impl&&) noexcept = delete;
     Impl& operator=(Impl&&) noexcept = delete;
 
-    [[nodiscard]] Status childOperation(IEntry &entry, const std::string& name, ChildOp op) {
+    Status childOperation(IEntry &entry, const std::string& name, ChildOp op) {
         using result      = Status;
         using future      = std::future<result>;
         using future_list = std::vector<future>;
@@ -286,11 +286,11 @@ struct Storage::Impl {
         return Status::Ok();
     }
 
-    [[nodiscard]] Storage::Handle newHandle() noexcept {
+    Storage::Handle newHandle() noexcept {
         return currentHandle_.fetch_add(1);
     }
 
-    [[nodiscard]] bool registerEntry(VirtualEntry* entry) {
+    bool registerEntry(VirtualEntry* entry) {
         if (!entry)
             return false;
 
@@ -308,7 +308,7 @@ struct Storage::Impl {
         return openedEntries_.erase(entry->handle()) > 0;
     }
 
-    [[nodiscard]] std::tuple<Status, std::string, std::vector<mount::Entry>> searchMountPathFor(const std::string& path) const {
+    std::tuple<Status, std::string, std::vector<mount::Entry>> searchMountPathFor(const std::string& path) const {
         auto searchPath = simplifyPath(path);
         ReverseStringPathIterator start{searchPath},
                                   stop{};
