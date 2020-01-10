@@ -1,9 +1,5 @@
 #include "Entry.hpp"
-
-namespace {
-constexpr auto ExceptionThrownStatus = skv::util::Status::Fatal("Exception");
-constexpr auto BadAllocThrownStatus  = skv::util::Status::Fatal("bad_alloc");
-}
+#include "util/ExceptionBoundary.hpp"
 
 namespace skv::ondisk {
 
@@ -28,113 +24,121 @@ std::tuple<Status, bool> Entry::hasProperty(const std::string &prop) const noexc
 Status Entry::setProperty(const std::string &prop, const Property &value) {
     std::unique_lock locker{xLock_};
 
-    try {
-        auto status = record_.setProperty(prop, value);
+    Status ret;
+    auto status = exceptionBoundary("ondisk::Entry::setProperty",
+                                    [&] {
+                                        ret = record_.setProperty(prop, value);
 
-        if (status.isOk())
-            setDirty(true);
+                                        if (ret.isOk())
+                                            setDirty(true);
+                                    });
 
-        return status;
-    }
-    catch (const std::bad_alloc&) { return BadAllocThrownStatus; }
-    catch (...) { return ExceptionThrownStatus; }
+    return status.isOk()? ret : status;
 }
 
 std::tuple<Status, Property> Entry::property(const std::string &prop) const {
     std::shared_lock locker{xLock_};
 
-    try {
-        return record_.property(prop);
-    }
-    catch (const std::bad_alloc&) { return {BadAllocThrownStatus, {}}; }
-    catch (...) { return {ExceptionThrownStatus, {}}; }
+    std::tuple<Status, Property> ret;
+    auto status = exceptionBoundary("ondisk::Entry::property",
+                                    [&] {
+                                        ret = record_.property(prop);
+                                    });
+
+    return status.isOk()? ret : std::make_tuple(status, Property{});
 }
 
 Status Entry::removeProperty(const std::string &prop) {
     std::unique_lock locker{xLock_};
 
-    try {
-        auto status = record_.removeProperty(prop);
+    Status ret;
+    auto status = exceptionBoundary("ondisk::Entry::removeProperty",
+                                    [&] {
+                                        ret = record_.removeProperty(prop);
 
-        if (status.isOk())
-            setDirty(true);
+                                        if (ret.isOk())
+                                            setDirty(true);
+                                    });
 
-        return status;
-    }
-    catch (const std::bad_alloc&) { return BadAllocThrownStatus; }
-    catch (...) { return ExceptionThrownStatus; }
+    return status.isOk()? ret : status;
 }
 
 std::tuple<Status, IEntry::Properties> Entry::properties() const {
     std::shared_lock locker{xLock_};
 
-    try {
-        return {Status::Ok(), record_.properties()};
-    }
-    catch (const std::bad_alloc&) { return {BadAllocThrownStatus, {}}; }
-    catch (...) { return {ExceptionThrownStatus, {}}; }
+    std::tuple<Status, IEntry::Properties> ret;
+    auto status = exceptionBoundary("ondisk::Entry::properties",
+                                    [&] {
+                                        ret = {Status::Ok(), record_.properties()};
+                                    });
+
+    return status.isOk()? ret : std::make_tuple(status, IEntry::Properties{});
 }
 
 std::tuple<Status, std::set<std::string>> Entry::propertiesNames() const {
     std::shared_lock locker{xLock_};
 
-    try {
-        return {Status::Ok(), record_.propertiesNames()};
-    }
-    catch (const std::bad_alloc&) { return {BadAllocThrownStatus, {}}; }
-    catch (...) { return {ExceptionThrownStatus, {}}; }
+    std::tuple<Status, std::set<std::string>> ret;
+    auto status = exceptionBoundary("ondisk::Entry::propertiesNames",
+                                    [&] {
+                                        ret = {Status::Ok(), record_.propertiesNames()};
+                                    });
+
+    return status.isOk()? ret : std::make_tuple(status, std::set<std::string>{});
 }
 
 Status Entry::expireProperty(const std::string &prop, chrono::milliseconds ms) {
     std::unique_lock locker{xLock_};
 
-    try {
-        auto status = record_.expireProperty(prop, ms);
+    Status ret;
+    auto status = exceptionBoundary("ondisk::Entry::expireProperty",
+                                    [&] {
+                                        ret = record_.expireProperty(prop, ms);
 
-        if (status.isOk())
-            setDirty(true);
+                                        if (ret.isOk())
+                                            setDirty(true);
+                                    });
 
-        return status;
-    }
-    catch (const std::bad_alloc&) { return BadAllocThrownStatus; }
-    catch (...) { return ExceptionThrownStatus; }
+    return status.isOk()? ret : status;
 }
 
 Status Entry::cancelPropertyExpiration(const std::string &prop) {
     std::unique_lock locker{xLock_};
 
-    try {
-        auto status = record_.cancelPropertyExpiration(prop);
+    Status ret;
+    auto status = exceptionBoundary("ondisk::Entry::cancelPropertyExpiration",
+                                    [&] {
+                                        ret = record_.cancelPropertyExpiration(prop);
 
-        if (status.isOk())
-            setDirty(true);
+                                        if (ret.isOk())
+                                            setDirty(true);
+                                    });
 
-        return status;
-    }
-    catch (const std::bad_alloc&) { return BadAllocThrownStatus; }
-    catch (...) { return ExceptionThrownStatus; }
+    return status.isOk()? ret : status;
 }
 
 std::tuple<Status, std::set<std::string> > Entry::links() const {
     std::shared_lock locker{xLock_};
 
-    try {
-        auto children = record_.children();  // can throw here
+    std::tuple<Status, std::set<std::string>> ret;
+    auto status = exceptionBoundary("ondisk::Entry::links",
+                                    [&] {
+                                        auto children = record_.children();
 
-        locker.unlock();
+                                        locker.unlock();
 
-        std::set<std::string> ret;          // or here
+                                        std::set<std::string> cs;
 
-        for (const auto& [name, handle] : children) {
-            SKV_UNUSED(handle);
+                                        for (const auto& [name, handle] : children) {
+                                            SKV_UNUSED(handle);
 
-            ret.insert(name);               // or here
-        }
+                                            cs.insert(name);
+                                        }
 
-        return {Status::Ok(), ret};
-    }
-    catch (const std::bad_alloc&) { return {BadAllocThrownStatus, {}}; }
-    catch (...) { return {ExceptionThrownStatus, {}}; }
+                                        ret = {Status::Ok(), cs};
+                                    });
+
+    return status.isOk()? ret : std::make_tuple(status, std::set<std::string>{});
 }
 
 void Entry::setDirty(bool dirty) noexcept {
