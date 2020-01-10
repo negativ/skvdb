@@ -1,4 +1,5 @@
 #include "VirtualEntry.hpp"
+#include "util/ExceptionBoundary.hpp"
 
 namespace skv::vfs {
 
@@ -67,7 +68,10 @@ Status VirtualEntry::removeProperty(const std::string &prop) {
 }
 
 std::tuple<Status, IEntry::Properties> VirtualEntry::properties() const {
-    const auto& [status, results] = forEachEntry(&IEntry::properties);
+    Status status;
+    std::vector<std::tuple<Status, IEntry::Properties>> results;
+
+    std::tie(status, results) = forEachEntry(&IEntry::properties);
 
     if (!status.isOk())
         return {status, {}};
@@ -75,26 +79,30 @@ std::tuple<Status, IEntry::Properties> VirtualEntry::properties() const {
     if (results.empty())
         return {Status::Ok(), {}};
 
-    try {
-        Properties props;
+    std::tuple<Status, IEntry::Properties> ret;
+    status = exceptionBoundary("VirtualEntry::properties",
+                               [&] {
+                                   Properties props;
 
-        for (const auto& [st, ps] : results) {
-            if (!st.isOk())
-                continue;
+                                   for (const auto& [st, ps] : results) {
+                                       if (!st.isOk())
+                                           continue;
 
-            for (const auto& p : ps)
-                props.insert(p);
-        }
+                                       for (const auto& p : ps)
+                                           props.insert(p);
+                                   }
 
-        return {Status::Ok(), props};
-    }
-    catch (...) {                               // only std::bad_alloc can be thrown here
-        return {Status::Fatal("Exception"), {}};// so it's not safe to call any function, just return
-    }
+                                   ret = {Status::Ok(), props};
+                               });
+
+    return status.isOk()? ret : std::make_tuple(status, IEntry::Properties{});
 }
 
 std::tuple<Status, std::set<std::string>> VirtualEntry::propertiesNames() const {
-    const auto& [status, results] = forEachEntry(&IEntry::propertiesNames);
+    Status status;
+    std::vector<std::tuple<Status, std::set<std::string>>> results;
+
+    std::tie(status, results) = forEachEntry(&IEntry::propertiesNames);
 
     if (!status.isOk())
         return {status, {}};
@@ -102,22 +110,23 @@ std::tuple<Status, std::set<std::string>> VirtualEntry::propertiesNames() const 
     if (results.empty())
         return {Status::Ok(), {}};
 
-    try {
-        std::set<std::string> ret;
+    std::tuple<Status, std::set<std::string>> ret;
+    status = exceptionBoundary("VirtualEntry::propertiesNames",
+                               [&] {
+                                   std::set<std::string> pns;
 
-        for (const auto& [st, ps] : results) {
-            if (!st.isOk())
-                continue;
+                                   for (const auto& [st, ps] : results) {
+                                       if (!st.isOk())
+                                           continue;
 
-            for (const auto& p : ps)
-                ret.insert(p);
-        }
+                                       for (const auto& p : ps)
+                                           pns.insert(p);
+                                   }
 
-        return {Status::Ok(), ret};
-    }
-    catch (...) {                               // only std::bad_alloc can be thrown here
-        return {Status::Fatal("Exception"), {}};// so it's not safe to call any function, just return
-    }
+                                   ret = {Status::Ok(), pns};
+                               });
+
+    return status.isOk()? ret : std::make_tuple(status, std::set<std::string>{});
 }
 
 Status VirtualEntry::expireProperty(const std::string &prop, chrono::milliseconds ms) {
@@ -145,7 +154,10 @@ Status VirtualEntry::cancelPropertyExpiration(const std::string &prop) {
 }
 
 std::tuple<Status, std::set<std::string>> VirtualEntry::links() const {
-    const auto& [status, results] = forEachEntry(&IEntry::links);
+    Status status;
+    std::vector<std::tuple<Status, std::set<std::string>>> results;
+
+    std::tie(status, results) = forEachEntry(&IEntry::IEntry::links);
 
     if (!status.isOk())
         return {status, {}};
@@ -153,22 +165,23 @@ std::tuple<Status, std::set<std::string>> VirtualEntry::links() const {
     if (results.empty())
         return {};
 
-    try {
-        std::set<std::string> ret;
+    std::tuple<Status, std::set<std::string>> ret;
+    status = exceptionBoundary("VirtualEntry::links",
+                               [&] {
+                                   std::set<std::string> c;
 
-        for (const auto& [st, cs] : results) {
-            if (!st.isOk())
-                continue;
+                                   for (const auto& [st, cs] : results) {
+                                       if (!st.isOk())
+                                           continue;
 
-            for (const auto& child : cs)
-                ret.insert(child);
-        }
+                                       for (const auto& child : cs)
+                                           c.insert(child);
+                                   }
 
-        return {Status::Ok(), ret};
-    }
-    catch (...) {                               // only std::bad_alloc can be thrown here
-        return {Status::Fatal("Exception"), {}};// so it's not safe to call any function, just return
-    }
+                                   ret = {Status::Ok(), c};
+                               });
+
+    return status.isOk()? ret : std::make_tuple(status, std::set<std::string>{});
 }
 
 VirtualEntry::Volumes &VirtualEntry::volumes() const noexcept {
@@ -178,7 +191,5 @@ VirtualEntry::Volumes &VirtualEntry::volumes() const noexcept {
 VirtualEntry::Entries &VirtualEntry::entries() const noexcept {
     return entries_;
 }
-
-
 
 }
